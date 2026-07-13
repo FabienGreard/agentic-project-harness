@@ -3,6 +3,7 @@
   "templateMode": true,
   "project": {
     "name": "Agentic Project Harness starter",
+    "agentProvider": "codex",
     "phase": "governance-customization",
     "lastVerified": "2026-07-13"
   },
