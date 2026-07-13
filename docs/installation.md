@@ -89,7 +89,26 @@ Maintainers can exercise the exact standalone download path at a pushed commit w
 
 ## Generated Codex configuration
 
-The installer writes `.codex/config.toml` plus one file per active role under `.codex/agents/`. Each custom agent file includes its role contract and selected `model_reasoning_effort`; the model is deliberately not pinned. Codex can use these project-scoped roles for delegated work in the desktop app, CLI, and IDE surfaces that support custom subagents.
+The installer writes `.codex/config.toml` plus one file per active role under `.codex/agents/`. The default `max_threads = 4` is a concurrency ceiling rather than a worker target, reducing peak token and local-resource use while retaining useful parallel execution. `max_depth = 1` preserves the shallow single-dispatch-center topology and prevents recursive worker fan-out. The active Codex surface may impose a lower concurrency cap. Each custom agent file includes its role contract and selected `model_reasoning_effort`; the model is deliberately not pinned. The installer also adds the generic governance map and rules under `.agents/rules/`, and the `brainstorm`, `improve-codebase-architecture`, and `code-review` skills under `.agents/skills/`. `.codex/skills` is a relative symlink to that directory, keeping Codex discovery on one non-drifting copy.
+
+## Project permissions
+
+Fresh projects use this exact project-scoped configuration:
+
+```toml
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"
+
+[agents]
+max_threads = 4
+max_depth = 1
+
+[sandbox_workspace_write]
+network_access = true
+```
+
+This requests automatic review when an action needs approval while retaining workspace-write sandboxing and explicit network access within that sandbox. **Approve for me** / Auto-review availability may still be constrained by the user's Codex app, organization, or managed workspace settings. Existing conversations can retain the permission mode already selected for that conversation; start a new task or explicitly change its mode when the project config must take effect.
 
 Permanent top-level tasks do not automatically become a custom subagent. When creating the Project Director, Delivery Lead, and Specialist Lead as separate Codex tasks, select the matching reasoning level in the task composer and give each its corresponding role prompt. The Specialist Lead remains dormant until its recurring expert domain is approved. The durable `.codex/agents/` files remain the auditable source for the intended setting.
 
@@ -98,11 +117,14 @@ See the official Codex documentation for [custom agents and per-agent reasoning]
 ## Safety boundary
 
 - The target must not exist or must be empty; there is intentionally no force-overwrite flag.
+- No existing component supplied in the target path may be a symbolic link, preventing a requested absolute path from redirecting installation into another location even when the final target directory already exists. Relative targets are anchored to the physical current directory before this check.
+- Target paths containing a `..` segment are rejected before normalization so a symlink followed by parent traversal cannot hide the path actually written.
 - Installation never starts Codex, spends model credits, logs in, selects a paid model, or changes global configuration.
 - A missing Codex CLI produces a warning rather than a failed installation, allowing desktop or remote use.
 - Git initialization creates `main` but does not stage or commit; the agent and human must review the customized governance baseline first.
 - Local checkout installs record `local-working-tree` provenance and whether that source was dirty. A standalone or piped installer always downloads the declared repository and ref.
 - The generated project remains in template mode until the inline **First project prompt** in `README.md` is completed and strict harness checks pass.
+- `python3 tools/harness_eval.py` verifies the map-only `AGENTS.md`, common rule template, skill metadata/support files, relative discovery symlink, and Director/Delivery review integration.
 
 ## First agent run
 

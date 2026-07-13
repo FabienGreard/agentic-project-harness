@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Added
+
+- Added a common, project-scoped rule library under `.agents/rules/` with a navigation-only root `AGENTS.md`.
+- Added explicitly invoked `brainstorm`, `improve-codebase-architecture`, and `code-review` skills with one non-drifting Codex discovery link.
+- Added independent static checks and installer smoke coverage for rule structure, skill metadata/discovery, generic language, and two-axis review integration.
+- Added third-party attribution for the MIT-licensed upstream skill material adapted from Matt Pocock's skills repository.
+
+### Changed
+
+- Added Delivery Lead two-axis integration review and a bounded Project Director final-audit mode while preserving separate Specialist domain approval.
+- Updated fresh installations and onboarding guidance to include the modular rules and project-scoped skills.
+- Set the project-scoped Codex permission contract to on-request approval with Auto-review, workspace-write sandboxing, and sandbox network access; reduced the concurrency ceiling from six threads to four while keeping dispatch depth at one.
+
 ## [0.3.0] - 2026-07-13
 
 ### Changed

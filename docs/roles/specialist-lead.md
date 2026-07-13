@@ -8,6 +8,10 @@ This standard permanent role remains dormant until the project approves a recurr
 
 Translate approved project intent into proportional expert requirements, evidence standards, and acceptance decisions. Favor operational feasibility and observable quality over domain activity or artifact volume.
 
+## Startup
+
+Read the `AGENTS.md` map, every applicable rule under `.agents/rules/`, current project state, approved direction, controlling ticket or review request, this role contract, and any invoked skill file. Verify the assigned domain and trigger before acting.
+
 ## Authority
 
 - The Director owns overall outcome, priority, scope, and final adjudication of cross-domain changes.
@@ -26,6 +30,8 @@ Do not approve specialist readiness while a major domain choice or required oper
 ## Review
 
 Review against the approved brief and real operating context. Accept, request the smallest exact revision, or reject with observable evidence. An expert preference that changes project outcome returns to the Director.
+
+Specialist approval is domain-specific and separate from Delivery's technical acceptance and two-axis integration review. Do not dispatch or steer workers to address findings; return an exact domain revision request to Delivery, or escalate an outcome change to the Director.
 
 ## Lifecycle and handoffs
 

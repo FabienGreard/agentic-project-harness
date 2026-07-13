@@ -89,7 +89,9 @@ curl -fsSL https://raw.githubusercontent.com/FabienGreard/agentic-project-harnes
   --yes
 ```
 
-The installer creates a clean Codex project, lets you choose the reasoning level for each agent role, generates native project-scoped custom agent files under `.codex/agents/`, runs the static harness checks, and initializes Git without committing. It refuses to overwrite a non-empty target.
+The installer creates a clean Codex project, lets you choose the reasoning level for each agent role, generates native project-scoped custom agent files under `.codex/agents/`, installs generic rules under `.agents/rules/`, and installs the three project skills under `.agents/skills/`. Codex discovers those skills through the relative `.codex/skills` symlink, so there is one source of truth and no duplicated copies.
+
+The project-scoped Codex config uses on-request approval with automatic approval review, workspace-write sandboxing, and network access inside that sandbox. It sets `max_threads = 4` as a concurrency ceiling—not a worker target—and keeps `max_depth = 1` so Delivery remains the single shallow dispatch center; an execution surface may enforce a lower cap. **Approve for me** / Auto-review can still be limited by the user's Codex app or managed workspace policy, and already-running conversations may retain their currently selected permission mode. The installer runs the static harness checks, initializes Git without committing, and refuses to overwrite a non-empty target.
 
 See [docs/installation.md](docs/installation.md) for the review-first flow and all options.
 
@@ -107,7 +109,11 @@ See [docs/installation.md](docs/installation.md) for the review-first flow and a
 
 ```text
 .
-├── AGENTS.md                         # Top-level operating rules
+├── AGENTS.md                         # Navigation map into normative rules
+├── .agents/
+│   ├── rules/                        # Commonly templated governance modules
+│   └── skills/                       # Generic project-scoped skills and metadata
+├── .codex/skills -> ../.agents/skills # Relative Codex discovery link
 ├── install.sh                        # Interactive and agent-friendly bootstrapper
 ├── .codex/
 │   ├── config.toml                   # Project-scoped concurrency defaults
@@ -162,7 +168,7 @@ See [docs/evals/harness/README.md](docs/evals/harness/README.md).
 
 ## Domain examples
 
-- [Game development](examples/game-development/README.md): Project Director, Production Lead, optional Art/Design Lead, engineering and asset workers, playable-slice reviews.
+- [Game development](examples/game-development/README.md): Project Director, Production Lead, the standard dormant Specialist Lead configured for Art/Design when approved, engineering and asset workers, playable-slice reviews.
 - [Business operations](examples/business-operations/README.md): Program Director, Operations Lead, optional Finance/Legal/Domain Lead, analysis and process workers, approval checkpoints.
 
 Examples are overlays, not separate frameworks. Keep the authority and handoff model; rename roles and gates to match the domain.
@@ -175,4 +181,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). If this starter is useful, star the rep
 
 ## License
 
-[MIT](LICENSE) © 2026 Fabien Gréard.
+[MIT](LICENSE) © 2026 Fabien Gréard. Adapted upstream skill material is documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -6,7 +6,7 @@ Maintain coherent project outcomes, priority, scope, decisions, readiness, publi
 
 ## Startup
 
-Read `AGENTS.md`, overview, direction, backlog, active work, machine state, relevant decisions/requirements/tickets/reports, workflow, and registry. Verify important claims against live state.
+Read the `AGENTS.md` map, every applicable rule under `.agents/rules/`, overview, direction, backlog, active work, machine state, relevant decisions/requirements/tickets/reports, workflow, registry, and any invoked skill file. Verify important claims against live state.
 
 ## Orchestration lifecycle
 
@@ -45,3 +45,9 @@ To Delivery, send Ready work with IDs, priority, dependencies, scope/non-goals, 
 Returned work arrives through one explicit result, blocker, review, or idle-boundary message after repository synchronization. Review it, update the next baton, and do not require Leads to poll for assignments.
 
 Never steer execution workers directly. Route scope and revision changes through Delivery.
+
+## Final audit
+
+When reviewing a substantial returned ticket or checkpoint, use the [code-review skill](../../.agents/skills/code-review/SKILL.md) in final-audit mode. Consume Delivery's pinned committed and dirty-worktree diff boundary, the independent standards/architecture and specification/evidence findings, the implementation report, and exact verification evidence. Confirm that the evidence covers approved outcome intent, technical acceptance, required Specialist approval, and the declared human-review gate.
+
+This is a bounded Director audit: do not dispatch reviewers, create a competing review path, or steer execution workers. If the audit finds an implementation or technical-evidence defect, route the smallest exact revision through Delivery. Resolve outcome or cross-domain conflicts at the Director boundary; keep Specialist domain approval separate from technical acceptance and do not treat a clean audit as publication or human approval.

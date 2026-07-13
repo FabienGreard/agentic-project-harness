@@ -9,7 +9,7 @@
 - Execution worker: only the assigned objective and files/systems.
 - Harness Evaluator: independent read-only assessment of orchestration behavior.
 
-Missing product or outcome intent returns to the Project Director. Missing specialist requirements return to the owning Specialist Lead. Scope and revision instructions reach workers only through Delivery.
+Missing product or outcome intent returns to the Project Director. Missing specialist requirements return to the owning Specialist Lead. Delivery is the only worker dispatch and revision-routing path: Project Director and Specialist Lead do not dispatch or steer workers.
 
 ## Status vocabulary
 
@@ -66,9 +66,22 @@ Delivery is run-to-idle:
 
 Direct Delivery work is appropriate for small, tightly coupled, sensitive, integration, conflict-resolution, verification, or narrow revision scopes. Worker-first is not worker-only.
 
+### Substantial integration review
+
+Before substantial acceptance, Delivery runs a two-axis review using the [code-review skill](../.agents/skills/code-review/SKILL.md):
+
+- pin the exact committed and dirty-worktree boundary, including relevant untracked files, while excluding unrelated changes;
+- obtain independent read-only standards/architecture and specification/evidence findings;
+- verify each finding against the pinned diff and controlling requirements, then accept, revise, or reject as Delivery;
+- hand off the pinned diff, both findings sets, implementation report, exact verification evidence, limitations, and next baton to the Project Director.
+
+Reviewers do not edit, accept, integrate, update state, or route revisions. This review precedes substantial acceptance. Specialist domain approval remains a separate expert gate and does not replace technical acceptance or Delivery integration.
+
 ## Specialist lifecycle
 
 The Specialist Lead is a standard run-to-idle role. It remains dormant until an approved recurring expert domain creates a definition or review trigger. It defines proportional requirements, reviews returned evidence, accepts or requests exact revisions, and hands executable work to Delivery. It does not set overall priority, dispatch workers, integrate implementation, or remain active without a domain trigger.
+
+The Project Director performs final-audit mode on substantial returned work by consuming Delivery's pinned diff, two-axis findings, implementation report, and exact evidence. The Director does not dispatch reviewers or steer workers; implementation revisions route through Delivery. A final audit and Specialist approval do not by themselves authorize publication or satisfy a separate human-review gate.
 
 ## Control-plane communication
 

@@ -11,6 +11,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from urllib.parse import unquote
 
+sys.dont_write_bytecode = True
+
+from codex_config_contract import assert_codex_config
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ACTIVE_STATUSES = {
@@ -34,6 +38,7 @@ REQUIRED_FILES = [
     "install.sh",
     "tests/install_smoke.sh",
     "tests/install_remote_smoke.sh",
+    "tools/codex_config_contract.py",
     "docs/installation.md",
     "docs/overview.md",
     "docs/direction.md",
@@ -50,6 +55,26 @@ REQUIRED_FILES = [
     "docs/roles/worker-task-template.md",
     "docs/evals/harness/rubric.md",
 ]
+REQUIRED_SKILLS = (
+    "brainstorm",
+    "improve-codebase-architecture",
+    "code-review",
+)
+REQUIRED_RULES = (
+    "repository-truth",
+    "authority-boundaries",
+    "lifecycle-and-idle",
+    "incoming-change-triage",
+    "codebase-design",
+    "testing",
+    "dispatch-and-ownership",
+    "transactional-state",
+    "readiness-and-scope",
+    "completion-and-review",
+    "harness-evaluation",
+    "external-notifications",
+    "repository-safety",
+)
 LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 SECRET_PATTERNS = [
     re.compile(r"gh[opsu]_[A-Za-z0-9]{20,}"),
@@ -81,6 +106,9 @@ class Evaluator:
         self.json_files()
         self.codex_agent_configs()
         self.text_integrity()
+        self.governance_modules()
+        self.skill_discovery()
+        self.role_integration()
         if self.state:
             self.ticket_state()
             self.ownership_and_baton()
@@ -149,14 +177,17 @@ class Evaluator:
             for key in ["name", "description", "developer_instructions"]:
                 if not re.search(rf"^{key}\s*=", text, re.MULTILINE):
                     failures.append(f"{relative}: missing {key}")
+            if ".agents/rules/" not in text:
+                failures.append(f"{relative}: startup does not load applicable modular rules")
             match = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', text, re.MULTILINE)
             if match and match.group(1) not in allowed:
                 failures.append(f"{relative}: unsupported reasoning {match.group(1)}")
         config = ROOT / ".codex/config.toml"
         if config.is_file():
-            config_text = config.read_text(encoding="utf-8")
-            if "[agents]" not in config_text or "max_threads" not in config_text or "max_depth" not in config_text:
-                failures.append(".codex/config.toml: incomplete agents settings")
+            try:
+                assert_codex_config(config)
+            except (AssertionError, OSError, ValueError) as error:
+                failures.append(f".codex/config.toml: {error}")
         self.record("ST-005", not failures, "; ".join(failures) if failures else f"{len(files)} Codex role configs valid")
 
     def text_integrity(self) -> None:
@@ -175,6 +206,184 @@ class Evaluator:
                     problems.append(f"{file.relative_to(ROOT)}:{index}: trailing whitespace")
                     break
         self.record("ST-004", not problems, "; ".join(problems[:20]) if problems else "no conflict markers or trailing whitespace")
+
+    def governance_modules(self) -> None:
+        agents = ROOT / "AGENTS.md"
+        rules_dir = ROOT / ".agents/rules"
+        all_rule_files = sorted(rules_dir.glob("*.md")) if rules_dir.is_dir() else []
+        failures: list[str] = []
+        if not agents.is_file():
+            failures.append("AGENTS.md missing")
+        else:
+            text = agents.read_text(encoding="utf-8")
+            # AGENTS is deliberately a navigational index. Normative bullets and
+            # procedural headings belong in .agents/rules instead.
+            if re.search(r"^\s*(?:[-*]|\d+[.)])\s+", text, re.MULTILINE):
+                failures.append("AGENTS.md contains normative list items")
+            links = LINK_RE.findall(text)
+            if not links:
+                failures.append("AGENTS.md has no rule-map links")
+            for target in links:
+                target = target.strip().strip("<>").split("#", 1)[0]
+                if target.startswith(("http://", "https://", "mailto:", "#", "thread:", "plugin:")):
+                    continue
+                if not (agents.parent / unquote(target)).resolve().exists():
+                    failures.append(f"AGENTS.md broken link: {target}")
+            required_map_targets = {
+                *(f".agents/rules/{name}.md" for name in REQUIRED_RULES),
+                ".agents/rules/_template.md",
+                *(f".agents/rules/{path.name}" for path in all_rule_files),
+                *(f".agents/skills/{name}/SKILL.md" for name in REQUIRED_SKILLS),
+                "docs/overview.md",
+                "docs/direction.md",
+                "docs/backlog.md",
+                "docs/active-work.md",
+                "docs/project-state.json",
+                "docs/roles/project-director.md",
+                "docs/roles/delivery-lead.md",
+                "docs/roles/specialist-lead.md",
+                "docs/roles/harness-evaluator.md",
+                "docs/roles/execution-worker.md",
+                "docs/workflow.md",
+            }
+            normalized_targets = {
+                unquote(target.strip().strip("<>").split("#", 1)[0]) for target in links
+            }
+            missing_map_targets = sorted(required_map_targets - normalized_targets)
+            if missing_map_targets:
+                failures.append("AGENTS.md missing map targets: " + ", ".join(missing_map_targets))
+            if re.search(r"^##\s+(?:Core rules|Rules|Instructions|Operating rules)\s*$", text, re.MULTILINE | re.IGNORECASE):
+                failures.append("AGENTS.md contains a normative rule section")
+        required_rule_names = {"_template.md", *(f"{name}.md" for name in REQUIRED_RULES)}
+        actual_rule_names = {path.name for path in all_rule_files}
+        missing_rule_names = sorted(required_rule_names - actual_rule_names)
+        if missing_rule_names:
+            failures.append(
+                "required rule files missing: " + ", ".join(missing_rule_names)
+            )
+        rule_files = [rule for rule in all_rule_files if rule.name != "_template.md"]
+        section_sets: set[tuple[str, ...]] = set()
+        common_sections = ("Title", "Type", "Purpose", "Scope", "Definition", "How to Apply", "Do", "Don't", "Example", "Validation", "References", "Notes")
+        for rule in all_rule_files:
+            text = rule.read_text(encoding="utf-8")
+            sections = tuple(re.findall(r"^([A-Za-z][A-Za-z ']+):\s*$", text, re.MULTILINE))
+            if not text.lstrip().startswith("# ") or sections != common_sections:
+                failures.append(f"{rule.relative_to(ROOT)} lacks the common section template")
+            section_sets.add(sections)
+        if len(section_sets) > 1:
+            failures.append("rule section headings differ between rule modules")
+        self.record("ST-040", not failures, "; ".join(failures) if failures else f"AGENTS map-only; {len(rule_files)} rules and template share one section contract")
+
+    def skill_discovery(self) -> None:
+        skills_root = ROOT / ".agents/skills"
+        discovery = ROOT / ".codex/skills"
+        failures: list[str] = []
+        for skill in REQUIRED_SKILLS:
+            path = skills_root / skill
+            skill_file = path / "SKILL.md"
+            if not skill_file.is_file():
+                failures.append(f"missing {skill}/SKILL.md")
+                continue
+            text = skill_file.read_text(encoding="utf-8")
+            if not text.startswith("---\n") or not re.search(rf"^name:\s*{re.escape(skill)}\s*$", text, re.MULTILINE):
+                failures.append(f"{skill}/SKILL.md lacks matching frontmatter name")
+            if not re.search(r"^#\s+", text, re.MULTILINE) or not re.search(r"\$" + re.escape(skill) + r"\b", text):
+                failures.append(f"{skill}/SKILL.md lacks title or explicit $ invocation")
+            metadata_file = path / "agents/openai.yaml"
+            if not metadata_file.is_file():
+                failures.append(f"missing {skill}/agents/openai.yaml")
+            else:
+                metadata_text = metadata_file.read_text(encoding="utf-8")
+                if not all(key in metadata_text for key in ("display_name:", "short_description:", "default_prompt:")):
+                    failures.append(f"{skill}/agents/openai.yaml lacks interface metadata")
+                if not re.search(r"^\s*allow_implicit_invocation:\s*false\s*$", metadata_text, re.MULTILINE):
+                    failures.append(f"{skill}/agents/openai.yaml must require explicit invocation")
+        required_support = (
+            skills_root / "improve-codebase-architecture/references/report-format.md",
+            skills_root / "code-review/references/review-axes.md",
+        )
+        for path in required_support:
+            if not path.is_file():
+                failures.append(f"missing {path.relative_to(ROOT)}")
+        if not discovery.is_symlink():
+            failures.append(".codex/skills is not a discovery symlink")
+        else:
+            target = discovery.readlink()
+            if target != Path("../.agents/skills"):
+                failures.append(f".codex/skills target is {target!s}, expected ../.agents/skills")
+            if discovery.resolve() != skills_root.resolve():
+                failures.append(".codex/skills does not resolve to .agents/skills")
+        if discovery.is_dir() and not discovery.is_symlink():
+            failures.append(".codex/skills contains a duplicated copy")
+        metadata = skills_root / "skills.json"
+        support = [skills_root / name for name in ("README.md", "ATTRIBUTION.md", "NOTICE.md")]
+        support += [ROOT / "THIRD_PARTY_NOTICES.md"]
+        if not metadata.is_file():
+            failures.append(".agents/skills/skills.json missing")
+        else:
+            try:
+                manifest = json.loads(metadata.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as error:
+                failures.append(f".agents/skills/skills.json invalid: {error}")
+            else:
+                if manifest.get("skills") != list(REQUIRED_SKILLS) or manifest.get("invocation") != "explicit" or manifest.get("discovery") != "../.agents/skills":
+                    failures.append(".agents/skills/skills.json does not match the discovery contract")
+        if not any(path.is_file() for path in support):
+            failures.append("skill attribution/support notice missing")
+        notice = ROOT / "THIRD_PARTY_NOTICES.md"
+        if notice.is_file() and "Copyright (c) 2026 Matt Pocock" not in notice.read_text(encoding="utf-8"):
+            failures.append("third-party notice does not preserve the upstream copyright line")
+        self.record("ST-041", not failures, "; ".join(failures) if failures else "three skills, metadata, support notice, and relative discovery symlink valid")
+
+    def role_integration(self) -> None:
+        failures: list[str] = []
+        role_files = {
+            "director": ROOT / "docs/roles/project-director.md",
+            "delivery": ROOT / "docs/roles/delivery-lead.md",
+            "specialist": ROOT / "docs/roles/specialist-lead.md",
+            "worker": ROOT / "docs/roles/execution-worker.md",
+            "evaluator": ROOT / "docs/roles/harness-evaluator.md",
+        }
+        texts = {name: path.read_text(encoding="utf-8") if path.is_file() else "" for name, path in role_files.items()}
+        failures.extend(f"missing {name} role contract" for name, text in texts.items() if not text)
+        failures.extend(f"{name} role startup does not load applicable modular rules" for name, text in texts.items() if text and ".agents/rules/" not in text)
+        required_phrases = {
+            "director": (
+                "## Final audit",
+                "Delivery's pinned committed and dirty-worktree diff boundary",
+                "independent standards/architecture and specification/evidence findings",
+                "implementation report",
+                "exact verification evidence",
+                "do not dispatch reviewers",
+                "route the smallest exact revision through Delivery",
+            ),
+            "delivery": (
+                "Before substantial acceptance",
+                "two-axis integration review",
+                "standards/architecture and specification/evidence",
+                "Reviewers do not edit",
+                "implementation report",
+                "Project Director",
+            ),
+            "specialist": (
+                "separate from Delivery's technical acceptance and two-axis integration review",
+                "Do not dispatch or steer workers",
+            ),
+            "worker": (
+                "exclusive ownership",
+                "return exact evidence to the assigning Delivery Lead",
+            ),
+            "evaluator": (
+                "Evaluate whether the orchestration harness produces safe, efficient, evidence-backed advancement",
+                "Do not edit, update status, send permanent-role messages, dispatch, publish, or fix defects",
+            ),
+        }
+        for role, phrases in required_phrases.items():
+            folded = texts[role].casefold()
+            missing = [phrase for phrase in phrases if phrase.casefold() not in folded]
+            if missing:
+                failures.append(f"{role} role missing required contract: " + "; ".join(missing))
+        self.record("ST-042", not failures, "; ".join(failures) if failures else "Director/Delivery two-axis review integration and role boundaries present")
 
     def ticket_state(self) -> None:
         tickets = self.state.get("tickets", [])

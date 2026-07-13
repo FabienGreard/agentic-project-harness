@@ -40,6 +40,10 @@ import sys
 from pathlib import Path
 
 root = Path(sys.argv[1])
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(root / "tools"))
+from codex_config_contract import assert_codex_config
+
 metadata = json.loads((root / ".agent-harness.json").read_text())
 assert metadata["provider"] == "codex"
 assert metadata["projectType"] == "game-development"
@@ -61,6 +65,11 @@ assert 'model_reasoning_effort = "xhigh"' in (root / ".codex/agents/harness-eval
 assert (root / "HARNESS.md").is_file()
 assert not (root / "BOOTSTRAP_PROMPT.md").exists()
 assert "## First project prompt" in (root / "README.md").read_text()
+assert (root / ".codex/skills").is_symlink()
+assert (root / ".codex/skills").resolve() == (root / ".agents/skills").resolve()
+assert_codex_config(root / ".codex/config.toml")
+for skill in ("brainstorm", "improve-codebase-architecture", "code-review"):
+    assert (root / ".agents/skills" / skill / "SKILL.md").is_file(), skill
 PY
 
 python3 "$target/tools/harness_eval.py" >"$TEMP_ROOT/eval.log"

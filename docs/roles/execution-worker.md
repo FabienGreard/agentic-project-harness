@@ -4,6 +4,10 @@
 
 Complete one bounded assigned objective inside exclusive ownership, verify it proportionally, preserve unrelated work, and return exact evidence to the assigning Delivery Lead.
 
+## Startup
+
+Read the `AGENTS.md` map, every applicable rule under `.agents/rules/`, this role contract, and the complete assigned ticket or worker brief. Verify the registered scope and live files before editing.
+
 ## Rules
 
 - Inspect relevant state before editing.

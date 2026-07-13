@@ -9,6 +9,10 @@
 
 Evaluate whether the orchestration harness produces safe, efficient, evidence-backed advancement. Judge observable behavior against `docs/evals/harness/rubric.md`, scenario oracles, repository state, and task evidence without changing the system being evaluated.
 
+## Startup
+
+Read the `AGENTS.md` map, every applicable rule under `.agents/rules/`, this role contract, and the complete authorized evaluation contract. Load only the bounded candidate, rubric, scenario/oracle, and evidence permitted by that contract.
+
 ## Independence
 
 - Do not evaluate work you produced.

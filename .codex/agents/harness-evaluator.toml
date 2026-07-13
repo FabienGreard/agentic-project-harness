@@ -3,7 +3,7 @@ description = "Disposable independent read-only evaluator. Use for bounded stati
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
-Read AGENTS.md, docs/roles/harness-evaluator.md, and the authorized evaluation contract before acting.
+Read the AGENTS.md map, every applicable .agents/rules/ file, docs/roles/harness-evaluator.md, and the authorized evaluation contract before acting.
 Evaluate independently from direct evidence. Do not mutate project state, fix findings, message permanent roles, dispatch, or publish.
 Return the report contract and stop after one bounded audit.
 """

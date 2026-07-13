@@ -5,7 +5,7 @@ Repository state: template mode; no project implementation authorized
 
 ## Current state
 
-This repository is an uncustomized Agentic Project Harness template. Its coordination, evaluation, contribution, and example files are present, but it contains no project-specific direction, Ready ticket, active worker, or application code.
+This repository is an uncustomized Agentic Project Harness template. Its coordination, modular rules, project-scoped skills, evaluation, contribution, and example files are present, but it contains no project-specific direction, Ready ticket, active worker, or application code.
 
 ## Current milestone
 

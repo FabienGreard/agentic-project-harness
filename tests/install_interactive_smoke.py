@@ -19,6 +19,10 @@ from pathlib import Path
 
 ROOT = Path(sys.argv[1]).resolve()
 INSTALLER = ROOT / "install.sh"
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(ROOT / "tools"))
+from codex_config_contract import assert_codex_config
+
 ARROW_DOWN = b"\x1b[B"
 ENTER = b"\r"
 TEMP_TARGETS: list[Path] = []
@@ -100,6 +104,10 @@ def metadata(target: Path) -> dict:
     return json.loads((target / ".agent-harness.json").read_text(encoding="utf-8"))
 
 
+def assert_concurrency_config(target: Path) -> None:
+    assert_codex_config(target / ".codex/config.toml")
+
+
 preset_target, preset_output = run_interactive(
     [
         (b"What are you building?", ENTER),
@@ -121,6 +129,9 @@ assert preset["reasoning"] == {
 }
 assert preset_target.name in (preset_target / "README.md").read_text(encoding="utf-8")
 assert b"\x1b[" in preset_output
+assert (preset_target / ".codex/skills").is_symlink()
+assert (preset_target / ".codex/skills").resolve() == (preset_target / ".agents/skills").resolve()
+assert_concurrency_config(preset_target)
 
 custom_target, _ = run_interactive(
     [
@@ -144,6 +155,9 @@ custom_readme = (custom_target / "README.md").read_text(encoding="utf-8")
 assert "## First project prompt" in custom_readme
 assert "Bootstrap Ops Pilot using the repository harness." in custom_readme
 assert not (custom_target / "BOOTSTRAP_PROMPT.md").exists()
+assert (custom_target / ".codex/skills").is_symlink()
+assert (custom_target / ".codex/skills").resolve() == (custom_target / ".agents/skills").resolve()
+assert_concurrency_config(custom_target)
 
 nonempty_target, nonempty_output = run_interactive(
     [
@@ -158,5 +172,6 @@ nonempty_target, nonempty_output = run_interactive(
 assert (nonempty_target / "keep-me.txt").read_text(encoding="utf-8") == "preserve me\n"
 assert (nonempty_target / "nested/.agent-harness.json").is_file()
 assert b"That location is not empty" in nonempty_output
+assert_concurrency_config(nonempty_target / "nested")
 
 print("PASS: interactive keyboard installer smoke completed")

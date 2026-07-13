@@ -291,6 +291,7 @@ prompt_reasoning() {
 }
 
 target_is_unavailable() {
+  [ ! -L "$1" ] || return 0
   [ -e "$1" ] || return 1
   [ -d "$1" ] || return 0
   target_entry=$(find "$1" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null) || return 0
@@ -466,6 +467,9 @@ esac
 case "$TARGET" in
   *$'\n'*|*$'\r'*) die "target cannot contain newlines" ;;
 esac
+case "/$TARGET/" in
+  *'/../'*) die "target cannot contain .. path segments" ;;
+esac
 case "$REPO" in
   */*) ;;
   *) die "--repo must use OWNER/NAME form" ;;
@@ -490,6 +494,29 @@ validate_reasoning_preset "$REASONING_PRESET"
 SOURCE_METADATA_REF="$REF"
 
 command -v python3 >/dev/null 2>&1 || die "python3 is required"
+if python3 - "$TARGET" <<'PY'
+import os
+import stat
+import sys
+from pathlib import Path
+
+raw_path = Path(os.path.expanduser(sys.argv[1]))
+if raw_path.is_absolute():
+    path = Path(os.path.abspath(raw_path))
+else:
+    path = Path(os.path.abspath(Path.cwd().resolve() / raw_path))
+for candidate in (path, *path.parents):
+    try:
+        mode = candidate.lstat().st_mode
+    except FileNotFoundError:
+        continue
+    if stat.S_ISLNK(mode):
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+then
+  die "target path must not be or pass through a symbolic link: $TARGET"
+fi
 TARGET_ABS=$(python3 - "$TARGET" <<'PY'
 from pathlib import Path
 import sys
@@ -714,7 +741,7 @@ overlay_instruction = {
 
 first_project_prompt = f"""Bootstrap {project_name} using the repository harness. It was categorized during installation as {project_type_label}; treat that only as onboarding context, never as permission to invent direction. {overlay_instruction}
 
-First read AGENTS.md, .codex/config.toml, the active role configurations under .codex/agents/, docs/overview.md, docs/direction.md, docs/backlog.md, docs/active-work.md, docs/project-state.json, docs/workflow.md, and the relevant role instructions completely. Verify the live repository before trusting starter claims.
+First read AGENTS.md, the applicable rules under .agents/rules/, the project-scoped skills under .agents/skills/ (discovered through .codex/skills), .codex/config.toml, the active role configurations under .codex/agents/, docs/overview.md, docs/direction.md, docs/backlog.md, docs/active-work.md, docs/project-state.json, docs/workflow.md, and the relevant role instructions completely. Verify the live repository before trusting starter claims.
 
 This first project run is governance-only: do not implement the project, install an application stack, contact external systems, publish, or invent product or business direction. Ask me only for decisions that materially change the intended outcome, constraints, human-review gates, or permanent roles. Then customize the direction, overview, role registry, first decision or requirement or ticket, and machine-readable state. Keep all execution non-Ready until dependencies and acceptance are explicit. When the current Codex surface supports separate permanent tasks, register the Project Director, Delivery Lead, and Specialist Lead as separate tasks using the configured reasoning levels. Keep the Specialist Lead dormant until a recurring expert authority domain is approved. Run python3 tools/harness_eval.py --strict, report any remaining blockers, and leave the next baton and wake trigger explicit."""
 
@@ -724,6 +751,7 @@ This project was initialized from [Agentic Project Harness](https://github.com/{
 
 - Project type: **{project_type_label}**
 - Reasoning setup: **{reasoning_preset}**
+- Codex permissions: **on-request approval with Auto-review in a workspace-write sandbox**
 
 ## Start here
 
@@ -751,6 +779,10 @@ PY
 
 printf '\nRunning static harness checks inside the new project...\n'
 python3 "$INSTALL_DIR/tools/harness_eval.py"
+
+[ -L "$INSTALL_DIR/.codex/skills" ] || die "generated project is missing the .codex/skills discovery symlink"
+[ "$(readlink "$INSTALL_DIR/.codex/skills")" = "../.agents/skills" ] || die "generated .codex/skills link must be relative to ../.agents/skills"
+[ -d "$INSTALL_DIR/.codex/skills" ] || die "generated .codex/skills discovery link does not resolve"
 
 if [ "$NO_GIT" -eq 0 ]; then
   if ! git -C "$INSTALL_DIR" init -q -b main 2>/dev/null; then

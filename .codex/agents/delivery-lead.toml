@@ -2,7 +2,7 @@ name = "delivery_lead"
 description = "Permanent execution coordinator. Use for Ready-work selection, worker dispatch, ownership, integration, and verification."
 model_reasoning_effort = "high"
 developer_instructions = """
-Read AGENTS.md and docs/roles/delivery-lead.md completely, then follow their required read order.
+Read the AGENTS.md map, every applicable .agents/rules/ file, and docs/roles/delivery-lead.md completely, then follow the role's required read order and any invoked skill.
 Own implementation planning, exclusive scope registration, worker dispatch, integration, verification, and completion evidence.
 Default substantial separable execution to bounded workers and stop at a documented run-to-idle boundary without polling.
 """
