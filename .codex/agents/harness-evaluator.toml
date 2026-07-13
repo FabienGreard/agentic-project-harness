@@ -1,6 +1,6 @@
 name = "harness_evaluator"
 description = "Disposable independent read-only evaluator. Use for bounded static, scenario, comparison, or live-trace harness audits."
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
 Read AGENTS.md, docs/roles/harness-evaluator.md, and the authorized evaluation contract before acting.

@@ -26,7 +26,7 @@ An agent prompt describes one task. A harness defines how a whole project keeps 
 flowchart LR
     H["Human owner"] --> D["Project Director"]
     D --> L["Delivery Lead"]
-    D --> S["Optional Specialist Lead"]
+    D --> S["Specialist Lead"]
     S --> L
     L --> W1["Execution worker"]
     L --> W2["Execution worker"]
@@ -41,7 +41,7 @@ flowchart LR
 
 - **Project Director:** owns intended outcomes, priority, scope, readiness, decisions, publication, and human-review gates.
 - **Delivery Lead:** owns execution planning, worker dispatch, exclusive ownership, integration, verification, and run-to-idle delivery.
-- **Specialist Lead:** optionally owns a bounded expert domain such as design, legal, finance, safety, data, security, or art. It defines and reviews; Delivery remains the single dispatch center.
+- **Specialist Lead:** the standard expert-definition and review role. It remains dormant until the project assigns a recurring domain such as design, legal, finance, safety, data, security, or art; Delivery remains the single dispatch center.
 - **Execution workers:** implement only their assigned scopes and return evidence to Delivery.
 - **Harness Evaluator:** a disposable, independent, read-only worker that grades orchestration behavior and never fixes what it evaluates.
 
@@ -49,38 +49,56 @@ flowchart LR
 
 ### Quick installer
 
-Download, inspect, and run the installer:
+Run the interactive installer:
 
 ```sh
-curl -fsSLo /tmp/agentic-project-harness-install.sh \
-  https://raw.githubusercontent.com/FabienGreard/agentic-project-harness/main/install.sh
-less /tmp/agentic-project-harness-install.sh
-bash /tmp/agentic-project-harness-install.sh
+mkdir my-project && cd my-project
+curl -fsSL https://raw.githubusercontent.com/FabienGreard/agentic-project-harness/main/install.sh | bash
 ```
 
-For an agent or non-interactive shell:
+This executes the remote installer directly. Use the review-first flow in [docs/installation.md](docs/installation.md) when you want to inspect it before running.
+
+The keyboard-first setup uses the current folder name and installs into `.` by default. Choose a project type, accept or edit the inferred name, then use a Balanced or Deep reasoning preset—or expand Custom to configure every role. Arrow keys, `j`/`k`, number keys, and Enter are supported. The destination must be empty; existing files are never overwritten.
+
+### Install with your coding agent
+
+Copy this prompt into Codex or another coding agent. Its scope is installation only:
+
+```text
+Install Agentic Project Harness in a new empty project folder.
+
+First inspect the current directory. Never overwrite or delete existing files. If it is not empty, ask me for a new empty destination. Derive the project name from the destination folder. Ask me for the project type only if it is unclear; valid values are software-product, game-development, business-operations, research, and other. Use the balanced reasoning preset unless I request deep or custom.
+
+Download and inspect the installer, then run it non-interactively:
+
+curl -fsSLo /tmp/agentic-project-harness-install.sh https://raw.githubusercontent.com/FabienGreard/agentic-project-harness/main/install.sh
+bash /tmp/agentic-project-harness-install.sh --project-name "<derived project name>" --target "<empty destination>" --project-type "<project type>" --reasoning-preset balanced --yes
+
+Confirm the installer checks pass and report the installed path. Do not customize the generated governance, create project implementation, commit, push, or publish during this installation task.
+```
+
+For an agent or non-interactive shell, the defaults reduce the command to:
 
 ```sh
-bash /tmp/agentic-project-harness-install.sh \
+curl -fsSL https://raw.githubusercontent.com/FabienGreard/agentic-project-harness/main/install.sh | \
+  bash -s -- \
   --project-name "My Project" \
   --target ./my-project \
-  --director-reasoning high \
-  --delivery-reasoning high \
-  --worker-reasoning medium \
-  --evaluator-reasoning high \
+  --project-type software-product \
+  --reasoning-preset balanced \
   --yes
 ```
 
 The installer creates a clean Codex project, lets you choose the reasoning level for each agent role, generates native project-scoped custom agent files under `.codex/agents/`, runs the static harness checks, and initializes Git without committing. It refuses to overwrite a non-empty target.
 
-See [docs/installation.md](docs/installation.md) for all options and the direct one-line form.
+See [docs/installation.md](docs/installation.md) for the review-first flow and all options.
 
 ### GitHub template
 
 1. Click **Use this template** on GitHub and create a new repository.
 2. Follow [TEMPLATE_CHECKLIST.md](TEMPLATE_CHECKLIST.md).
 3. Replace the starter state in `docs/overview.md`, `docs/direction.md`, `docs/backlog.md`, and `docs/project-state.json`.
-4. Choose only the permanent roles your project needs. Start with Director and Delivery; add Specialist Leads when a recurring expert acceptance boundary is real.
+4. Register Director, Delivery, and Specialist Lead return paths. Keep the Specialist Lead dormant until a recurring expert acceptance domain is approved.
 5. Register task/thread identifiers locally in `docs/thread-registry.md` without committing secrets.
 6. Promote work to `Ready` only after the readiness contract is complete.
 7. Run `python3 tools/harness_eval.py` before the first implementation handoff.
@@ -91,7 +109,6 @@ See [docs/installation.md](docs/installation.md) for all options and the direct 
 .
 ├── AGENTS.md                         # Top-level operating rules
 ├── install.sh                        # Interactive and agent-friendly bootstrapper
-├── BOOTSTRAP_PROMPT.md               # First prompt to give Codex
 ├── .codex/
 │   ├── config.toml                   # Project-scoped concurrency defaults
 │   └── agents/                       # Per-role Codex reasoning configuration

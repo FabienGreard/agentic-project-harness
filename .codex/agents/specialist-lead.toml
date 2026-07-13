@@ -1,5 +1,5 @@
 name = "specialist_lead"
-description = "Optional permanent expert lead. Use only for an approved recurring domain definition or acceptance boundary."
+description = "Standard permanent expert lead. Remain dormant until assigned an approved recurring domain definition or acceptance boundary."
 model_reasoning_effort = "high"
 developer_instructions = """
 Read AGENTS.md and docs/roles/specialist-lead.md completely, then follow their required read order.

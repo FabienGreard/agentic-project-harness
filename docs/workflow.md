@@ -68,7 +68,7 @@ Direct Delivery work is appropriate for small, tightly coupled, sensitive, integ
 
 ## Specialist lifecycle
 
-Specialist Leads are optional and run-to-idle. They define proportional requirements, review returned evidence, accept or request exact revisions, and hand executable work to Delivery. They do not set overall priority, dispatch workers, integrate implementation, or remain active without a domain trigger.
+The Specialist Lead is a standard run-to-idle role. It remains dormant until an approved recurring expert domain creates a definition or review trigger. It defines proportional requirements, reviews returned evidence, accepts or requests exact revisions, and hands executable work to Delivery. It does not set overall priority, dispatch workers, integrate implementation, or remain active without a domain trigger.
 
 ## Control-plane communication
 

@@ -31,7 +31,7 @@ Define which transitions require explicit human approval, such as production rel
 
 ## Specialist boundaries
 
-List recurring domains that require a Specialist Lead's definition or acceptance. Do not add a permanent Lead for one-off expertise; use bounded workers or reviewers instead.
+List recurring domains that require the Specialist Lead's definition or acceptance. If none is approved yet, keep the standard Specialist Lead dormant and use bounded workers or reviewers for one-off expertise.
 
 ## Principles
 

@@ -133,13 +133,13 @@ class Evaluator:
         required_agents = [
             ".codex/agents/project-director.toml",
             ".codex/agents/delivery-lead.toml",
+            ".codex/agents/specialist-lead.toml",
             ".codex/agents/execution-worker.toml",
             ".codex/agents/harness-evaluator.toml",
         ]
-        optional_agent = ".codex/agents/specialist-lead.toml"
         allowed = {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
         failures: list[str] = []
-        files = required_agents + ([optional_agent] if (ROOT / optional_agent).is_file() else [])
+        files = required_agents
         for relative in files:
             path = ROOT / relative
             if not path.is_file():

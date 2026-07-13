@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Use this optional permanent role only for a recurring expert domain that repeatedly defines readiness or accepts results. Examples include art, design, security, privacy, legal, compliance, finance, data governance, safety, accessibility, or research methods.
+This standard permanent role remains dormant until the project approves a recurring expert domain that repeatedly defines readiness or accepts results. Examples include art, design, security, privacy, legal, compliance, finance, data governance, safety, accessibility, or research methods.
 
 ## Mission
 
