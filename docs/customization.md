@@ -20,7 +20,7 @@ Use Specialist readiness and human approvals only where judgment, impact, or irr
 ## Keep the harness small
 
 - Prefer two permanent Leads initially.
-- Add a Specialist Lead only for a recurring authority boundary.
+- Keep the Specialist Lead dormant until a recurring authority boundary is approved, then rename and configure it for that domain.
 - Use workers for execution and disposable evaluators for audits.
 - Record project discoveries as tickets rather than continually expanding role prompts.
 - Add a regression scenario before adding a broad new policy.

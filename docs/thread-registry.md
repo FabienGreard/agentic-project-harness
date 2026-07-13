@@ -6,7 +6,7 @@ Do not commit private task URLs, credentials, notification recipients, or secret
 | --- | --- | --- | --- |
 | Project Director | `<configure>` | event-driven run-to-delegated-idle | [Project Director](roles/project-director.md) |
 | Delivery Lead | `<configure>` | run-to-idle | [Delivery Lead](roles/delivery-lead.md) |
-| Specialist Lead | `<optional>` | run-to-idle | [Specialist Lead](roles/specialist-lead.md) |
+| Specialist Lead | `<configure>` | run-to-idle; dormant until domain assignment | [Specialist Lead](roles/specialist-lead.md) |
 
 The Harness Evaluator is disposable and is never registered as a permanent Lead.
 

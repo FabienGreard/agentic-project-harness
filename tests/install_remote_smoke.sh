@@ -28,11 +28,8 @@ curl -fsSL "https://raw.githubusercontent.com/$REPO/$REF/install.sh" -o "$instal
     --ref "$REF" \
     --project-name "Remote Smoke Project" \
     --target "$target" \
-    --director-reasoning xhigh \
-    --delivery-reasoning high \
-    --without-specialist \
-    --worker-reasoning medium \
-    --evaluator-reasoning high \
+    --project-type game-development \
+    --reasoning-preset deep \
     --no-git \
     --yes >"$TEMP_ROOT/install.log"
 )
@@ -45,13 +42,25 @@ from pathlib import Path
 root = Path(sys.argv[1])
 metadata = json.loads((root / ".agent-harness.json").read_text())
 assert metadata["provider"] == "codex"
+assert metadata["projectType"] == "game-development"
+assert metadata["reasoningPreset"] == "deep"
 assert metadata["source"] == sys.argv[2]
 assert metadata["ref"] == sys.argv[3]
 assert metadata["sourceMode"] == "remote"
 assert metadata["sourceDirty"] is None
 assert metadata["installed"] is True
-assert not (root / ".codex/agents/specialist-lead.toml").exists()
+assert metadata["reasoning"] == {
+    "projectDirector": "xhigh",
+    "deliveryLead": "xhigh",
+    "specialistLead": "xhigh",
+    "executionWorker": "high",
+    "harnessEvaluator": "xhigh",
+}
+assert 'model_reasoning_effort = "xhigh"' in (root / ".codex/agents/specialist-lead.toml").read_text()
+assert 'model_reasoning_effort = "xhigh"' in (root / ".codex/agents/harness-evaluator.toml").read_text()
 assert (root / "HARNESS.md").is_file()
+assert not (root / "BOOTSTRAP_PROMPT.md").exists()
+assert "## First project prompt" in (root / "README.md").read_text()
 PY
 
 python3 "$target/tools/harness_eval.py" >"$TEMP_ROOT/eval.log"

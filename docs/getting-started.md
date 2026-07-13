@@ -10,7 +10,7 @@ Replace `docs/direction.md` and `docs/overview.md` with verified project facts. 
 
 ## 3. Choose roles deliberately
 
-Most projects need only a Project Director and Delivery Lead. Add a Specialist Lead when the same expert domain repeatedly defines readiness or accepts results. Use disposable expertise for one-off questions.
+Every installed harness includes Project Director, Delivery Lead, and Specialist Lead roles. Keep the Specialist Lead dormant until the same expert domain repeatedly defines readiness or accepts results. Use disposable expertise for one-off questions.
 
 ## 4. Create the first bounded work
 

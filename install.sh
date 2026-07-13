@@ -3,14 +3,18 @@ set -eu
 
 DEFAULT_REPO="FabienGreard/agentic-project-harness"
 DEFAULT_REF="main"
+DEFAULT_PROJECT_TYPE="software-product"
+DEFAULT_REASONING_PRESET="balanced"
 DEFAULT_DIRECTOR_REASONING="high"
 DEFAULT_DELIVERY_REASONING="high"
 DEFAULT_SPECIALIST_REASONING="high"
 DEFAULT_WORKER_REASONING="medium"
-DEFAULT_EVALUATOR_REASONING="high"
+DEFAULT_EVALUATOR_REASONING="xhigh"
 
 PROJECT_NAME=""
 TARGET=""
+PROJECT_TYPE="$DEFAULT_PROJECT_TYPE"
+REASONING_PRESET="$DEFAULT_REASONING_PRESET"
 REPO="$DEFAULT_REPO"
 REF="$DEFAULT_REF"
 DIRECTOR_REASONING="$DEFAULT_DIRECTOR_REASONING"
@@ -18,7 +22,6 @@ DELIVERY_REASONING="$DEFAULT_DELIVERY_REASONING"
 SPECIALIST_REASONING="$DEFAULT_SPECIALIST_REASONING"
 WORKER_REASONING="$DEFAULT_WORKER_REASONING"
 EVALUATOR_REASONING="$DEFAULT_EVALUATOR_REASONING"
-SPECIALIST_MODE="ask"
 ASSUME_YES=0
 NO_GIT=0
 DRY_RUN=0
@@ -27,6 +30,18 @@ SOURCE_DIR=""
 SOURCE_METADATA_REF="$REF"
 SOURCE_REVISION=""
 SOURCE_DIRTY="unknown"
+USE_ANSI=0
+STYLE_RESET=""
+STYLE_BOLD=""
+STYLE_MUTED=""
+STYLE_ACCENT=""
+STYLE_SUCCESS=""
+STYLE_WARNING=""
+DIRECTOR_REASONING_SET=0
+DELIVERY_REASONING_SET=0
+SPECIALIST_REASONING_SET=0
+WORKER_REASONING_SET=0
+EVALUATOR_REASONING_SET=0
 
 usage() {
   cat <<'EOF'
@@ -40,13 +55,16 @@ Required in non-interactive mode:
   --target DIRECTORY              New empty destination
   --yes                           Disable prompts and accept safe defaults
 
+Project setup:
+  --project-type TYPE             software-product, game-development,
+                                  business-operations, research, or other
+  --reasoning-preset PRESET       balanced, deep, or custom; default: balanced
+
 Per-role Codex reasoning:
   --director-reasoning LEVEL      Default: high
   --delivery-reasoning LEVEL      Default: high
   --worker-reasoning LEVEL        Default: medium
-  --evaluator-reasoning LEVEL     Default: high
-  --with-specialist               Include the optional Specialist Lead
-  --without-specialist            Omit the optional Specialist Lead
+  --evaluator-reasoning LEVEL     Default: xhigh
   --specialist-reasoning LEVEL    Default: high
 
 Other options:
@@ -80,10 +98,164 @@ validate_reasoning() {
   esac
 }
 
+validate_project_type() {
+  case "$1" in
+    software-product|game-development|business-operations|research|other) ;;
+    *) die "--project-type must be one of: software-product, game-development, business-operations, research, other" ;;
+  esac
+}
+
+validate_reasoning_preset() {
+  case "$1" in
+    balanced|deep|custom) ;;
+    *) die "--reasoning-preset must be one of: balanced, deep, custom" ;;
+  esac
+}
+
+project_type_label() {
+  case "$1" in
+    software-product) printf 'Software / product' ;;
+    game-development) printf 'Game development' ;;
+    business-operations) printf 'Business operations' ;;
+    research) printf 'Research / knowledge work' ;;
+    other) printf 'Other' ;;
+  esac
+}
+
+project_type_index() {
+  case "$1" in
+    software-product) printf '0' ;;
+    game-development) printf '1' ;;
+    business-operations) printf '2' ;;
+    research) printf '3' ;;
+    other) printf '4' ;;
+  esac
+}
+
+reasoning_preset_index() {
+  case "$1" in
+    balanced) printf '0' ;;
+    deep) printf '1' ;;
+    custom) printf '2' ;;
+  esac
+}
+
+reasoning_index() {
+  case "$1" in
+    inherit) printf '0' ;;
+    none) printf '1' ;;
+    minimal) printf '2' ;;
+    low) printf '3' ;;
+    medium) printf '4' ;;
+    high) printf '5' ;;
+    xhigh) printf '6' ;;
+    max) printf '7' ;;
+    ultra) printf '8' ;;
+  esac
+}
+
+apply_reasoning_preset() {
+  case "$REASONING_PRESET" in
+    balanced)
+      [ "$DIRECTOR_REASONING_SET" -eq 1 ] || DIRECTOR_REASONING="high"
+      [ "$DELIVERY_REASONING_SET" -eq 1 ] || DELIVERY_REASONING="high"
+      [ "$SPECIALIST_REASONING_SET" -eq 1 ] || SPECIALIST_REASONING="high"
+      [ "$WORKER_REASONING_SET" -eq 1 ] || WORKER_REASONING="medium"
+      [ "$EVALUATOR_REASONING_SET" -eq 1 ] || EVALUATOR_REASONING="xhigh"
+      ;;
+    deep)
+      [ "$DIRECTOR_REASONING_SET" -eq 1 ] || DIRECTOR_REASONING="xhigh"
+      [ "$DELIVERY_REASONING_SET" -eq 1 ] || DELIVERY_REASONING="xhigh"
+      [ "$SPECIALIST_REASONING_SET" -eq 1 ] || SPECIALIST_REASONING="xhigh"
+      [ "$WORKER_REASONING_SET" -eq 1 ] || WORKER_REASONING="high"
+      [ "$EVALUATOR_REASONING_SET" -eq 1 ] || EVALUATOR_REASONING="xhigh"
+      ;;
+    custom) ;;
+  esac
+}
+
+menu_select() {
+  menu_prompt="$1"
+  selected="$2"
+  shift 2
+  menu_options=("$@")
+  menu_count=${#menu_options[@]}
+
+  if [ "$USE_ANSI" -eq 0 ]; then
+    while :; do
+      printf '\n%s\n' "$menu_prompt" >&3
+      menu_i=0
+      while [ "$menu_i" -lt "$menu_count" ]; do
+        menu_default=""
+        [ "$menu_i" -ne "$selected" ] || menu_default=" [default]"
+        printf '  %d) %s%s\n' "$((menu_i + 1))" "${menu_options[$menu_i]}" "$menu_default" >&3
+        menu_i=$((menu_i + 1))
+      done
+      printf 'Choose 1-%d [%d]: ' "$menu_count" "$((selected + 1))" >&3
+      IFS= read -r menu_answer <&3 || die "interactive input ended unexpectedly"
+      [ -n "$menu_answer" ] || menu_answer=$((selected + 1))
+      case "$menu_answer" in
+        *[!0-9]*|'') printf 'Choose one of the listed numbers.\n' >&3 ;;
+        *)
+          if [ "$menu_answer" -ge 1 ] && [ "$menu_answer" -le "$menu_count" ]; then
+            printf '%s' "$((menu_answer - 1))"
+            return
+          fi
+          printf 'Choose one of the listed numbers.\n' >&3
+          ;;
+      esac
+    done
+  fi
+
+  printf '\n%s%s%s\n' "$STYLE_BOLD" "$menu_prompt" "$STYLE_RESET" >&3
+  while :; do
+    menu_i=0
+    while [ "$menu_i" -lt "$menu_count" ]; do
+      printf '\033[2K\r' >&3
+      if [ "$menu_i" -eq "$selected" ]; then
+        printf '  %s›%s %s%s%s\n' "$STYLE_ACCENT" "$STYLE_RESET" "$STYLE_BOLD" "${menu_options[$menu_i]}" "$STYLE_RESET" >&3
+      else
+        printf '    %s%s%s\n' "$STYLE_MUTED" "${menu_options[$menu_i]}" "$STYLE_RESET" >&3
+      fi
+      menu_i=$((menu_i + 1))
+    done
+    printf '\033[2K\r  %s↑/↓ or j/k · Enter select · 1-%d quick select%s\n' "$STYLE_MUTED" "$menu_count" "$STYLE_RESET" >&3
+
+    IFS= read -r -s -n 1 menu_key <&3 || die "interactive input ended unexpectedly"
+    if [ "$menu_key" = $'\033' ]; then
+      menu_suffix=""
+      IFS= read -r -s -n 2 -t 1 menu_suffix <&3 || true
+      menu_key="$menu_key$menu_suffix"
+    fi
+
+    menu_confirm=0
+    case "$menu_key" in
+      ''|$'\r'|$'\n') menu_confirm=1 ;;
+      $'\033[A'|k|K) selected=$(((selected + menu_count - 1) % menu_count)) ;;
+      $'\033[B'|j|J) selected=$(((selected + 1) % menu_count)) ;;
+      [1-9])
+        menu_number=$((menu_key - 1))
+        if [ "$menu_number" -lt "$menu_count" ]; then
+          selected="$menu_number"
+          menu_confirm=1
+        fi
+        ;;
+    esac
+
+    if [ "$menu_confirm" -eq 1 ]; then
+      printf '\n' >&3
+      printf '%s' "$selected"
+      return
+    fi
+    printf '\033[%dA' "$((menu_count + 1))" >&3
+  done
+}
+
 prompt_text() {
   label="$1"
   default="$2"
-  printf '%s [%s]: ' "$label" "$default" >&3
+  printf '\n%s%s%s\n' "$STYLE_BOLD" "$label" "$STYLE_RESET" >&3
+  printf '  %sDefault: %s%s\n  %s›%s ' "$STYLE_MUTED" "$default" "$STYLE_RESET" "$STYLE_ACCENT" "$STYLE_RESET" >&3
   IFS= read -r answer <&3 || die "interactive input ended unexpectedly"
   if [ -n "$answer" ]; then
     printf '%s' "$answer"
@@ -95,31 +267,34 @@ prompt_text() {
 prompt_reasoning() {
   role="$1"
   default="$2"
-  while :; do
-    answer=$(prompt_text "$role reasoning (inherit/none/minimal/low/medium/high/xhigh/max/ultra)" "$default")
-    case "$answer" in
-      inherit|none|minimal|low|medium|high|xhigh|max|ultra)
-        printf '%s' "$answer"
-        return
-        ;;
-      *) printf 'Choose a documented reasoning level. Model support varies.\n' >&3 ;;
-    esac
-  done
+  choice=$(menu_select "$role reasoning" "$(reasoning_index "$default")" \
+    "Inherit — use the parent Codex setting" \
+    "None — no explicit reasoning" \
+    "Minimal — lowest explicit effort" \
+    "Low — fast bounded work" \
+    "Medium — balanced execution" \
+    "High — careful project work" \
+    "XHigh — deep reasoning" \
+    "Max — model-dependent maximum" \
+    "Ultra — model-dependent extended effort")
+  case "$choice" in
+    0) printf 'inherit' ;;
+    1) printf 'none' ;;
+    2) printf 'minimal' ;;
+    3) printf 'low' ;;
+    4) printf 'medium' ;;
+    5) printf 'high' ;;
+    6) printf 'xhigh' ;;
+    7) printf 'max' ;;
+    8) printf 'ultra' ;;
+  esac
 }
 
-prompt_yes_no() {
-  label="$1"
-  default="$2"
-  while :; do
-    printf '%s [%s]: ' "$label" "$default" >&3
-    IFS= read -r answer <&3 || die "interactive input ended unexpectedly"
-    [ -n "$answer" ] || answer="$default"
-    case "$answer" in
-      y|Y|yes|YES|Yes) printf 'yes'; return ;;
-      n|N|no|NO|No) printf 'no'; return ;;
-      *) printf 'Answer yes or no.\n' >&3 ;;
-    esac
-  done
+target_is_unavailable() {
+  [ -e "$1" ] || return 1
+  [ -d "$1" ] || return 0
+  target_entry=$(find "$1" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null) || return 0
+  [ -n "$target_entry" ]
 }
 
 while [ "$#" -gt 0 ]; do
@@ -132,6 +307,16 @@ while [ "$#" -gt 0 ]; do
     --target)
       need_value "$@"
       TARGET="$2"
+      shift 2
+      ;;
+    --project-type)
+      need_value "$@"
+      PROJECT_TYPE="$2"
+      shift 2
+      ;;
+    --reasoning-preset)
+      need_value "$@"
+      REASONING_PRESET="$2"
       shift 2
       ;;
     --repo)
@@ -147,36 +332,32 @@ while [ "$#" -gt 0 ]; do
     --director-reasoning)
       need_value "$@"
       DIRECTOR_REASONING="$2"
+      DIRECTOR_REASONING_SET=1
       shift 2
       ;;
     --delivery-reasoning)
       need_value "$@"
       DELIVERY_REASONING="$2"
+      DELIVERY_REASONING_SET=1
       shift 2
       ;;
     --specialist-reasoning)
       need_value "$@"
       SPECIALIST_REASONING="$2"
-      [ "$SPECIALIST_MODE" != "ask" ] || SPECIALIST_MODE="yes"
+      SPECIALIST_REASONING_SET=1
       shift 2
       ;;
     --worker-reasoning)
       need_value "$@"
       WORKER_REASONING="$2"
+      WORKER_REASONING_SET=1
       shift 2
       ;;
     --evaluator-reasoning)
       need_value "$@"
       EVALUATOR_REASONING="$2"
+      EVALUATOR_REASONING_SET=1
       shift 2
-      ;;
-    --with-specialist)
-      SPECIALIST_MODE="yes"
-      shift
-      ;;
-    --without-specialist)
-      SPECIALIST_MODE="no"
-      shift
       ;;
     --yes)
       ASSUME_YES=1
@@ -203,32 +384,78 @@ while [ "$#" -gt 0 ]; do
 done
 
 [ "$#" -eq 0 ] || die "unexpected positional arguments: $*"
+validate_project_type "$PROJECT_TYPE"
+validate_reasoning_preset "$REASONING_PRESET"
 
 if [ "$ASSUME_YES" -eq 0 ]; then
   if [ ! -t 1 ] || [ ! -r /dev/tty ] || [ ! -w /dev/tty ]; then
     die "interactive installation needs a terminal; use --yes with explicit --project-name and --target"
   fi
   exec 3<>/dev/tty
-  printf '\nAgentic Project Harness for Codex\n' >&3
-  printf 'No model is pinned. You choose how much reasoning each role should use.\n\n' >&3
-  PROJECT_NAME=$(prompt_text "Project name" "My Project")
-  default_target="./$(printf '%s' "$PROJECT_NAME" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9._-' | sed 's/--*/-/g; s/^-//; s/-$//')"
-  [ "$default_target" != "./" ] || default_target="./my-project"
-  TARGET=$(prompt_text "New project directory" "$default_target")
-  if [ "$SPECIALIST_MODE" = "ask" ]; then
-    SPECIALIST_MODE=$(prompt_yes_no "Include an optional Specialist Lead?" "no")
+  if [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != "dumb" ]; then
+    USE_ANSI=1
+    STYLE_RESET=$'\033[0m'
+    STYLE_BOLD=$'\033[1m'
+    STYLE_MUTED=$'\033[2m'
+    STYLE_ACCENT=$'\033[38;5;81m'
+    STYLE_SUCCESS=$'\033[38;5;84m'
+    STYLE_WARNING=$'\033[38;5;214m'
   fi
-  DIRECTOR_REASONING=$(prompt_reasoning "Project Director" "$DIRECTOR_REASONING")
-  DELIVERY_REASONING=$(prompt_reasoning "Delivery Lead" "$DELIVERY_REASONING")
-  if [ "$SPECIALIST_MODE" = "yes" ]; then
+
+  printf '\n%s╭──────────────────────────────────────────────╮%s\n' "$STYLE_ACCENT" "$STYLE_RESET" >&3
+  printf '%s│%s  %sAGENTIC PROJECT HARNESS%s                     %s│%s\n' "$STYLE_ACCENT" "$STYLE_RESET" "$STYLE_BOLD" "$STYLE_RESET" "$STYLE_ACCENT" "$STYLE_RESET" >&3
+  printf '%s│%s  Bootstrap a Codex-native project in minutes  %s│%s\n' "$STYLE_ACCENT" "$STYLE_RESET" "$STYLE_ACCENT" "$STYLE_RESET" >&3
+  printf '%s╰──────────────────────────────────────────────╯%s\n' "$STYLE_ACCENT" "$STYLE_RESET" >&3
+
+  type_choice=$(menu_select "What are you building?" "$(project_type_index "$PROJECT_TYPE")" \
+    "Software / product — app, service, platform, or library" \
+    "Game development — playable or interactive experience" \
+    "Business operations — process, policy, or service delivery" \
+    "Research / knowledge work — investigation or evidence program" \
+    "Other — start from the generic harness")
+  case "$type_choice" in
+    0) PROJECT_TYPE="software-product" ;;
+    1) PROJECT_TYPE="game-development" ;;
+    2) PROJECT_TYPE="business-operations" ;;
+    3) PROJECT_TYPE="research" ;;
+    4) PROJECT_TYPE="other" ;;
+  esac
+
+  folder_name=$(basename "$PWD")
+  case "$folder_name" in
+    ''|'/'|'.') folder_name="My Project" ;;
+  esac
+  PROJECT_NAME=$(prompt_text "Project name" "$folder_name")
+  TARGET=$(prompt_text "Where should the harness be installed?" ".")
+  fallback_target="./$(printf '%s' "$PROJECT_NAME" | tr '[:upper:] ' '[:lower:]-' | tr -cd 'a-z0-9._-' | sed 's/--*/-/g; s/^-//; s/-$//')"
+  [ "$fallback_target" != "./" ] || fallback_target="./my-project"
+  while target_is_unavailable "$TARGET"; do
+    printf '\n  %s!%s %sThat location is not empty or cannot be safely inspected.%s Existing files are never overwritten.\n' "$STYLE_WARNING" "$STYLE_RESET" "$STYLE_BOLD" "$STYLE_RESET" >&3
+    TARGET=$(prompt_text "Choose a new empty directory" "$fallback_target")
+  done
+
+  preset_choice=$(menu_select "How much reasoning should the team use?" "$(reasoning_preset_index "$REASONING_PRESET")" \
+    "Balanced — high leads, medium workers, xhigh evaluator (recommended)" \
+    "Deep — xhigh leads, high workers, xhigh evaluator" \
+    "Custom — choose every role individually")
+  case "$preset_choice" in
+    0) REASONING_PRESET="balanced" ;;
+    1) REASONING_PRESET="deep" ;;
+    2) REASONING_PRESET="custom" ;;
+  esac
+  apply_reasoning_preset
+
+  if [ "$REASONING_PRESET" = "custom" ]; then
+    DIRECTOR_REASONING=$(prompt_reasoning "Project Director" "$DIRECTOR_REASONING")
+    DELIVERY_REASONING=$(prompt_reasoning "Delivery Lead" "$DELIVERY_REASONING")
     SPECIALIST_REASONING=$(prompt_reasoning "Specialist Lead" "$SPECIALIST_REASONING")
+    WORKER_REASONING=$(prompt_reasoning "Execution worker" "$WORKER_REASONING")
+    EVALUATOR_REASONING=$(prompt_reasoning "Harness Evaluator" "$EVALUATOR_REASONING")
   fi
-  WORKER_REASONING=$(prompt_reasoning "Execution worker" "$WORKER_REASONING")
-  EVALUATOR_REASONING=$(prompt_reasoning "Harness Evaluator" "$EVALUATOR_REASONING")
 else
   [ -n "$PROJECT_NAME" ] || die "--project-name is required with --yes"
   [ -n "$TARGET" ] || die "--target is required with --yes"
-  [ "$SPECIALIST_MODE" != "ask" ] || SPECIALIST_MODE="no"
+  apply_reasoning_preset
 fi
 
 [ -n "$PROJECT_NAME" ] || die "project name cannot be empty"
@@ -258,6 +485,8 @@ validate_reasoning "--delivery-reasoning" "$DELIVERY_REASONING"
 validate_reasoning "--specialist-reasoning" "$SPECIALIST_REASONING"
 validate_reasoning "--worker-reasoning" "$WORKER_REASONING"
 validate_reasoning "--evaluator-reasoning" "$EVALUATOR_REASONING"
+validate_project_type "$PROJECT_TYPE"
+validate_reasoning_preset "$REASONING_PRESET"
 SOURCE_METADATA_REF="$REF"
 
 command -v python3 >/dev/null 2>&1 || die "python3 is required"
@@ -271,7 +500,8 @@ TARGET="$TARGET_ABS"
 
 if [ -e "$TARGET" ]; then
   [ -d "$TARGET" ] || die "target exists and is not a directory: $TARGET"
-  [ -z "$(find "$TARGET" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ] || die "target must be empty: $TARGET"
+  TARGET_ENTRY=$(find "$TARGET" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null) || die "target cannot be safely inspected: $TARGET"
+  [ -z "$TARGET_ENTRY" ] || die "target must be empty: $TARGET"
 fi
 
 SCRIPT_SOURCE=${BASH_SOURCE[0]:-}
@@ -294,6 +524,7 @@ fi
 
 printf '\nInstall plan\n'
 printf '  Project: %s\n' "$PROJECT_NAME"
+printf '  Type: %s\n' "$(project_type_label "$PROJECT_TYPE")"
 printf '  Target: %s\n' "$TARGET"
 if [ "$SOURCE_MODE" = "local" ]; then
   printf '  Source: local working tree (%s)\n' "$SOURCE_DIR"
@@ -302,13 +533,10 @@ else
 fi
 printf '  Project Director: %s\n' "$DIRECTOR_REASONING"
 printf '  Delivery Lead: %s\n' "$DELIVERY_REASONING"
-if [ "$SPECIALIST_MODE" = "yes" ]; then
-  printf '  Specialist Lead: %s\n' "$SPECIALIST_REASONING"
-else
-  printf '  Specialist Lead: omitted\n'
-fi
+printf '  Specialist Lead: %s\n' "$SPECIALIST_REASONING"
 printf '  Execution worker: %s\n' "$WORKER_REASONING"
 printf '  Harness Evaluator: %s\n' "$EVALUATOR_REASONING"
+printf '  Reasoning preset: %s\n' "$REASONING_PRESET"
 printf '  Initialize Git: %s\n' "$([ "$NO_GIT" -eq 1 ] && printf 'no' || printf 'yes')"
 
 if [ "$DRY_RUN" -eq 1 ]; then
@@ -374,7 +602,7 @@ INSTALL_DIR="$TEMP_DIR/install"
 mkdir -p "$INSTALL_DIR"
 tar -xf "$TEMPLATE_ARCHIVE" -C "$INSTALL_DIR"
 
-python3 - "$INSTALL_DIR" "$PROJECT_NAME" "$REPO" "$SOURCE_METADATA_REF" "$SOURCE_MODE" "$SOURCE_REVISION" "$SOURCE_DIRTY" "$DIRECTOR_REASONING" "$DELIVERY_REASONING" "$SPECIALIST_REASONING" "$WORKER_REASONING" "$EVALUATOR_REASONING" "$SPECIALIST_MODE" <<'PY'
+python3 - "$INSTALL_DIR" "$PROJECT_NAME" "$PROJECT_TYPE" "$REASONING_PRESET" "$REPO" "$SOURCE_METADATA_REF" "$SOURCE_MODE" "$SOURCE_REVISION" "$SOURCE_DIRTY" "$DIRECTOR_REASONING" "$DELIVERY_REASONING" "$SPECIALIST_REASONING" "$WORKER_REASONING" "$EVALUATOR_REASONING" <<'PY'
 from __future__ import annotations
 
 import json
@@ -386,6 +614,8 @@ from pathlib import Path
 (
     target_raw,
     project_name,
+    project_type,
+    reasoning_preset,
     source_repo,
     source_ref,
     source_mode,
@@ -396,7 +626,6 @@ from pathlib import Path
     specialist_reasoning,
     worker_reasoning,
     evaluator_reasoning,
-    specialist_mode,
 ) = sys.argv[1:]
 
 target = Path(target_raw).resolve()
@@ -413,7 +642,7 @@ state_path.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n", en
 reasoning = {
     "projectDirector": director_reasoning,
     "deliveryLead": delivery_reasoning,
-    "specialistLead": specialist_reasoning if specialist_mode == "yes" else None,
+    "specialistLead": specialist_reasoning,
     "executionWorker": worker_reasoning,
     "harnessEvaluator": evaluator_reasoning,
 }
@@ -421,6 +650,8 @@ metadata = {
     "schemaVersion": 1,
     "harnessVersion": (target / "VERSION").read_text(encoding="utf-8").strip(),
     "provider": "codex",
+    "projectType": project_type,
+    "reasoningPreset": reasoning_preset,
     "source": source_repo,
     "ref": source_ref,
     "sourceMode": source_mode,
@@ -443,9 +674,6 @@ agent_settings = {
 }
 for filename, level in agent_settings.items():
     path = target / ".codex/agents" / filename
-    if filename == "specialist-lead.toml" and specialist_mode != "yes":
-        path.unlink(missing_ok=True)
-        continue
     text = path.read_text(encoding="utf-8")
     text = re.sub(r'^model_reasoning_effort = "[^"]+"\n', "", text, flags=re.MULTILINE)
     if level != "inherit":
@@ -459,33 +687,56 @@ source_readme = target / "README.md"
 harness_readme = target / "HARNESS.md"
 source_readme.replace(harness_readme)
 
-specialist_row = (
-    f"| Specialist Lead | `{specialist_reasoning}` |"
-    if specialist_mode == "yes"
-    else "| Specialist Lead | Not installed |"
-)
 reasoning_table = "\n".join(
     [
         "| Agent role | Reasoning |",
         "| --- | --- |",
         f"| Project Director | `{director_reasoning}` |",
         f"| Delivery Lead | `{delivery_reasoning}` |",
-        specialist_row,
+        f"| Specialist Lead | `{specialist_reasoning}` |",
         f"| Execution worker | `{worker_reasoning}` |",
         f"| Harness Evaluator | `{evaluator_reasoning}` |",
     ]
 )
 
+project_type_labels = {
+    "software-product": "Software / product",
+    "game-development": "Game development",
+    "business-operations": "Business operations",
+    "research": "Research / knowledge work",
+    "other": "Other",
+}
+project_type_label = project_type_labels[project_type]
+overlay_instruction = {
+    "game-development": "Read `examples/game-development/README.md` as optional domain guidance.",
+    "business-operations": "Read `examples/business-operations/README.md` as optional domain guidance.",
+}.get(project_type, "Use `docs/customization.md` to adapt role names and review gates only after direction is verified.")
+
+first_project_prompt = f"""Bootstrap {project_name} using the repository harness. It was categorized during installation as {project_type_label}; treat that only as onboarding context, never as permission to invent direction. {overlay_instruction}
+
+First read AGENTS.md, .codex/config.toml, the active role configurations under .codex/agents/, docs/overview.md, docs/direction.md, docs/backlog.md, docs/active-work.md, docs/project-state.json, docs/workflow.md, and the relevant role instructions completely. Verify the live repository before trusting starter claims.
+
+This first project run is governance-only: do not implement the project, install an application stack, contact external systems, publish, or invent product or business direction. Ask me only for decisions that materially change the intended outcome, constraints, human-review gates, or permanent roles. Then customize the direction, overview, role registry, first decision or requirement or ticket, and machine-readable state. Keep all execution non-Ready until dependencies and acceptance are explicit. When the current Codex surface supports separate permanent tasks, register the Project Director, Delivery Lead, and Specialist Lead as separate tasks using the configured reasoning levels. Keep the Specialist Lead dormant until a recurring expert authority domain is approved. Run python3 tools/harness_eval.py --strict, report any remaining blockers, and leave the next baton and wake trigger explicit."""
+
 project_readme = f"""# {project_name}
 
 This project was initialized from [Agentic Project Harness](https://github.com/{source_repo}) for Codex.
 
+- Project type: **{project_type_label}**
+- Reasoning setup: **{reasoning_preset}**
+
 ## Start here
 
-1. Review [BOOTSTRAP_PROMPT.md](BOOTSTRAP_PROMPT.md).
-2. Review the Codex role settings under `.codex/agents/`.
-3. Open this directory in Codex using the Project Director reasoning level and ask it to follow the bootstrap prompt.
+1. Review `AGENTS.md` and the Codex role settings under `.codex/agents/`.
+2. Open this directory in Codex using the Project Director reasoning level.
+3. Copy the complete **First project prompt** below into that task.
 4. Approve the customized governance baseline before implementation begins.
+
+## First project prompt
+
+```text
+{first_project_prompt}
+```
 
 ## Configured reasoning
 
@@ -496,20 +747,6 @@ Explicit level support depends on the Codex model selected at runtime. `inherit`
 The reusable harness documentation is preserved in [HARNESS.md](HARNESS.md).
 """
 source_readme.write_text(project_readme, encoding="utf-8")
-
-bootstrap = f"""# First Codex bootstrap prompt
-
-Configured role reasoning:
-
-{reasoning_table}
-
-Explicit level support depends on the model selected in Codex. Give the following instruction to the first Codex task opened in this repository:
-
-> Bootstrap **{project_name}** using the repository harness. First read `AGENTS.md`, `.codex/config.toml`, the active role configurations under `.codex/agents/`, `docs/overview.md`, `docs/direction.md`, `docs/backlog.md`, `docs/active-work.md`, `docs/project-state.json`, `docs/workflow.md`, and the relevant role instructions completely. Verify the live repository before trusting starter claims.
->
-> This first run is governance-only: do not implement the project, install an application stack, contact external systems, publish, or invent product/business direction. Ask me only for decisions that materially change the intended outcome, constraints, human-review gates, or permanent roles. Then customize the direction, overview, role registry, first decision/requirement/ticket, and machine-readable state. Keep all execution non-Ready until its dependencies and acceptance are explicit. When the current Codex surface supports separate permanent tasks, register the Project Director and Delivery Lead as separate tasks using the configured reasoning levels; register a Specialist Lead only if its recurring authority boundary is approved. Run `python3 tools/harness_eval.py --strict`, report any remaining blockers, and leave the next baton and wake trigger explicit.
-"""
-(target / "BOOTSTRAP_PROMPT.md").write_text(bootstrap, encoding="utf-8")
 PY
 
 printf '\nRunning static harness checks inside the new project...\n'
@@ -538,14 +775,15 @@ fi
 
 printf '\nInstallation complete.\n'
 printf '  Project: %s\n' "$TARGET_ABS"
-printf '  Bootstrap: %s/BOOTSTRAP_PROMPT.md\n' "$TARGET_ABS"
+printf '  First project prompt: %s/README.md\n' "$TARGET_ABS"
 printf '  Codex roles: %s/.codex/agents\n' "$TARGET_ABS"
 if [ -n "$CODEX_PATH" ]; then
   printf '  Codex detected: %s\n' "$CODEX_PATH"
 else
   printf '  Codex CLI not detected; use the desktop or IDE surface, or install the CLI later.\n'
 fi
-printf '\nNext: open the project in Codex at Project Director reasoning `%s` and ask it to read BOOTSTRAP_PROMPT.md.\n' "$DIRECTOR_REASONING"
+printf '\nNext: open the project in Codex at Project Director reasoning `%s`.\n' "$DIRECTOR_REASONING"
+printf 'Copy the `First project prompt` block from README.md into the task.\n\n'
 if [ "$NO_GIT" -eq 0 ]; then
   printf 'Git was initialized on main. Nothing was staged or committed.\n'
 fi

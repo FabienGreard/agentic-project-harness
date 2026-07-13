@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-13
+
+### Changed
+
+- Raised the Harness Evaluator default reasoning level from `high` to `xhigh`.
+- Reworked the installer into a styled, keyboard-first setup with folder-aware defaults, project-type context, and Balanced/Deep/Custom reasoning.
+- Replaced the standalone bootstrap-prompt file with a copy-ready installation prompt in the public README and an inline first-project prompt in generated READMEs.
+- Made Specialist Lead a standard installed role, removing the optional prompt and include/omit CLI flags.
+
 ## [0.2.0] - 2026-07-13
 
 ### Added
@@ -27,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Game-development and business-operations adaptation examples.
 - GitHub contribution and community-health files.
 
-[Unreleased]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/FabienGreard/agentic-project-harness/releases/tag/v0.1.0
