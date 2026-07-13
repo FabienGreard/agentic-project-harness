@@ -4,6 +4,7 @@ Complete this checklist before starting implementation.
 
 ## Repository identity
 
+- [ ] Follow [docs/installation.md](docs/installation.md) and choose a Codex reasoning level for each active role.
 - [ ] Rename the repository and update the README title/description.
 - [ ] Choose and document the license appropriate for the project.
 - [ ] Replace starter placeholders and remove unused examples.
@@ -29,6 +30,8 @@ Complete this checklist before starting implementation.
 ## Verification
 
 - [ ] Run `python3 tools/harness_eval.py`.
+- [ ] Confirm `.agent-harness.json` and `docs/project-state.json` both identify Codex.
+- [ ] Review every active `.codex/agents/*.toml` reasoning level against the selected model's supported levels and expected cost/latency.
 - [ ] Run the canonical scenario smoke evaluation after material harness customization.
 - [ ] Confirm local links resolve and no private identifiers or example-only claims remain.
 - [ ] Commit the governance baseline before implementation begins.

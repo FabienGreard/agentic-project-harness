@@ -47,6 +47,36 @@ flowchart LR
 
 ## Start a project
 
+### Quick installer
+
+Download, inspect, and run the installer:
+
+```sh
+curl -fsSLo /tmp/agentic-project-harness-install.sh \
+  https://raw.githubusercontent.com/FabienGreard/agentic-project-harness/main/install.sh
+less /tmp/agentic-project-harness-install.sh
+bash /tmp/agentic-project-harness-install.sh
+```
+
+For an agent or non-interactive shell:
+
+```sh
+bash /tmp/agentic-project-harness-install.sh \
+  --project-name "My Project" \
+  --target ./my-project \
+  --director-reasoning high \
+  --delivery-reasoning high \
+  --worker-reasoning medium \
+  --evaluator-reasoning high \
+  --yes
+```
+
+The installer creates a clean Codex project, lets you choose the reasoning level for each agent role, generates native project-scoped custom agent files under `.codex/agents/`, runs the static harness checks, and initializes Git without committing. It refuses to overwrite a non-empty target.
+
+See [docs/installation.md](docs/installation.md) for all options and the direct one-line form.
+
+### GitHub template
+
 1. Click **Use this template** on GitHub and create a new repository.
 2. Follow [TEMPLATE_CHECKLIST.md](TEMPLATE_CHECKLIST.md).
 3. Replace the starter state in `docs/overview.md`, `docs/direction.md`, `docs/backlog.md`, and `docs/project-state.json`.
@@ -60,6 +90,11 @@ flowchart LR
 ```text
 .
 ├── AGENTS.md                         # Top-level operating rules
+├── install.sh                        # Interactive and agent-friendly bootstrapper
+├── BOOTSTRAP_PROMPT.md               # First prompt to give Codex
+├── .codex/
+│   ├── config.toml                   # Project-scoped concurrency defaults
+│   └── agents/                       # Per-role Codex reasoning configuration
 ├── docs/
 │   ├── overview.md                   # Current project truth and next action
 │   ├── direction.md                  # Approved outcomes and constraints
@@ -75,6 +110,7 @@ flowchart LR
 │   ├── game-development/             # Optional game-domain adaptation
 │   └── business-operations/          # Optional business-domain adaptation
 ├── tools/harness_eval.py             # Dependency-free static verifier
+├── tests/                             # Local and standalone-download installer smoke checks
 └── .github/                           # Issues, PRs, community health
 ```
 

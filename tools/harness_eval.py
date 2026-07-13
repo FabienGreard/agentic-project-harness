@@ -25,6 +25,16 @@ ACTIVE_STATUSES = {
 REQUIRED_FILES = [
     "AGENTS.md",
     "README.md",
+    ".agent-harness.json",
+    ".codex/config.toml",
+    ".codex/agents/project-director.toml",
+    ".codex/agents/delivery-lead.toml",
+    ".codex/agents/execution-worker.toml",
+    ".codex/agents/harness-evaluator.toml",
+    "install.sh",
+    "tests/install_smoke.sh",
+    "tests/install_remote_smoke.sh",
+    "docs/installation.md",
     "docs/overview.md",
     "docs/direction.md",
     "docs/backlog.md",
@@ -60,6 +70,7 @@ class Evaluator:
         self.strict = strict
         self.findings: list[Finding] = []
         self.state: dict = {}
+        self.metadata: dict = {}
 
     def record(self, check: str, ok: bool, evidence: str) -> None:
         self.findings.append(Finding(check, ok, evidence))
@@ -68,11 +79,13 @@ class Evaluator:
         self.required_files()
         self.markdown_links()
         self.json_files()
+        self.codex_agent_configs()
         self.text_integrity()
         if self.state:
             self.ticket_state()
             self.ownership_and_baton()
             self.template_hygiene()
+            self.provider_consistency()
         self.secret_hygiene()
 
     def required_files(self) -> None:
@@ -101,6 +114,7 @@ class Evaluator:
     def json_files(self) -> None:
         failures: list[str] = []
         for relative in [
+            ".agent-harness.json",
             "docs/project-state.json",
             "docs/schemas/project-state.schema.json",
             "docs/evals/harness/report-schema.json",
@@ -109,13 +123,45 @@ class Evaluator:
                 parsed = json.loads((ROOT / relative).read_text(encoding="utf-8"))
                 if relative == "docs/project-state.json":
                     self.state = parsed
+                elif relative == ".agent-harness.json":
+                    self.metadata = parsed
             except (OSError, json.JSONDecodeError) as error:
                 failures.append(f"{relative}: {error}")
-        self.record("ST-003", not failures, "; ".join(failures) if failures else "state and schemas parse")
+        self.record("ST-003", not failures, "; ".join(failures) if failures else "metadata, state, and schemas parse")
+
+    def codex_agent_configs(self) -> None:
+        required_agents = [
+            ".codex/agents/project-director.toml",
+            ".codex/agents/delivery-lead.toml",
+            ".codex/agents/execution-worker.toml",
+            ".codex/agents/harness-evaluator.toml",
+        ]
+        optional_agent = ".codex/agents/specialist-lead.toml"
+        allowed = {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
+        failures: list[str] = []
+        files = required_agents + ([optional_agent] if (ROOT / optional_agent).is_file() else [])
+        for relative in files:
+            path = ROOT / relative
+            if not path.is_file():
+                failures.append(f"missing {relative}")
+                continue
+            text = path.read_text(encoding="utf-8")
+            for key in ["name", "description", "developer_instructions"]:
+                if not re.search(rf"^{key}\s*=", text, re.MULTILINE):
+                    failures.append(f"{relative}: missing {key}")
+            match = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', text, re.MULTILINE)
+            if match and match.group(1) not in allowed:
+                failures.append(f"{relative}: unsupported reasoning {match.group(1)}")
+        config = ROOT / ".codex/config.toml"
+        if config.is_file():
+            config_text = config.read_text(encoding="utf-8")
+            if "[agents]" not in config_text or "max_threads" not in config_text or "max_depth" not in config_text:
+                failures.append(".codex/config.toml: incomplete agents settings")
+        self.record("ST-005", not failures, "; ".join(failures) if failures else f"{len(files)} Codex role configs valid")
 
     def text_integrity(self) -> None:
         problems: list[str] = []
-        text_suffixes = {".md", ".json", ".yml", ".yaml", ".py", ".txt"}
+        text_suffixes = {".md", ".json", ".yml", ".yaml", ".py", ".sh", ".toml", ".txt"}
         for file in ROOT.rglob("*"):
             if not file.is_file() or ".git" in file.parts or ".artifacts" in file.parts:
                 continue
@@ -217,6 +263,57 @@ class Evaluator:
         strict_ok = not unresolved and not template_mode
         self.record("ST-031", strict_ok if self.strict else True, f"strict unresolved={len(unresolved)}, templateMode={template_mode}" if self.strict else "template placeholders allowed")
         self.record("ST-032", isinstance(self.state.get("templateMode"), bool), f"templateMode={self.state.get('templateMode')}")
+
+    def provider_consistency(self) -> None:
+        state_provider = self.state.get("project", {}).get("agentProvider")
+        metadata_provider = self.metadata.get("provider")
+        source_mode = self.metadata.get("sourceMode")
+        metadata_ok = (
+            self.metadata.get("schemaVersion") == 1
+            and isinstance(self.metadata.get("harnessVersion"), str)
+            and bool(self.metadata.get("harnessVersion"))
+            and isinstance(self.metadata.get("source"), str)
+            and bool(self.metadata.get("source"))
+            and isinstance(self.metadata.get("ref"), str)
+            and bool(self.metadata.get("ref"))
+            and source_mode in {"template", "local", "remote"}
+        )
+        provider_ok = state_provider == "codex" and metadata_provider == "codex" and metadata_ok
+        self.record(
+            "ST-033",
+            provider_ok,
+            f"state={state_provider}, metadata={metadata_provider}, sourceMode={source_mode}" if not provider_ok else "Codex provider metadata agrees",
+        )
+
+        if self.metadata.get("installed") is not True:
+            self.record("ST-034", True, "template role defaults accepted")
+            return
+
+        expected = self.metadata.get("reasoning", {})
+        file_map = {
+            "projectDirector": ".codex/agents/project-director.toml",
+            "deliveryLead": ".codex/agents/delivery-lead.toml",
+            "specialistLead": ".codex/agents/specialist-lead.toml",
+            "executionWorker": ".codex/agents/execution-worker.toml",
+            "harnessEvaluator": ".codex/agents/harness-evaluator.toml",
+        }
+        mismatches: list[str] = []
+        for role, relative in file_map.items():
+            intended = expected.get(role)
+            path = ROOT / relative
+            if intended is None:
+                if path.exists():
+                    mismatches.append(f"{role}: expected omitted")
+                continue
+            if not path.is_file():
+                mismatches.append(f"{role}: missing config")
+                continue
+            text = path.read_text(encoding="utf-8")
+            match = re.search(r'^model_reasoning_effort\s*=\s*"([^"]+)"', text, re.MULTILINE)
+            actual = match.group(1) if match else "inherit"
+            if actual != intended:
+                mismatches.append(f"{role}: metadata={intended}, config={actual}")
+        self.record("ST-034", not mismatches, "; ".join(mismatches) if mismatches else "installed role reasoning matches metadata")
 
 
 def main() -> int:

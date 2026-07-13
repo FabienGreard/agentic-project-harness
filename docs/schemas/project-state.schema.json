@@ -10,9 +10,10 @@
     "project": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "phase", "lastVerified"],
+      "required": ["name", "agentProvider", "phase", "lastVerified"],
       "properties": {
         "name": { "type": "string", "minLength": 1 },
+        "agentProvider": { "const": "codex" },
         "phase": { "type": "string", "minLength": 1 },
         "lastVerified": { "type": "string", "format": "date" }
       }
