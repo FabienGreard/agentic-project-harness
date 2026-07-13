@@ -1,0 +1,28 @@
+name: Harness improvement
+description: Propose a general role, workflow, evaluation, or onboarding improvement
+title: "[Proposal]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: General problem
+      description: Describe the demonstrated problem, not only the preferred solution.
+    validations:
+      required: true
+  - type: textarea
+    id: domains
+    attributes:
+      label: Affected domains
+      description: Software, games, business, research, or another domain.
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Smallest proposed change
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Evaluation scenario
+      description: How should the change be tested without weakening the oracle?

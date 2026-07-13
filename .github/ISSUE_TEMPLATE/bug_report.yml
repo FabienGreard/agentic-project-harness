@@ -1,0 +1,45 @@
+name: Harness defect
+description: Report unsafe, inconsistent, or inefficient orchestration behavior
+title: "[Defect]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you. Please provide a reproducible orchestration scenario without private project data.
+  - type: textarea
+    id: state
+    attributes:
+      label: Initial state
+      description: Relevant roles, status, ownership, dependencies, and baton.
+    validations:
+      required: true
+  - type: textarea
+    id: event
+    attributes:
+      label: Triggering event
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Minimal evidence
+      description: Sanitized transcript, state, or verification excerpt.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I removed secrets, personal data, private task IDs, and confidential project details.
+          required: true

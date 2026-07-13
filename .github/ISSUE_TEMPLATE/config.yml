@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and adoption help
+    url: https://github.com/FabienGreard/agentic-project-harness/discussions
+    about: Ask questions and share domain adaptations in Discussions.
+  - name: Private security report
+    url: https://github.com/FabienGreard/agentic-project-harness/security/advisories/new
+    about: Report vulnerabilities or exposed secrets privately.

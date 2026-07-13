@@ -1,0 +1,17 @@
+{
+  "$schema": "./schemas/project-state.schema.json",
+  "templateMode": true,
+  "project": {
+    "name": "Agentic Project Harness starter",
+    "phase": "governance-customization",
+    "lastVerified": "2026-07-13"
+  },
+  "baton": {
+    "owner": "Human adopter or Project Director",
+    "action": "Customize project direction and create the first Ready ticket",
+    "returnTrigger": "Direction and first executable ticket are approved"
+  },
+  "tickets": [],
+  "activeWork": [],
+  "humanReviews": []
+}
