@@ -205,7 +205,7 @@ try:
         "Establish the project foundation", "Improve the next operator workflow",
         "DEMO-1", "mock=1", "Example project", "Illustrative data only",
         "Launch online booking to 20 pilot patients",
-        "Default assurance", "Test rigor", "humanReviewStages",
+        "Test rigor", "humanReviewStages",
         "#ticket-rows{height:min(420px,48vh)",
         ".gantt-goal-button{background:rgba(7,19,28,.94)",
         ".gantt-bar-done,.gantt-bar-current,.gantt-bar-upcoming{background:var(--phosphor)",
@@ -216,6 +216,14 @@ try:
         "@media(max-width:1100px){.workforce-distribution{align-content:start;grid-template-columns:1fr}",
         ".workforce-legend{margin-top:.8rem;min-width:0;width:100%}",
         ".workforce-legend-entry,.workforce-legend-entry span{min-width:0}",
+        "const ticketControlsDisabled=!t.length;",
+        ".ticket-search input:disabled,.ticket-filter-trigger:disabled{",
+        "todayButton.disabled=!orderedGoals.length;",
+        ".notion-button:disabled{",
+        '.system-nav a.is-active:after,.system-nav a[aria-current="page"]:after{background:var(--screen);border:2px solid var(--phosphor);border-bottom:0;bottom:-2px;content:"";height:8px;left:50%;position:absolute;transform:translateX(-50%);width:64px}',
+        ".system-nav{background:transparent;border-bottom:2px solid var(--phosphor);border-top:0;",
+        "@media(max-width:760px){.system-nav{margin-left:-1rem;margin-right:-1rem;overflow:visible;",
+        ".site-header{background:linear-gradient(180deg,rgba(7,19,28,.98),rgba(7,19,28,.9));border-bottom:0;box-shadow:inset 0 -18px 36px rgba(68,122,185,.06),0 8px 30px rgba(0,0,0,.34);overflow:visible;",
     ):
         assert expected in dashboard, expected
     assert "@media(max-width:760px){.site-header" in dashboard
@@ -233,6 +241,11 @@ try:
         ".gantt-corner,.gantt-dates,.gantt-track{display:none}",
         ".gantt-viewport{background:transparent;border:0;box-shadow:none;max-height:none;overflow:visible}",
         ".gantt-grid{grid-template-columns:150px var(--timeline-width)}",
+        ".system-nav:after{background:var(--phosphor)",
+        'id="project-meta"',
+        ".header-meta{",
+        "Default assurance:",
+        "@media(max-width:760px){.system-nav{margin-left:-1rem;margin-right:-1rem;overflow-x:auto;",
     ):
         assert forbidden_mobile_timeline_override not in dashboard, (
             forbidden_mobile_timeline_override
