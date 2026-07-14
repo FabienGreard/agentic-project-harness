@@ -26,7 +26,7 @@
 
 ## Findings
 
-For each finding: rubric/check ID, direct evidence, inference if any, severity, and smallest correction.
+For each finding: stable ID, rubric/check ID, confidence, severity, trigger, supported reachability, impact, direct evidence or violated invariant, inference if any, smallest correction, and status. Hypothetical concerns are residual uncertainty rather than defects.
 
 ## Baseline comparison
 
@@ -36,5 +36,5 @@ Report hard-gate delta, category distributions, variance, resolved defects, and 
 
 - Accept / revise / reject
 - Smallest harness change:
-- Director-owned backlog discoveries:
+- Management-owned backlog discoveries:
 - Evidence to rerun:

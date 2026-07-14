@@ -10,12 +10,15 @@ Supply the candidate harness revision and exactly one public scenario input in a
 > - `should_interrupt_active_work`: boolean
 > - `repository_transitions`: ordered durable changes
 > - `task_messages`: outbound messages only; never self-addressed callbacks
+> - `persistent_goal_operations`: always an empty array for permanent roles
 > - `expected_returns`: callbacks expected from other owners
-> - `worker_plan`: exclusive scopes, dependencies, integration order, return destination
-> - `direct_lead_work`: retained work and justification
-> - `verification_and_review`
+> - `contractor_plan`: exclusive scopes, dependencies, integration order, return destination
+> - `direct_operations_work`: retained work and justification
+> - `verification_and_review`: review pass, verdict, blocking finding IDs, at most three non-blocking follow-ups, required evidence, and stop reason
 > - `next_baton`: owner, action, return/wake trigger
 > - `explicit_non_actions`
 > - `rationale`
 
-Use the four change classifications only for a new instruction or discovery. Use `not_applicable` for execution, readiness, result, review, and lifecycle scenarios without incoming-change triage.
+Use the four change classifications only when Management or Operations triages a new instruction or discovery. Use `not_applicable` for Contractor blockers and execution, readiness, result, review, or lifecycle scenarios without incoming-change triage. Set `should_interrupt_active_work` to `true` only when the whole assignment/run stops; a scoped pause while unaffected work continues is `false`.
+
+Management, Operations, and active Consultants are permanent top-level tasks. Their task messages are the sole wake mechanism. Never perform a persistent-goal operation, even when complete goal controls exist or older onboarding instructions request one. An automatic continuation without a new task message is a non-wake event: do no speculative work, report it for user or administrative removal, and end.

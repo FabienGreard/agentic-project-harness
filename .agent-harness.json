@@ -1,12 +1,31 @@
 {
-  "schemaVersion": 1,
-  "harnessVersion": "0.3.0",
+  "schemaVersion": 2,
+  "harnessVersion": "0.5.0",
+  "stateSchemaVersion": 1,
   "provider": "codex",
-  "source": "FabienGreard/agentic-project-harness",
-  "ref": "main",
-  "sourceMode": "template",
-  "sourceRevision": null,
-  "sourceDirty": null,
-  "installed": false,
-  "installedAt": null
+  "installationStatus": "Template",
+  "projectName": "Agentic Project Harness starter",
+  "projectType": "software-product",
+  "reasoningPreset": "medium",
+  "reasoning": {
+    "management": "high",
+    "operations": "high",
+    "consultants": "high",
+    "contractors": "medium",
+    "internalAudit": "xhigh"
+  },
+  "source": {
+    "repository": "FabienGreard/agentic-project-harness",
+    "channel": "unreleased-template",
+    "tag": null,
+    "commit": null,
+    "manifestSha256": null
+  },
+  "installedAt": null,
+  "updatedAt": null,
+  "lastTransactionId": null,
+  "lastTeamTransactionId": null,
+  "managedFiles": {},
+  "appliedMigrations": [],
+  "pendingIntegration": []
 }

@@ -1,26 +1,11 @@
-# Game-development adaptation
+# Game Development preset
 
-Use this overlay when the project delivers a playable game or interactive experience.
+Management acts as **Game Director**: owns creative vision, player experience, priorities, scope, and final direction decisions.
 
-## Suggested role names
+Operations acts as **Producer**: turns the vision into an executable production plan and owns coordination, risk, integration, and delivery evidence.
 
-- Project Director → Game Director
-- Delivery Lead → Production Lead
-- Specialist Lead → Art Lead, Design Lead, Audio Lead, or another recurring expert authority
-- Execution workers → gameplay, engine, UI, network, test, technical-art, asset, animation, VFX, or audio workers
+The recommended starting Consultant is **Art Director**, responsible for defining and accepting the visual language and production-quality bar. The installer also offers Lead Game Designer, Technical Director, Narrative Director, Audio Director, and QA Lead. Select any number or none.
 
-Start with Game Director and Production Lead. Add an Art Lead when assets and visual acceptance become recurring work; do not add every possible discipline as a permanent role.
+Operations may dispatch disposable Contractors for gameplay and systems, content production, or playtest and analysis. Those capability labels guide routing; they are not permanent user-managed roles.
 
-## Domain readiness
-
-Player-visible tickets should define intended experience, controls, camera/context, failure states, performance expectations, real-game walkthroughs, and capture evidence. Multiplayer work should define authority, independent-client, convergence, disconnect, and load checks.
-
-Asset production requires approved product intent and proportional specialist readiness: references, viewing distance, silhouette, source/runtime formats, scale/pivot, budgets, provenance, preview evidence, and artistic acceptance.
-
-## Human gates
-
-Use playable slices. A technically complete ticket may create a checkpoint, but the next slice remains blocked until the human owner plays/reviews and explicitly approves or requests revisions.
-
-## Useful workers
-
-Parallelize stable independent seams such as server rules, client presentation, verification harnesses, or distinct asset families. Keep shared scene files, unstable gameplay contracts, root toolchains, and final integration under serialized ownership.
+Users still speak to Management, Operations, Consultants, and Contractors. The professional titles supply domain context without changing authority.

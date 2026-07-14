@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-14
+
+### Added
+
+- Documented the approved v0.5 stable-release lifecycle, LLM-first operability rule, canonical operational state, generated project view, and human-governed cleanup boundary.
+- Added one stable-release installer/updater with `status` and `update`, additive non-empty-repository adoption, version/provenance metadata, checksum-aware ownership, external transactions, rollback, conservative legacy migration, and copy-ready cleanup prompts.
+- Added canonical JSON project, ticket, ownership, and review records with transactional `check`/`apply` tooling and a self-contained generated dashboard.
+- Added a common, project-scoped rule library under `.agents/rules/` with a navigation-only root `AGENTS.md`.
+- Added explicitly invoked `brainstorm`, `improve-codebase-architecture`, and `code-review` skills with one non-drifting Codex discovery link.
+- Added independent static checks and installer smoke coverage for rule structure, skill metadata/discovery, generic language, and two-axis review integration.
+- Added third-party attribution for the MIT-licensed upstream skill material adapted from Matt Pocock's skills repository.
+- Added one canonical four-preset team catalog, deterministic Consultant hire/fire engine, team schema/state, project-scoped hire/fire skills, and full Game, Software, Business, and Research examples.
+- Added user-overridable project assurance defaults, explicit per-ticket `Lean`/`Standard`/`Thorough` test rigor, and staged human review at `Readiness`, `Acceptance`, and `Release` with transactional gates and migration coverage.
+
+### Changed
+
+- Replaced generic user-facing agent titles with Management, Operations, Consultants, Contractors, and hidden Internal Audit while retaining opinionated professional personas per preset.
+- Added Operations two-axis integration review and a bounded Management final-audit mode while preserving separate Consultant domain approval.
+- Updated fresh installations and onboarding guidance to include the modular rules and project-scoped skills.
+- Set the project-scoped Codex permission contract to on-request approval with Auto-review, workspace-write sandboxing, and sandbox network access; reduced the concurrency ceiling from six threads to four while keeping dispatch depth at one.
+- Replaced the legacy Markdown backlog/active-work index and monolithic project-state JSON with canonical records under `docs/state/`.
+- Replaced Balanced/Deep reasoning choices with Low, Medium, High, and Custom presets; Medium is the default, while Low uses medium Management/Operations/Consultants, low Contractors, and high Internal Audit.
+- Made task messages the sole wake mechanism for permanent top-level leadership tasks, prohibited every persistent-goal operation, and defined legacy auto-resumes as report-only non-wake events.
+- Limited incoming-change classifications to Management/Operations triage, made Contractor blocker/result cases not applicable, and reserved whole-run interruption for cases where unaffected work cannot continue.
+- Made resolved assurance and human-review timing visible in the generated dashboard, with a stable scrollable task table, dark phosphor goal/PRD cards, and yellow timeline bars across desktop and mobile.
+
 ## [0.3.0] - 2026-07-13
 
 ### Changed
@@ -36,7 +62,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Game-development and business-operations adaptation examples.
 - GitHub contribution and community-health files.
 
-[Unreleased]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.3.0...v0.5.0
 [0.3.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/FabienGreard/agentic-project-harness/releases/tag/v0.1.0

@@ -2,9 +2,10 @@
 set -eu
 
 REPO=${HARNESS_REPO:-FabienGreard/agentic-project-harness}
-REF=${1:-}
-[ -n "$REF" ] || {
-  printf 'Usage: bash tests/install_remote_smoke.sh COMMIT_OR_REF\n' >&2
+TAG=${1:-}
+EXPECTED_SHA=${2:-}
+[ -n "$TAG" ] && [ -n "$EXPECTED_SHA" ] || {
+  printf 'Usage: bash tests/install_remote_smoke.sh STABLE_TAG EXPECTED_COMMIT_SHA\n' >&2
   exit 2
 }
 
@@ -14,54 +15,49 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
-installer="$TEMP_ROOT/install.sh"
+bundle="$TEMP_ROOT/bundle"
 target="$TEMP_ROOT/remote-project"
-neutral="$TEMP_ROOT/neutral"
-mkdir -p "$neutral"
-
-curl -fsSL "https://raw.githubusercontent.com/$REPO/$REF/install.sh" -o "$installer"
+mkdir -p "$bundle" "$target"
+for asset in install.sh agentic-project-harness-template.tar.gz harness-manifest.json SHA256SUMS; do
+  curl -fsSL "https://github.com/$REPO/releases/download/$TAG/$asset" -o "$bundle/$asset"
+done
 
 (
-  cd "$neutral"
-  bash "$installer" \
-    --repo "$REPO" \
-    --ref "$REF" \
-    --project-name "Remote Smoke Project" \
-    --target "$target" \
-    --project-type game-development \
-    --reasoning-preset deep \
-    --no-git \
-    --yes >"$TEMP_ROOT/install.log"
+  cd "$target"
+  APH_RELEASE_DIR="$bundle" bash "$bundle/install.sh" --yes --json >"$TEMP_ROOT/install.json"
 )
 
-python3 - "$target" "$REPO" "$REF" <<'PY'
+python3 - "$target" "$REPO" "$TAG" "$EXPECTED_SHA" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 root = Path(sys.argv[1])
-metadata = json.loads((root / ".agent-harness.json").read_text())
-assert metadata["provider"] == "codex"
-assert metadata["projectType"] == "game-development"
-assert metadata["reasoningPreset"] == "deep"
-assert metadata["source"] == sys.argv[2]
-assert metadata["ref"] == sys.argv[3]
-assert metadata["sourceMode"] == "remote"
-assert metadata["sourceDirty"] is None
-assert metadata["installed"] is True
-assert metadata["reasoning"] == {
-    "projectDirector": "xhigh",
-    "deliveryLead": "xhigh",
-    "specialistLead": "xhigh",
-    "executionWorker": "high",
-    "harnessEvaluator": "xhigh",
+repository, tag, expected_sha = sys.argv[2:]
+metadata = json.loads((root / ".agent-harness.json").read_text(encoding="utf-8"))
+assert metadata["schemaVersion"] == 2
+assert metadata["installationStatus"] == "Installed"
+assert metadata["source"]["repository"] == repository
+assert metadata["source"]["channel"] == "stable"
+assert metadata["source"]["tag"] == tag
+assert metadata["source"]["commit"] == expected_sha
+assert metadata["source"]["manifestSha256"]
+assert (root / ".codex/skills").is_symlink()
+assert (root / ".codex/skills").resolve() == (root / ".agents/skills").resolve()
+assert (root / "docs/index.html").is_file()
+team = json.loads((root / "docs/state/team.json").read_text(encoding="utf-8"))
+assert team["preset"] == "software-product"
+assert [item["id"] for item in team["consultants"] if item["status"] == "active"] == ["product-designer"]
+assert {path.name for path in (root / ".codex/agents").glob("*.toml")} == {
+    "management.toml", "operations.toml", "contractor.toml",
+    "internal-audit.toml", "consultant-product-designer.toml",
 }
-assert 'model_reasoning_effort = "xhigh"' in (root / ".codex/agents/specialist-lead.toml").read_text()
-assert 'model_reasoning_effort = "xhigh"' in (root / ".codex/agents/harness-evaluator.toml").read_text()
-assert (root / "HARNESS.md").is_file()
-assert not (root / "BOOTSTRAP_PROMPT.md").exists()
-assert "## First project prompt" in (root / "README.md").read_text()
+assert not (root / "hire").exists() and not (root / "fire").exists()
+assert (root / ".agents/skills/hire-consultant/SKILL.md").is_file()
+assert (root / ".agents/skills/fire-consultant/SKILL.md").is_file()
 PY
 
-python3 "$target/tools/harness_eval.py" >"$TEMP_ROOT/eval.log"
-printf 'PASS: standalone remote installer smoke at %s@%s\n' "$REPO" "$REF"
+python3 "$target/tools/harness_team.py" check --json >"$TEMP_ROOT/team.json"
+python3 "$target/tools/harness_state.py" check --json >"$TEMP_ROOT/state.json"
+python3 "$target/tools/harness_eval.py" --json >"$TEMP_ROOT/eval.json"
+printf 'PASS: immutable stable release-asset smoke at %s@%s (%s)\n' "$REPO" "$TAG" "$EXPECTED_SHA"

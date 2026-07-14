@@ -1,0 +1,6 @@
+interface:
+  display_name: "Code Review"
+  short_description: "Review changes against standards and intent"
+  default_prompt: "Use $code-review to review the current project change against repository standards, approved intent, and required evidence."
+policy:
+  allow_implicit_invocation: false

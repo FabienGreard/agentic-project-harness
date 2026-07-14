@@ -1,0 +1,6 @@
+interface:
+  display_name: "Hire a Consultant"
+  short_description: "Add a governed expert to the project team"
+  default_prompt: "Use $hire-consultant to hire a Consultant for this project."
+policy:
+  allow_implicit_invocation: false

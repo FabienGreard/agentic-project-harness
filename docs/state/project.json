@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "recordType": "project",
+  "project": {
+    "name": "Agentic Project Harness",
+    "outcome": "Make sophisticated multi-agent project delivery understandable, safe, and repeatable.",
+    "currentGoal": "",
+    "agentProvider": "codex",
+    "phase": "Needs Definition",
+    "templateMode": true,
+    "lastVerified": "2026-07-14",
+    "assuranceDefaults": {
+      "testRigor": "Standard",
+      "humanReviewStages": []
+    }
+  },
+  "baton": {
+    "owner": "Management",
+    "action": "Define the first Ready goal and ticket",
+    "returnTrigger": "A bounded Ready ticket is recorded"
+  }
+}

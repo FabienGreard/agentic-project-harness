@@ -2,6 +2,8 @@
 
 Status: Pending / Approved / Revision Requested / Rejected
 Human owner:
+Ticket ID:
+Stage: Readiness / Acceptance / Release
 
 ## Outcome under review
 

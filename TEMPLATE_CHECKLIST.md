@@ -16,21 +16,23 @@ Complete this checklist before starting implementation.
 - [ ] Write `docs/overview.md` from verified project state.
 - [ ] Define intended outcomes, users/stakeholders, constraints, non-goals, and human gates in `docs/direction.md`.
 - [ ] Decide which role owns publication, releases, or external actions.
-- [ ] Keep only the permanent Leads that represent recurring authority boundaries.
+- [ ] Confirm the preset personas and keep only Consultants that represent recurring acceptance boundaries.
+- [ ] Use `$hire-consultant` and `$fire-consultant` for Consultant changes; do not hand-edit generated team configs.
 - [ ] Record permanent task/thread identifiers in `docs/thread-registry.md` or a private local override.
 
 ## Work readiness
 
 - [ ] Create the first decision, PRD, and ticket using `docs/templates/`.
 - [ ] Record dependencies, scope, non-goals, acceptance, verification, affected systems, and owner.
-- [ ] Confirm specialist readiness when expert acceptance is required.
+- [ ] Confirm active Consultant readiness when expert acceptance is required.
 - [ ] Promote only genuinely executable work to `Ready`.
-- [ ] Synchronize `docs/project-state.json` with the human-readable records.
+- [ ] Apply schema-valid project, goal, ticket, ownership, and review records under `docs/state/` and regenerate `docs/index.html`.
 
 ## Verification
 
 - [ ] Run `python3 tools/harness_eval.py`.
-- [ ] Confirm `.agent-harness.json` and `docs/project-state.json` both identify Codex.
+- [ ] Run `python3 tools/harness_team.py check --json` and `python3 tools/harness_state.py check --json`.
+- [ ] Confirm `.agent-harness.json` and `docs/state/project.json` both identify Codex.
 - [ ] Review every active `.codex/agents/*.toml` reasoning level against the selected model's supported levels and expected cost/latency.
 - [ ] Run the canonical scenario smoke evaluation after material harness customization.
 - [ ] Confirm local links resolve and no private identifiers or example-only claims remain.

@@ -1,7 +1,8 @@
 # TICKET-ID — Implementation report
 
 Completed/returned: YYYY-MM-DD
-Reviewed by: Delivery Lead
+Reviewed by: Operations
+Goal ID:
 
 ## Outcome
 
@@ -15,7 +16,12 @@ Reviewed by: Delivery Lead
 
 List exact commands/procedures, environment, observations, and results.
 
-## Specialist review
+- Resolved test rigor:
+- Required human review stages and current status:
+
+## Consultant review
+
+List each required Consultant ID, `Acceptance` verdict, and exact evidence paths. Use “None” only when `requiredConsultantIds` is empty.
 
 ## Human review
 

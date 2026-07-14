@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "recordType": "team",
+  "preset": "software-product",
+  "presetLabel": "Software Product",
+  "commonNames": {
+    "management": "Management",
+    "operations": "Operations",
+    "consultants": "Consultants",
+    "contractors": "Contractors",
+    "internalAudit": "Internal Audit"
+  },
+  "management": {
+    "commonName": "Management",
+    "title": "Product Manager",
+    "headline": "Owns user outcomes, product priorities, scope, readiness, and release decisions.",
+    "configPath": ".codex/agents/management.toml"
+  },
+  "operations": {
+    "commonName": "Operations",
+    "title": "Engineering Manager",
+    "headline": "Owns executable delivery, technical coordination, Contractor dispatch, integration, and verification.",
+    "configPath": ".codex/agents/operations.toml"
+  },
+  "consultants": [
+    {
+      "id": "product-designer",
+      "title": "Product Designer",
+      "headline": "Defines and accepts coherent user journeys, interaction behavior, and interface quality.",
+      "domain": "product and interaction design",
+      "readinessRequirements": [
+        "Target users, journey, states, content, accessibility needs, and interaction acceptance are explicit."
+      ],
+      "evidenceRequirements": [
+        "Representative flows at target viewports demonstrate usable, coherent, and accessible behavior."
+      ],
+      "acceptanceAuthority": "Accepts or rejects product-design work inside the approved design boundary.",
+      "nonAuthorities": [
+        "overall priority",
+        "Contractor dispatch",
+        "technical integration",
+        "publication"
+      ],
+      "source": "preset",
+      "status": "active",
+      "configPath": ".codex/agents/consultant-product-designer.toml",
+      "configBaselineSha256": "7aefe99be55b43496883c856b70f34f7aae71c1d31acd26021f07601fa6ffd9d",
+      "hiredAt": "2026-07-14T11:57:56+00:00",
+      "firedAt": "",
+      "preservedConfig": false,
+      "manualAction": ""
+    }
+  ],
+  "contractorBench": [
+    {
+      "id": "product-engineering",
+      "headline": "Implements bounded frontend, backend, mobile, API, or integration work."
+    },
+    {
+      "id": "platform-and-data",
+      "headline": "Implements bounded infrastructure, reliability, data, migration, or operational work."
+    },
+    {
+      "id": "verification-and-analysis",
+      "headline": "Runs bounded tests, diagnostics, research, review, and reproducible verification."
+    }
+  ],
+  "internalAudit": {
+    "title": "Internal Audit",
+    "headline": "Independently evaluates the harness without joining the project team.",
+    "projectTeamMember": false
+  },
+  "reasoning": {
+    "management": "high",
+    "operations": "high",
+    "consultants": "high",
+    "contractors": "medium",
+    "internalAudit": "xhigh"
+  },
+  "updatedAt": "2026-07-14T12:36:57+00:00"
+}
