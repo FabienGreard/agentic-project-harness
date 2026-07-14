@@ -23,7 +23,7 @@ How to Apply:
 4. Introduce an adapter only where behavior genuinely varies; two justified implementations normally establish a real seam.
 5. Apply the deletion test: deleting a shallow module merely moves complexity, while deleting a deep module spreads meaningful policy back into callers.
 6. Verify callers and tests use the same public interface rather than hidden internals.
-7. For a consequential, long-lived, high-fan-out, or uncertain interface, begin from a non-overlapping Ready investigation and have Delivery dispatch multiple independent design workers with contrasting constraints before recommending an interface.
+7. For a consequential, long-lived, high-fan-out, or uncertain interface, begin from a non-overlapping Ready investigation and have Operations dispatch multiple independent design Contractors with contrasting constraints before recommending an interface.
 
 Do:
 
@@ -44,7 +44,7 @@ Example:
 - A reporting service owns filtering and pagination policy while adapters translate database and export formats at the boundary.
 
 Validation:
-The module has a documented capability, small interface, meaningful hidden implementation, clear ownership, justified seams/adapters, representative tests, deletion-test leverage, and no unnecessary leakage. Consequential interfaces include contrasting independent proposals from Delivery-dispatched workers.
+The module has a documented capability, small interface, meaningful hidden implementation, clear ownership, justified seams/adapters, representative tests, deletion-test leverage, and no unnecessary leakage. Consequential interfaces include contrasting independent proposals from Operations-dispatched Contractors.
 
 References:
 

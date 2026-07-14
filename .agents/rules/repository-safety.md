@@ -37,14 +37,14 @@ Don't:
 
 Example:
 
-- A worker adds files within its registered directory while leaving unrelated modified documentation byte-for-byte unchanged.
+- A Contractor adds files within its registered directory while leaving unrelated modified documentation byte-for-byte unchanged.
 
 Validation:
 The final diff contains only intended paths, unrelated work remains intact, no secret is introduced, and checks pass.
 
 References:
 
-- `docs/active-work.md`
+- `docs/state/ownership.json`
 - `docs/workflow.md`
 - `.gitignore`
 

@@ -1,27 +1,37 @@
 # Getting started
 
-## 1. Create from the template
+## 1. Verify the installation
 
-Use GitHub's **Use this template** action. Do not fork unless you want to contribute changes back to the harness itself.
+```sh
+./install.sh status --json
+python3 tools/harness_team.py check --json
+python3 tools/harness_state.py check --json
+```
 
-## 2. Define outcome before implementation
+Confirm the installed version/provenance, selected preset, professional Management and Operations personas, and active Consultants. Resolve any Adoption cleanup prompt before implementation.
 
-Replace `docs/direction.md` and `docs/overview.md` with verified project facts. Name the human owner, first usable outcome, constraints, non-goals, and external review gates.
+## 2. Open the first Management task
 
-## 3. Choose roles deliberately
+Copy the complete **First project prompt** from the generated repository `README.md`. Management owns project outcomes, priority, scope, readiness, publication, and human-review gates. Its professional persona is recorded in `docs/state/team.json`.
 
-Every installed harness includes Project Director, Delivery Lead, and Specialist Lead roles. Keep the Specialist Lead dormant until the same expert domain repeatedly defines readiness or accepts results. Use disposable expertise for one-off questions.
+During project definition, confirm the default assurance policy: generated projects start with `Standard` test rigor and no universal human review stage. Every ticket records its resolved rigor and any human review required at `Readiness`, `Acceptance`, or `Release`; user-authorized overrides record why they differ from the project default.
 
-The installed `AGENTS.md` is a short navigation map into `.agents/rules/`. The generic `brainstorm`, `improve-codebase-architecture`, and `code-review` skills are under `.agents/skills/` and are discoverable through the relative `.codex/skills` link.
+## 3. Establish direction and the company
 
-## 4. Create the first bounded work
+Management verifies live repository truth, records approved direction, and confirms whether the starting Consultants match the project’s recurring acceptance domains. Use `$hire-consultant` and `$fire-consultant` for team changes; never hand-edit team state or generated configs.
 
-Record durable choices under `docs/decisions/`, substantial requirements under `docs/prds/`, executable work under `docs/tickets/`, and results under `docs/implementation-reports/`.
+## 4. Create bounded work
 
-## 5. Synchronize machine state
+Record the durable outcome in `docs/direction.md`, observable goals in `docs/state/goals.json`, decisions under `docs/decisions/`, requirements under `docs/prds/`, bounded tickets in `docs/state/tickets.json`, and results under `docs/implementation-reports/`. Every executable ticket links to a goal.
 
-Update `docs/project-state.json` whenever ticket, active ownership, baton, or human-review status changes. Run the static evaluator before handoff.
+## 5. Synchronize state
 
-## 6. Commit governance before execution
+Prepare a schema-valid operation and run `python3 tools/harness_state.py apply`. Then run state/team checks and the evaluator. Open `docs/index.html` for the generated timeline, goal details, ticket search, and company directory.
 
-A durable baseline makes subsequent implementation reviewable and prevents conversation history from becoming the only source of truth.
+## 6. Hand Ready work to Operations
+
+Operations owns Contractor dispatch, exclusive ownership, integration, verification, and completion evidence. Management and Consultants never steer Contractors directly. Applicable Consultant acceptance, human gates, and publication authority remain separate.
+
+## 7. Run to delegated idle
+
+Management, Operations, and active Consultants are permanent top-level tasks woken only by new task messages. They never operate persistent Codex goals. Each run drains safe actionable work, records the next owner/action/return trigger, sends one handoff, and ends without polling.

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-project-harness.local/schemas/state/operation.schema.json",
+  "title": "APH canonical state operation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "operation", "records"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "operation": {"const": "replace-records"},
+    "records": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "project": {"$ref": "project.schema.json"},
+        "goals": {"$ref": "goals.schema.json"},
+        "tickets": {"$ref": "tickets.schema.json"},
+        "ownership": {"$ref": "ownership.schema.json"},
+        "reviews": {"$ref": "reviews.schema.json"}
+      }
+    }
+  }
+}

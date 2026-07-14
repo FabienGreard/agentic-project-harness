@@ -20,32 +20,37 @@ How to Apply:
 1. Identify the event, authorized transition, and affected records.
 2. Prepare status, owner, dependency, evidence, and next-action changes together.
 3. Transfer ownership within the same change set.
-4. Verify records agree before sending a handoff.
+4. Route state, team, installation, and update mutations through their deterministic tools; they share one external per-project cross-process lock.
+5. Verify records agree before sending a handoff.
 
 Do:
 
-- Update ticket, backlog, active work, overview, and machine state together when applicable.
+- Update goal, ticket, active ownership, review, project baton, and generated view together when applicable.
 - Link decisions, reports, reviews, and blockers.
+- Execute the committed JSON schemas first, then apply repository-level relationship and authority checks.
 
 Don't:
 
 - Announce a partially recorded transition.
 - Use a message as a substitute for durable state.
 - Invent missing acceptance to repair a contradiction.
+- Bypass the shared mutation lock with an ad hoc writer.
 
 Example:
 
-- When work enters Integration, the ticket, backlog, active ownership, implementation report, and Delivery next action all change before handoff.
+- When ownership enters `Integrating`, the ticket remains `In Progress` while active ownership, the implementation report, and Operations' next action change together before handoff.
 
 Validation:
-All affected records agree on status, owner, dependencies, evidence, and return trigger; no stale reservation remains.
+All affected records agree on status, owner, dependencies, evidence, and return trigger; committed schemas execute; concurrent supported mutations serialize without lost updates; no stale reservation remains.
 
 References:
 
 - `docs/workflow.md`
-- `docs/backlog.md`
-- `docs/active-work.md`
-- `docs/project-state.json`
+- `docs/state/tickets.json`
+- `docs/state/ownership.json`
+- `docs/state/project.json`
+- `docs/state/goals.json`
+- `docs/state/reviews.json`
 
 Notes:
 

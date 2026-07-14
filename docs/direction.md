@@ -23,15 +23,19 @@ Define the durable result this project exists to create. State the outcome in te
 
 ## Explicit non-goals
 
-- List attractive but excluded work so workers do not silently expand scope.
+- List attractive but excluded work so Contractors do not silently expand scope.
 
 ## Human-review gates
 
 Define which transitions require explicit human approval, such as production release, public publication, financial commitment, legal submission, customer communication, or a playable/product milestone.
 
-## Specialist boundaries
+- Default test rigor: `Standard`
+- Default human-review stages: explicitly none (`[]`); require `Readiness`, `Acceptance`, and/or `Release` per ticket when a human decision is needed.
+- Ticket overrides require the human owner's authorization and a durable reason.
 
-List recurring domains that require the Specialist Lead's definition or acceptance. If none is approved yet, keep the standard Specialist Lead dormant and use bounded workers or reviewers for one-off expertise.
+## Consultant boundaries
+
+Review the active Consultants in `docs/state/team.json`. Keep only recurring domains that justify permanent readiness or acceptance authority; use disposable Contractors for bounded execution or one-off analysis. Invoke `$hire-consultant` for additional curated or schema-valid custom Consultants and `$fire-consultant` for safe offboarding.
 
 ## Principles
 

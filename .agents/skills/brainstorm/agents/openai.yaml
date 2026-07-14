@@ -1,6 +1,6 @@
 interface:
   display_name: "Brainstorm"
-  short_description: "Refine project changes with the Project Director"
-  default_prompt: "Use $brainstorm to challenge and refine a proposed project change with the Project Director."
+  short_description: "Refine project changes with Management"
+  default_prompt: "Use $brainstorm to challenge and refine a proposed project change with Management."
 policy:
   allow_implicit_invocation: false

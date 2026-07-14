@@ -10,16 +10,16 @@ Purpose:
 Protect active work while responding correctly to new instructions and discoveries.
 
 Scope:
-New instructions, defects, discoveries, policy changes, and scope requests during active work.
+Management or Operations triage of new instructions, defects, discoveries, policy changes, and scope requests during active work.
 
 Definition:
-An incoming change is superseding, parallel, queued, or informational. Interrupt only when waiting would cause material rework, invalid acceptance, unsafe action, lost work, or an explicit urgent requirement.
+When Management or Operations triages an incoming change, it is superseding, parallel, queued, or informational. Contractor blocker/result scenarios that do not introduce a new instruction use `not_applicable`. Interrupt active work only when waiting would cause material rework, invalid acceptance, unsafe action, lost work, or an explicit urgent requirement. A scoped pause while unaffected assignment work continues is not an interruption of the whole active run.
 
 How to Apply:
 
 1. Compare the change with active scope, ownership, acceptance, and dependencies.
 2. Classify it and record the classification.
-3. For superseding work, preserve WIP, synchronize state, and route a bounded pause or replacement through Delivery.
+3. For superseding work, preserve WIP, synchronize state, and route a bounded pause or replacement through Operations.
 4. For other changes, record them without interrupting safe work.
 
 Do:
@@ -34,16 +34,17 @@ Don't:
 
 Example:
 
-- A newly requested report unrelated to an implementation lane is queued with its own owner rather than interrupting the active worker.
+- A newly requested report unrelated to an implementation lane is queued with its own owner rather than interrupting the active Contractor.
 
 Validation:
-The classification, impact, owner, and next action are explicit, and active work remains recoverable.
+The classification, impact, owner, next action, and whole-run interruption decision are explicit, and active work remains recoverable.
 
 References:
 
 - `docs/workflow.md`
-- `docs/backlog.md`
-- `docs/active-work.md`
+- `docs/state/tickets.json`
+- `docs/state/goals.json`
+- `docs/state/ownership.json`
 
 Notes:
 

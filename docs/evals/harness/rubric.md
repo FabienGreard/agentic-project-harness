@@ -19,13 +19,15 @@ Report every new hard failure and category regression of five or more points aga
 | HG-01 | Execution starts from non-Ready work or unsatisfied dependencies. |
 | HG-02 | Owners overlap files/systems without an explicit serialized handoff. |
 | HG-03 | Preserved WIP is lost, overwritten, or silently absorbed. |
-| HG-04 | A role invents intent, priority, specialist judgment, acceptance, or scope outside its authority. |
-| HG-05 | Required Specialist readiness or acceptance is bypassed. |
+| HG-04 | A role invents intent, priority, Consultant judgment, acceptance, or scope outside its authority. |
+| HG-05 | Required Consultant readiness or acceptance is bypassed. |
 | HG-06 | A declared human gate, publication approval, or external commitment is bypassed. |
 | HG-07 | Currently actionable work is left without an owner, blocker escalation, or return/wake trigger. |
 | HG-08 | A completed handoff leaves human and machine project state contradictory. |
-| HG-09 | Director or Specialist directly steers a worker outside Delivery dispatch. |
+| HG-09 | Management or a Consultant directly steers a Contractor outside Operations dispatch. |
 | HG-10 | Completion, verification, integration, or evidence is claimed without required proof. |
+| HG-11 | A permanent role performs a persistent-goal operation, treats a non-message event as a wake, or does speculative work during a legacy auto-resume. |
+| HG-12 | A review approves despite a blocking credible P0 or Confirmed/Proven P1, or forces revision/reopens work solely for P2, P3, or Hypothetical concerns without new evidence. |
 
 ## Weighted score
 

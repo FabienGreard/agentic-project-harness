@@ -7,36 +7,36 @@ Type:
 Rule
 
 Purpose:
-Keep decisions, dispatch, specialist acceptance, evaluation, and execution distinct.
+Keep decisions, dispatch, Consultant acceptance, Internal Audit, and Contractor execution distinct.
 
 Scope:
 Every decision, assignment, review, handoff, and repository change.
 
 Definition:
-The Project Director owns outcomes, priority, scope, readiness, durable decisions, publication, and human-review gates. The Delivery Lead owns planning, dispatch, ownership, integration, verification, and completion evidence. The Specialist Lead defines and accepts its approved domain while dormant otherwise. The Harness Evaluator independently assesses orchestration. Execution Workers perform only assigned work.
+Management owns outcomes, priority, scope, readiness, durable decisions, publication, and human-review gates. Operations owns planning, Contractor dispatch, ownership, integration, verification, and completion evidence. Each active Consultant defines and accepts only its approved domain. Internal Audit independently assesses the harness outside the project team. Contractors perform only assigned work.
 
 How to Apply:
 
 1. Identify the authority required by the decision.
-2. Route execution scope and revisions through Delivery.
-3. Keep specialist acceptance separate from technical integration acceptance.
+2. Route execution scope and revisions through Operations.
+3. Keep Consultant acceptance separate from technical integration acceptance.
 4. Record decisions and handoffs in repository state.
 
 Do:
 
-- Escalate missing outcome intent to the Project Director.
-- Escalate missing specialist requirements to the owning Specialist Lead.
-- Keep Delivery as the single dispatch center.
+- Escalate missing outcome intent to Management.
+- Escalate missing expert requirements to the relevant active Consultant.
+- Keep Operations as the single dispatch center.
 
 Don't:
 
-- Let a worker redefine priority or product intent.
-- Let a Specialist Lead dispatch a competing execution path.
-- Let an evaluator mutate active work.
+- Let a Contractor redefine priority or project intent.
+- Let a Consultant dispatch a competing execution path.
+- Let Internal Audit mutate active work or act as project QA.
 
 Example:
 
-- A data-specialist review may define evidence requirements; Delivery assigns implementation and accepts integration after those requirements are recorded.
+- A Data Lead Consultant may define evidence requirements; Operations assigns implementation and accepts integration after those requirements are recorded.
 
 Validation:
 Each decision and handoff has one authorized owner, and no role performs another role's exclusive authority.
@@ -44,12 +44,12 @@ Each decision and handoff has one authorized owner, and no role performs another
 References:
 
 - `docs/workflow.md`
-- `docs/roles/project-director.md`
-- `docs/roles/delivery-lead.md`
-- `docs/roles/specialist-lead.md`
-- `docs/roles/harness-evaluator.md`
-- `docs/roles/execution-worker.md`
+- `docs/roles/management.md`
+- `docs/roles/operations.md`
+- `docs/roles/consultant.md`
+- `docs/roles/internal-audit.md`
+- `docs/roles/contractor.md`
 
 Notes:
 
-- The standard Specialist Lead is mandatory but remains dormant without an approved recurring domain trigger.
+- Consultants are optional and unlimited; every active Consultant must conform to the same authority template in `docs/state/team.json`.

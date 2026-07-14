@@ -47,7 +47,7 @@ Every notification maps to an approved recipient/channel and a material event, p
 References:
 
 - `docs/workflow.md`
-- `docs/active-work.md`
+- `docs/state/ownership.json`
 
 Notes:
 

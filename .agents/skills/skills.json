@@ -4,7 +4,9 @@
   "skills": [
     "brainstorm",
     "improve-codebase-architecture",
-    "code-review"
+    "code-review",
+    "hire-consultant",
+    "fire-consultant"
   ],
   "invocation": "explicit"
 }

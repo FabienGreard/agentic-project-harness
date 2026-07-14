@@ -10,7 +10,7 @@ Purpose:
 Prevent stale assumptions, invented direction, and work based on an outdated state.
 
 Scope:
-Every role, worker, evaluator, and task operating in the repository.
+Every role, Contractor, Internal Audit run, and task operating in the repository.
 
 Definition:
 Repository records and the verified live checkout are authoritative for direction, priority, readiness, ownership, implementation state, and acceptance.
@@ -18,8 +18,8 @@ Repository records and the verified live checkout are authoritative for directio
 How to Apply:
 
 1. Start at the root map and identify applicable rules.
-2. Read `docs/overview.md`, `docs/direction.md`, `docs/backlog.md`, and `docs/active-work.md`.
-3. Read `docs/project-state.json`, the controlling ticket or decision, and the assigned role contract.
+2. Read `docs/overview.md`, `docs/direction.md`, and the canonical records under `docs/state/`.
+3. Read the controlling ticket record and any linked decision or narrative, then the assigned role contract.
 4. Verify material claims against the current checkout or runtime.
 5. Report contradictions to the owning role without inventing a resolution.
 

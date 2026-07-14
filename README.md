@@ -1,184 +1,163 @@
 # Agentic Project Harness
 
-[![GitHub stars](https://img.shields.io/github/stars/FabienGreard/agentic-project-harness?style=social)](https://github.com/FabienGreard/agentic-project-harness/stargazers)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
+A project-scoped operating system for Codex teams. It gives a repository explicit authority, bounded delivery, transactional project state, safe stable upgrades, and evidence-backed review without asking users to learn agent orchestration jargon.
 
-A reusable, evidence-driven multi-agent project orchestration template for software, games, research, operations, and other complex work.
+## Your company, in four names
 
-This repository contains the coordination system—not an application. Use it as a GitHub template, define your project, register the permanent roles your environment supports, and let execution workers operate from bounded, reviewable assignments.
+Every project uses the same thin operating layer:
 
-## Why “harness”?
+- **Management** decides outcomes, priority, scope, readiness, publication, and human-review gates.
+- **Operations** plans execution, dispatches Contractors, integrates returns, and verifies results.
+- **Consultants** are optional recurring experts hired for one acceptance domain.
+- **Contractors** are disposable execution capacity selected by Operations for bounded assignments.
 
-An agent prompt describes one task. A harness defines how a whole project keeps moving safely over time:
+**Internal Audit** is hidden harness infrastructure. It independently evaluates orchestration behavior; it is not a project-team member, product QA, or a Consultant.
 
-- who owns direction, delivery, specialist judgment, and execution;
-- when work is ready to start;
-- how new requests affect active work;
-- how independent work runs in parallel without file or system conflicts;
-- how results return, integrate, and receive human review;
-- when long-running roles pause instead of polling;
-- how the orchestration system itself is evaluated.
+Each project has a user-overridable assurance default. Every ticket explicitly shows `Lean`, `Standard`, or `Thorough` test rigor plus any human review required before readiness, acceptance, or release, so shipping pace and validation are visible instead of implicit.
 
-## Core model
+The installer gives Management and Operations professional context without changing those common names or authority boundaries:
 
-```mermaid
-flowchart LR
-    H["Human owner"] --> D["Project Director"]
-    D --> L["Delivery Lead"]
-    D --> S["Specialist Lead"]
-    S --> L
-    L --> W1["Execution worker"]
-    L --> W2["Execution worker"]
-    L --> W3["Execution worker"]
-    W1 --> L
-    W2 --> L
-    W3 --> L
-    L --> D
-    S --> D
-    E["Disposable Harness Evaluator"] -. read-only audit .-> D
-```
+| Preset | Management persona | Operations persona | Default Consultant |
+| --- | --- | --- | --- |
+| Game Development | Game Director | Producer | Art Director |
+| Software Product | Product Manager | Engineering Manager | Product Designer |
+| Business Operations | Program Director | Operations Manager | Change Manager |
+| Research | Principal Investigator | Research Program Manager | Research Methodologist |
 
-- **Project Director:** owns intended outcomes, priority, scope, readiness, decisions, publication, and human-review gates.
-- **Delivery Lead:** owns execution planning, worker dispatch, exclusive ownership, integration, verification, and run-to-idle delivery.
-- **Specialist Lead:** the standard expert-definition and review role. It remains dormant until the project assigns a recurring domain such as design, legal, finance, safety, data, security, or art; Delivery remains the single dispatch center.
-- **Execution workers:** implement only their assigned scopes and return evidence to Delivery.
-- **Harness Evaluator:** a disposable, independent, read-only worker that grades orchestration behavior and never fixes what it evaluates.
+The default Consultant is only a recommendation. During installation, keep it, select any number from the preset menu, or choose none. Later, invoke `$hire-consultant` for another curated or schema-valid custom Consultant and `$fire-consultant` to offboard one. Consultants never own overall priority, Contractor dispatch, technical integration, or publication.
 
-## Start a project
+Operations chooses disposable Contractors from the selected preset’s capability bench when work is Ready. Their conversational job title is optional; users do not configure or maintain a roster.
 
-### Quick installer
+## Install or adopt
 
-Run the interactive installer:
+Run the latest stable installer inside the project folder:
 
 ```sh
-mkdir my-project && cd my-project
-curl -fsSL https://raw.githubusercontent.com/FabienGreard/agentic-project-harness/main/install.sh | bash
+curl -fsSL https://github.com/FabienGreard/agentic-project-harness/releases/latest/download/install.sh | bash
 ```
 
-This executes the remote installer directly. Use the review-first flow in [docs/installation.md](docs/installation.md) when you want to inspect it before running.
+The keyboard-first flow asks:
 
-The keyboard-first setup uses the current folder name and installs into `.` by default. Choose a project type, accept or edit the inferred name, then use a Balanced or Deep reasoning preset—or expand Custom to configure every role. Arrow keys, `j`/`k`, number keys, and Enter are supported. The destination must be empty; existing files are never overwritten.
+1. What are you building? Choose one of the four presets; there is no vague Other preset.
+2. What is the project name? The current folder name is prefilled.
+3. Where should it be installed? `.` is the default.
+4. How much reasoning should the team use? Low, Medium, High, or Custom; Medium is selected by default.
+5. Which Consultants should join? Use a multi-select list seeded with the preset default.
 
-### Install with your coding agent
+Arrow keys, `j`/`k`, number keys, space, and Enter cover the full flow. Set `NO_COLOR=1` for a plain terminal fallback. In a non-empty folder, the installer enters additive Adoption mode: existing files are never overwritten, renamed, deleted, staged, or committed.
 
-Copy this prompt into Codex or another coding agent. Its scope is installation only:
-
-```text
-Install Agentic Project Harness in a new empty project folder.
-
-First inspect the current directory. Never overwrite or delete existing files. If it is not empty, ask me for a new empty destination. Derive the project name from the destination folder. Ask me for the project type only if it is unclear; valid values are software-product, game-development, business-operations, research, and other. Use the balanced reasoning preset unless I request deep or custom.
-
-Download and inspect the installer, then run it non-interactively:
-
-curl -fsSLo /tmp/agentic-project-harness-install.sh https://raw.githubusercontent.com/FabienGreard/agentic-project-harness/main/install.sh
-bash /tmp/agentic-project-harness-install.sh --project-name "<derived project name>" --target "<empty destination>" --project-type "<project type>" --reasoning-preset balanced --yes
-
-Confirm the installer checks pass and report the installed path. Do not customize the generated governance, create project implementation, commit, push, or publish during this installation task.
-```
-
-For an agent or non-interactive shell, the defaults reduce the command to:
+For folder-aware defaults, including Software Product, Medium reasoning, and Product Designer:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/FabienGreard/agentic-project-harness/main/install.sh | \
-  bash -s -- \
-  --project-name "My Project" \
-  --target ./my-project \
-  --project-type software-product \
-  --reasoning-preset balanced \
-  --yes
+curl -fsSL https://github.com/FabienGreard/agentic-project-harness/releases/latest/download/install.sh | bash -s -- --yes
 ```
 
-The installer creates a clean Codex project, lets you choose the reasoning level for each agent role, generates native project-scoped custom agent files under `.codex/agents/`, installs generic rules under `.agents/rules/`, and installs the three project skills under `.agents/skills/`. Codex discovers those skills through the relative `.codex/skills` symlink, so there is one source of truth and no duplicated copies.
-
-The project-scoped Codex config uses on-request approval with automatic approval review, workspace-write sandboxing, and network access inside that sandbox. It sets `max_threads = 4` as a concurrency ceiling—not a worker target—and keeps `max_depth = 1` so Delivery remains the single shallow dispatch center; an execution surface may enforce a lower cap. **Approve for me** / Auto-review can still be limited by the user's Codex app or managed workspace policy, and already-running conversations may retain their currently selected permission mode. The installer runs the static harness checks, initializes Git without committing, and refuses to overwrite a non-empty target.
-
-See [docs/installation.md](docs/installation.md) for the review-first flow and all options.
-
-### GitHub template
-
-1. Click **Use this template** on GitHub and create a new repository.
-2. Follow [TEMPLATE_CHECKLIST.md](TEMPLATE_CHECKLIST.md).
-3. Replace the starter state in `docs/overview.md`, `docs/direction.md`, `docs/backlog.md`, and `docs/project-state.json`.
-4. Register Director, Delivery, and Specialist Lead return paths. Keep the Specialist Lead dormant until a recurring expert acceptance domain is approved.
-5. Register task/thread identifiers locally in `docs/thread-registry.md` without committing secrets.
-6. Promote work to `Ready` only after the readiness contract is complete.
-7. Run `python3 tools/harness_eval.py` before the first implementation handoff.
-
-## Repository layout
+### Copy this into an LLM
 
 ```text
-.
-├── AGENTS.md                         # Navigation map into normative rules
-├── .agents/
-│   ├── rules/                        # Commonly templated governance modules
-│   └── skills/                       # Generic project-scoped skills and metadata
-├── .codex/skills -> ../.agents/skills # Relative Codex discovery link
-├── install.sh                        # Interactive and agent-friendly bootstrapper
-├── .codex/
-│   ├── config.toml                   # Project-scoped concurrency defaults
-│   └── agents/                       # Per-role Codex reasoning configuration
-├── docs/
-│   ├── overview.md                   # Current project truth and next action
-│   ├── direction.md                  # Approved outcomes and constraints
-│   ├── backlog.md                    # Human-readable work index
-│   ├── active-work.md                # Ownership and integration state
-│   ├── project-state.json            # Machine-readable state index
-│   ├── workflow.md                   # Readiness, handoff, review, idle rules
-│   ├── roles/                        # Permanent and disposable role contracts
-│   ├── templates/                    # Decision, PRD, ticket, report templates
-│   ├── schemas/                      # Machine-readable contracts
-│   └── evals/harness/                # Static and scenario evaluation suite
-├── examples/
-│   ├── game-development/             # Optional game-domain adaptation
-│   └── business-operations/          # Optional business-domain adaptation
-├── tools/harness_eval.py             # Dependency-free static verifier
-├── tests/                             # Local and standalone-download installer smoke checks
-└── .github/                           # Issues, PRs, community health
+Install Agentic Project Harness into the current repository using only the latest stable release.
+
+First inspect the current directory and preserve every existing file. Run:
+
+curl -fsSL https://github.com/FabienGreard/agentic-project-harness/releases/latest/download/install.sh | bash -s -- --yes
+
+Then run `./install.sh status --json`, `python3 tools/harness_team.py check --json`, and `python3 tools/harness_state.py check --json`. Report the installed version, immutable provenance, selected preset and Consultants, installation status, managed-file integrity, preserved legacy files, conflicts or manual actions, and transactional backup/rollback location. If a cleanup prompt was generated, follow it without deleting user files or backups. Do not implement the project, customize governance, commit, push, publish, or release during this installation task.
 ```
 
-## The baton rule
+The installed project README contains a second copy-ready prompt for first-run project definition. It is inline—there is no separate `BOOTSTRAP_PROMPT.md` to drift.
 
-Every orchestration run ends in one explicit state:
+## Keep the command surface small
 
-- a named owner has the next meaningful action and return trigger;
-- a result or review is pending from a named owner;
-- a future action is waiting on a recorded trigger;
-- progress is blocked on a precise decision that has been escalated once;
-- no meaningful action remains and the smallest wake condition is recorded.
+One script owns installation and stable updates:
 
-No role should poll work it has delegated. A new request does not automatically cancel active work; classify it as superseding, parallel, queued, or informational first.
+```sh
+./install.sh
+./install.sh status
+./install.sh update
+```
 
-## Worker-first, not worker-only
+The common flags are `--json`, `--yes`, and `--help`. Running the stable installer in a repository that already contains harness metadata detects the installation, reports its version, and offers a stable update. It never silently downgrades or consumes a prerelease.
 
-Substantial independent work should normally be dispatched to workers so Delivery remains available for coordination, review, and integration. Direct Lead implementation is still appropriate for small, tightly coupled, architecture-sensitive, integration, verification, or narrow revision work. The harness rewards useful parallelism and rejects artificial parallelism across shared files or unstable contracts.
+Team changes are skill-driven:
 
-## Harness evaluation
+```text
+$hire-consultant
+$fire-consultant
+```
 
-The included evaluation suite has four modes:
+The skills select the right deterministic `tools/harness_team.py` operation. Hiring offers the current preset’s curated Consultants and accepts a custom JSON definition matching `docs/schemas/consultant.schema.json`. Offboarding removes only an unchanged generated config; if a user modified it, the file is preserved with an exact manual cleanup action. Both operations keep Consultant history and external transactional backup/report evidence.
 
-- deterministic repository checks;
-- one-pass scenario smoke tests;
-- repeated scenario release comparisons;
-- independent audits of real task traces.
+## Safe versioning and updates
 
-The evaluator checks hard failures first—such as non-ready execution, overlapping ownership, lost work, invented intent, skipped specialist/human gates, missing batons, contradictory state, and unproven completion—then scores scope, handoffs, safety, parallelism, advancement, and interruption efficiency.
+`.agent-harness.json` records the installed harness version, immutable stable provenance, lifecycle status, managed ownership classes, baseline checksums, migrations, and transaction IDs. `./install.sh status --json` is the local truth.
 
-See [docs/evals/harness/README.md](docs/evals/harness/README.md).
+An update reconstructs the installed baseline from its allowlisted immutable stable release before comparing baseline, local state, and the target release. It fails closed on ambiguous provenance, modified harness-managed/generated files, unsupported origins, unsafe paths, or incomplete transactions. Project-owned files and unrelated work are never retired automatically. Legacy Markdown is preserved during structured-state migration, and cleanup guidance links the release, compare view, and exact GitHub files so an LLM or human can inspect every difference.
 
-## Domain examples
+Only stable releases are update candidates. Immutable-SHA standalone smoke and the normal release gates remain mandatory before publication.
 
-- [Game development](examples/game-development/README.md): Project Director, Production Lead, the standard dormant Specialist Lead configured for Art/Design when approved, engineering and asset workers, playable-slice reviews.
-- [Business operations](examples/business-operations/README.md): Program Director, Operations Lead, optional Finance/Legal/Domain Lead, analysis and process workers, approval checkpoints.
+## Operational state
 
-Examples are overlays, not separate frameworks. Keep the authority and handoff model; rename roles and gates to match the domain.
+Canonical schema-versioned JSON under `docs/state/` records the project/baton, goals, tickets, ownership, reviews, and team. Narrative Markdown remains the source for direction, decisions, requirements, implementation reports, and supporting rationale.
 
-## Contributing
+Use the deterministic state tool instead of parsing Markdown or hand-editing the generated dashboard:
 
-Issues, discussions, and pull requests are welcome. Good contributions add reproducible failure cases, improve clarity without weakening gates, or make the harness easier to adopt across domains.
+```sh
+python3 tools/harness_state.py check --json
+python3 tools/harness_state.py apply operation.json --json
+```
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md). If this starter is useful, star the repository so other teams can find it.
+`docs/index.html` is a self-contained local view of the canonical records, including a responsive project timeline, goal details, ticket search, and company directory. It is a generated view, not a second control plane.
+
+This is **LLM-first and human-governed**: structures, commands, identifiers, evidence, and migration reports are optimized for reliable machine use; humans retain authority for intent, ambiguity, destructive deletion, external commitments, security/compliance, and release or publication.
+
+## Codex configuration
+
+Every generated project receives this project-scoped configuration:
+
+```toml
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"
+
+[agents]
+max_threads = 4
+max_depth = 1
+
+[sandbox_workspace_write]
+network_access = true
+```
+
+`max_threads = 4` is a ceiling, not a Contractor target; an execution surface may impose a lower cap. `max_depth = 1` preserves Operations as the shallow single dispatch center. **Approve for me** / Auto-review can still be constrained by the user’s Codex app or managed workspace, and already-running conversations may retain their selected permission mode.
+
+Reasoning presets apply to the common roles:
+
+| Preset | Management | Operations | Consultants | Contractors | Internal Audit |
+| --- | --- | --- | --- | --- | --- |
+| Low | medium | medium | medium | low | high |
+| Medium (default) | high | high | high | medium | xhigh |
+| High | xhigh | xhigh | xhigh | high | xhigh |
+
+Custom exposes each role individually. Supported explicit levels still depend on the selected Codex model.
+
+## Lifecycle and review
+
+Management, Operations, and every active Consultant are permanent top-level tasks with event-driven run-to-idle lifecycles. A new task message is their sole wake mechanism. They never operate Codex persistent goals, even when full goal controls exist; this repository policy supersedes older onboarding prompts. A legacy automatic continuation without a new message performs no speculative work and is reported for user or administrative removal.
+
+Only Ready work executes. Operations is the sole Contractor dispatch/revision center and registers one exclusive owner per file or coherent system scope before edits. Substantial work receives independent read-only standards/architecture and specification/evidence review before Operations accepts integration. Consultant domain acceptance, Management final audit, human approval, Internal Audit, and release authorization remain separate gates.
+
+## Preset examples and documentation
+
+- [Game Development](examples/game-development/README.md)
+- [Software Product](examples/software-product/README.md)
+- [Business Operations](examples/business-operations/README.md)
+- [Research](examples/research/README.md)
+- [Installation and permissions](docs/installation.md)
+- [Customization and custom Consultants](docs/customization.md)
+- [Operating workflow](docs/workflow.md)
+- [Stable release process](docs/releasing.md)
+
+The repository itself is the reusable template. `AGENTS.md` is only a navigation map; normative behavior lives under `.agents/rules/`, project-scoped skills under `.agents/skills/`, role contracts under `docs/roles/`, and deterministic checks under `tools/` and `tests/`.
 
 ## License
 
-[MIT](LICENSE) © 2026 Fabien Gréard. Adapted upstream skill material is documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+MIT. Adapted skill material and attribution are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

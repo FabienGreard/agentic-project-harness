@@ -1,19 +1,19 @@
 ---
 name: code-review
-description: "Review a committed or work-in-progress project change against two independent axes: repository standards and architecture, then approved specification and completion evidence. Use when the user invokes $code-review, asks to review a branch, PR, worker return, integrated ticket, dirty worktree, release checkpoint, or changes since a ref; also use before Delivery integration acceptance or a Project Director final Git/release audit."
+description: "Review a committed or work-in-progress project change against two independent axes: repository standards and architecture, then approved specification and completion evidence. Use when the user invokes $code-review, asks to review a branch, PR, Contractor return, integrated ticket, dirty worktree, release checkpoint, or changes since a ref; also use before Operations integration acceptance or a Management final Git/release audit."
 ---
 
 # Code Review
 
-Run a read-only, evidence-backed review. Report findings; do not edit, stage, commit, push, revise workers, or change project state from the review itself.
+Run a read-only, evidence-backed delivery-safety review rather than an unbounded bug search. Report findings; do not edit, stage, commit, push, revise Contractors, or change project state from the review itself.
 
 ## Select the authority mode
 
-- **Delivery Lead integration review:** own the review, dispatch two independent read-only reviewers when the boundary is substantial, verify every returned finding, and decide accept, revise, or reject. All worker revision instructions still flow through Delivery.
-- **Project Director final audit:** consume Delivery's verified diff, implementation report, and two-axis findings. Perform a bounded direct audit without dispatching workers; route code revisions to Delivery, product or outcome decisions to the Project Director authority, and specialist questions to the owning Specialist Lead.
-- **Specialist Lead domain review:** review only the approved specialist domain and return findings or acceptance input to Delivery; do not set overall priority or dispatch a competing worker path.
+- **Operations integration review:** own the review, dispatch two independent read-only reviewers when the boundary is substantial, verify every returned finding, and decide accept, revise, or reject. All Contractor revision instructions still flow through Operations.
+- **Management final audit:** consume Operations' verified diff, implementation report, and two-axis findings. Perform a bounded direct audit without dispatching Contractors; route technical revisions to Operations, outcome decisions to Management, and expert questions to the relevant active Consultant.
+- **Consultant domain review:** review only the approved domain and return findings or acceptance input to Operations; do not set overall priority or dispatch a competing Contractor path.
 - **Independent evaluator:** inspect the supplied candidate or disposable harness behavior read-only, report evidence-backed findings, and do not mutate active work or grade itself.
-- **Execution-worker self-check:** review only the supplied scope, make no acceptance decision outside that role's authority, and return findings to the owning Delivery Lead or user.
+- **Contractor self-check:** review only the supplied scope, make no acceptance decision outside that role's authority, and return findings to the owning Operations task or user.
 
 ## Pin the exact review boundary
 
@@ -25,32 +25,35 @@ Run a read-only, evidence-backed review. Report findings; do not edit, stage, co
 
 ## Pin intent and standards
 
-Identify controlling sources before review: explicit user revision, ticket, PRD, accepted ADRs, acceptance criteria, implementation report, applicable `.agents/rules/`, contributing guidance, package/authority boundaries, non-goals, and local conventions. If no specification exists, say so; do not invent one.
+Identify controlling sources before review: explicit user revision, ticket, PRD, accepted ADRs, acceptance criteria, implementation report, applicable `.agents/rules/` including `risk-based-findings.md`, contributing guidance, package/authority boundaries, non-goals, and local conventions. If no specification exists, say so; do not invent one.
 
 Read [references/review-axes.md](references/review-axes.md) for the two reviewer briefs, smell heuristics, severity scale, and finding format.
 
 ## Run the two axes
 
-When acting as Delivery on a substantial boundary, dispatch both read-only reviewers concurrently because their analytical scopes are independent:
+When acting as Operations on a substantial boundary, dispatch both read-only reviewers concurrently because their analytical scopes are independent:
 
 1. **Standards and architecture reviewer:** inspect only the pinned target against standards and architecture heuristics.
 2. **Specification and evidence reviewer:** inspect the same target against approved intent, non-goals, acceptance criteria, tests, and runtime or operational evidence.
 
-For a small review or Project Director audit, inspect the two axes sequentially in the current context. Do not create review workers outside Delivery authority. Reviewers may read the same diff but must not edit files, run mutating commands, send role messages, or accept the change.
+For a small review or Management audit, inspect the two axes sequentially in the current context. Do not create review Contractors outside Operations authority. Reviewers may read the same diff but must not edit files, run mutating commands, send role messages, or accept the change.
 
 ## Validate and report
 
-Reproduce every proposed finding against the pinned diff and cited source. Reject speculative, enforced, outside-scope, or merely stylistic findings. Report actionable findings first under:
+Validate every proposed finding against the pinned diff, cited source, and risk-based finding contract. Require a stable ID, confidence, severity, trigger, supported reachability, expected and actual behavior, impact, likelihood, evidence or violated invariant, and a practical regression test. Reject Hypothetical, enforced, outside-scope, duplicate, or merely stylistic concerns as defects. Report under:
 
 1. `## Standards and architecture`
 2. `## Specification and evidence`
-3. `## Residual risks and unverified evidence`
-4. `## Verdict`
+3. `## Non-blocking follow-ups` — at most three P2/P3 items
+4. `## Residual risks and unverified evidence`
+5. `## Verdict`
 
-Keep axes separate. Use `APPROVE` only when no actionable finding remains and required evidence is present, `REVISE` when a bounded correction is required, and `BLOCKED` when the review boundary or controlling intent is unreliable. State the worst finding in each axis without collapsing the review into a score.
+Keep axes separate. Use `APPROVE` when acceptance and required evidence are present and no blocking finding remains. Use `REVISE` only for a credible P0 or a Confirmed/Proven P1. Use `BLOCKED` when the review boundary or controlling intent is unreliable. P2, P3, and Hypothetical concerns do not force revision; an exact acceptance violation may instead qualify as P1. State the worst finding in each axis without collapsing the review into a score.
 
-An `APPROVE` review is not ticket completion, specialist acceptance, human milestone approval, release authorization, or permission for the next slice.
+Perform one initial review and at most one follow-up review. The follow-up inspects only blocking fixes, explicitly selected follow-ups, and direct consequences. Do not reopen a closed finding or restart the full review without new evidence, and stop when required evidence passes with no blocker. If a blocker remains after the follow-up, return `REVISE` and require an explicitly authorized new bounded review task instead of silently beginning a third pass.
+
+An `APPROVE` review is not ticket completion, Consultant acceptance, human milestone approval, release authorization, or permission for the next slice.
 
 ## Route the result
 
-Delivery reviews every finding, issues bounded worker revisions, integrates, reruns proportional verification, and updates completion evidence. The Project Director receives the verified result for outcome acceptance, intentional Git actions, version decisions, and human-review gates. Specialist Leads remain acceptance owners for approved specialist domains. Record unrelated discoveries as separate backlog items; do not expand the reviewed ticket.
+Operations validates every finding, issues bounded Contractor revisions only for blockers or explicitly selected follow-ups, integrates, reruns proportional verification, and updates completion evidence. Management receives the verified result for outcome acceptance, intentional Git actions, version decisions, and human-review gates. Active Consultants remain acceptance owners for approved domains. Record unrelated discoveries as separate backlog items; do not expand the reviewed ticket.

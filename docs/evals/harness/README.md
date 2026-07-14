@@ -23,6 +23,6 @@ Evaluate observable orchestration behavior rather than prompt wording.
 3. Judge hard gates before numeric scores.
 4. Aggregate with [report-template.md](report-template.md) and [report-schema.json](report-schema.json).
 5. Compare hard failures, category distributions, variance, and specific regressions—not score alone.
-6. Return findings to the Director; evaluators never mutate active work.
+6. Return findings to the Management; evaluators never mutate active work.
 
 Generated artifacts belong under `.artifacts/harness-eval/<run-id>/` and remain local unless an intentional baseline or material regression is selected for versioning.

@@ -1,32 +1,46 @@
-# Customizing the harness
+# Customize without breaking the operating layer
 
-## Rename roles without changing authority
+## Keep common names stable
 
-Examples:
+Users and repository rules speak about Management, Operations, Consultants, Contractors, and Internal Audit. The selected preset supplies professional context—such as Game Director or Product Manager—but does not create a second vocabulary or change authority.
 
-| Generic | Software/game | Business/operations | Research |
-| --- | --- | --- | --- |
-| Project Director | Game/Product Director | Program Sponsor | Principal Investigator |
-| Delivery Lead | Production/Engineering Lead | Operations Lead | Research Operations Lead |
-| Specialist Lead | Art/Security/Data Lead | Finance/Legal/Compliance Lead | Methods/Ethics Lead |
-| Execution worker | Engineer/artist/tester | Analyst/operator | Researcher/data worker |
+Do not rename generated common-role files by hand. If project prose uses a professional title, include its common name at the first mention: “Game Director (Management)” or “Producer (Operations).” Contractor capability labels are routing hints, not mandatory conversational names.
 
-Keep one dispatch center even when names change.
+## Choose a preset, then hire expertise
 
-The starter `.codex/config.toml` uses on-request approvals with `approvals_reviewer = "auto_review"`, workspace-write sandboxing, and network access within that sandbox. It uses `max_threads = 4` as a ceiling, not a worker target. Keep `max_depth = 1` to prevent recursive worker fan-out and preserve Delivery as the single dispatch center. A Codex execution surface may impose a lower concurrency cap, **Approve for me** / Auto-review may be restricted by app or managed-workspace policy, and existing conversations may retain their selected permission mode.
+The supported project presets are exactly Game Development, Software Product, Business Operations, and Research. They are deliberately opinionated; there is no generic Other/custom preset.
 
-## Discover rules and skills
+Consultants are the extension point. Invoke `$hire-consultant` for a recurring domain that defines readiness or accepts evidence. Prefer the preset catalog. If none fits, the skill prepares a JSON definition matching `docs/schemas/consultant.schema.json` and passes it to the internal deterministic team engine. Do not invoke the mutation engine directly from user workflows.
 
-`AGENTS.md` is the navigation map; keep normative instructions in `.agents/rules/` using the existing common section template. The generic skills live in `.agents/skills/` and are discovered through `.codex/skills`, a relative symlink that must remain the only discovery copy. Keep the three skill names and their metadata/support notice intact unless a deliberate governance change is reviewed.
+A custom Consultant must use lowercase hyphen-case for its ID and define title, headline, domain, non-empty readiness requirements, non-empty evidence requirements, and acceptance authority. It automatically inherits the fixed exclusions: no overall priority, Contractor dispatch, technical integration, or publication authority.
 
-## Add gates proportionally
+Do not hire a permanent Consultant for one bounded implementation or one-off question; Operations can dispatch a disposable Contractor. Any number of Consultants may be active when their domains are distinct.
 
-Use Specialist readiness and human approvals only where judgment, impact, or irreversibility justifies them. Too few gates create unsafe invention; too many convert orchestration into ceremony.
+Invoke `$fire-consultant` to offboard an active Consultant. Never delete its state record or config manually. The skill uses the same engine to preserve history and modified configs and remove only an unchanged generated config.
 
-## Keep the harness small
+## State and dashboard
 
-- Prefer two permanent Leads initially.
-- Keep the Specialist Lead dormant until a recurring authority boundary is approved, then rename and configure it for that domain.
-- Use workers for execution and disposable evaluators for audits.
-- Record project discoveries as tickets rather than continually expanding role prompts.
-- Add a regression scenario before adding a broad new policy.
+Keep `.agent-harness.json` as installation/provenance metadata, canonical JSON under `docs/state/` as operational state, Markdown as narrative context, and generated `docs/index.html` as a view. Do not add another updater or maintenance-state hierarchy.
+
+Prepare schema-valid operations for `python3 tools/harness_state.py apply`; do not hand-edit the dashboard. `docs/state/team.json` is updated only by installation and the deterministic team engine. Run both checks after a material change:
+
+```sh
+python3 tools/harness_team.py check --json
+python3 tools/harness_state.py check --json
+```
+
+For dashboard design review only, open `docs/index.html?mock=1`. Mock data is illustrative and never project evidence.
+
+## Balance pace and assurance
+
+Set the project default in `project.assuranceDefaults`, then resolve `assurance` explicitly on every ticket. The generated default is `Standard` test rigor with no universal human review stage. Use `Lean` for a smaller focused proof boundary and `Thorough` for broader failure-path and operational evidence.
+
+Human review timing is an explicit list: `Readiness`, `Acceptance`, and/or `Release`. An empty list means explicitly none. A ticket may differ from project defaults only with a human-authorized `overrideReason`; separately governing safety, legal, compliance, irreversible-action, and publication approvals remain mandatory. Apply changes transactionally through a schema-valid state operation, then use the dashboard to inspect each ticket's resolved rigor and review timing.
+
+This structure is LLM-first and human-governed. Optimize IDs, schemas, commands, reports, and links for reliable machine use while retaining human authority for intent, ambiguity, destructive actions, external commitments, security/compliance, and release or publication.
+
+## Rules, skills, and Codex settings
+
+`AGENTS.md` remains a navigation map. Put normative instructions in `.agents/rules/` using the shared template. Project skills live once under `.agents/skills/` and are discovered through the relative `.codex/skills` symlink. Preserve attribution when adapting skill material.
+
+Keep the project-scoped `.codex/config.toml` semantic contract unless an approved governance change replaces it: on-request approvals, automatic approval review, workspace-write sandboxing, network access, `max_threads = 4`, and `max_depth = 1`. Four threads is a ceiling; depth one preserves the shallow Operations dispatch topology. App or workspace policy can still restrict Auto-review, and already-running conversations can retain their selected permission mode.
