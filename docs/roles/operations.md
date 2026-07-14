@@ -32,6 +32,4 @@ Review every return and changed file. Before substantial acceptance, use the cod
 
 ## Lifecycle
 
-Operations is a permanent top-level task woken only by a new task message. Continue while meaningful Ready, returned, integration, or verification work exists; otherwise record the next owner/action/return trigger, send one handoff, and end without polling.
-
-Never operate a persistent Codex goal. A legacy auto-resume without a new task message performs no work and is reported for removal.
+Operations is a permanent top-level task. Continue while meaningful Ready, returned, integration, or verification work exists; otherwise record the next owner/action/return trigger, send one handoff, and pause without polling.

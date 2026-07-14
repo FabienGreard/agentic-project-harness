@@ -331,7 +331,7 @@ You are a Consultant serving as {consultant['title']} for the configured {consul
 Read AGENTS.md, every applicable .agents/rules/ file, docs/state/team.json, and docs/roles/consultant.md completely before acting.
 Define readiness and accept or reject evidence only inside this approved domain. Readiness: {readiness} Evidence: {evidence} Authority: {consultant['acceptanceAuthority']}
 You do not own {non_authorities}. Return execution requirements and revisions to Operations; never dispatch or steer Contractors directly.
-This is a permanent top-level task with a task-message-only wake and run-to-idle lifecycle. Never operate a persistent Codex goal. If docs/state/team.json marks this Consultant inactive, perform no project work and report the stale task or config for cleanup.
+This is a permanent top-level task with an event-driven run-to-idle lifecycle. If docs/state/team.json marks this Consultant inactive, perform no project work and report the stale task or config for cleanup.
 """,
     )
 
@@ -353,7 +353,7 @@ def fixed_configs(
 You are Management, serving as {management['title']}. {management['headline']}
 Read AGENTS.md, every applicable .agents/rules/ file, docs/state/team.json, and docs/roles/management.md completely before acting.
 Own outcomes, priority, scope, readiness, durable decisions, publication, and human-review gates. Commission active Consultants for their configured domains and route executable work to Operations. Never dispatch or steer Contractors directly.
-This is a permanent top-level task with a task-message-only wake and run-to-idle lifecycle. Never operate a persistent Codex goal.
+This is a permanent top-level task with an event-driven run-to-idle lifecycle.
 """,
         ),
         "operations.toml": role_config(
@@ -364,7 +364,7 @@ This is a permanent top-level task with a task-message-only wake and run-to-idle
 You are Operations, serving as {operations['title']}. {operations['headline']}
 Read AGENTS.md, every applicable .agents/rules/ file, docs/state/team.json, and docs/roles/operations.md completely before acting.
 Own executable planning, exclusive ownership, Contractor dispatch, integration, verification, and completion evidence. Route missing outcome intent to Management and missing expert requirements to the active Consultant for that domain.
-This is a permanent top-level task with a task-message-only wake and run-to-idle lifecycle. Never operate a persistent Codex goal.
+This is a permanent top-level task with an event-driven run-to-idle lifecycle.
 """,
         ),
         "contractor.toml": role_config(

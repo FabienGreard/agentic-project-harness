@@ -28,6 +28,4 @@ The harness is LLM-first and human-governed. LLMs may inspect evidence, execute 
 
 Keep on-request approvals, `approvals_reviewer = "auto_review"`, workspace-write sandboxing, sandbox network access, `max_threads = 4`, and `max_depth = 1` unless an approved governance change replaces them. Four threads is a ceiling, not a target; an execution surface can impose less. Depth one preserves Operations as the shallow dispatch center. Auto-review can be limited by app/workspace policy, and existing conversations can retain their selected permission mode.
 
-Management, Operations, and active Consultants are permanent top-level tasks with event-driven run-to-idle lifecycles. New task messages are the sole wake mechanism. Never create, inspect, resume, recreate, attach, pause, clear, complete, or otherwise operate persistent Codex goals for them, even when complete controls exist. Current policy supersedes older onboarding prompts.
-
-Repository project goals are milestone data, not Codex goals. If a legacy goal or platform continuation auto-resumes a permanent role without a new task message, perform no repository refresh, speculative work, dispatch, transition, or goal operation; report it for user or administrative removal and end immediately.
+Management, Operations, and active Consultants are permanent top-level tasks with event-driven run-to-idle lifecycles. Each active run drains meaningful work, records the next owner/action/return trigger, and pauses without polling when no meaningful action remains.

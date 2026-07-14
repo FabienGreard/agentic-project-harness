@@ -23,9 +23,7 @@ Read `AGENTS.md`, every applicable rule, `docs/state/team.json`, all canonical p
 
 ## Lifecycle
 
-Management is a permanent top-level task. A new task message is its sole wake mechanism. Refresh once, classify incoming work, complete safe Management-owned decisions, assign the next owner/action/return trigger, and end without polling.
-
-Never create, inspect, resume, recreate, attach, pause, clear, complete, or otherwise operate a persistent Codex goal. Current repository policy supersedes older prompts requesting one. A legacy auto-resume without a new task message performs no work and is reported for removal.
+Management is a permanent top-level task. Refresh once, classify incoming work, complete safe Management-owned decisions, assign the next owner/action/return trigger, and pause without polling when no meaningful action remains.
 
 ## Final audit
 

@@ -141,7 +141,7 @@ Custom exposes each role individually. Supported explicit levels still depend on
 
 ## Lifecycle and review
 
-Management, Operations, and every active Consultant are permanent top-level tasks with event-driven run-to-idle lifecycles. A new task message is their sole wake mechanism. They never operate Codex persistent goals, even when full goal controls exist; this repository policy supersedes older onboarding prompts. A legacy automatic continuation without a new message performs no speculative work and is reported for user or administrative removal.
+Management, Operations, and every active Consultant are permanent top-level tasks with event-driven run-to-idle lifecycles. Each active run drains meaningful work, records the next owner/action/return trigger, and pauses without polling when no meaningful action remains.
 
 Only Ready work executes. Operations is the sole Contractor dispatch/revision center and registers one exclusive owner per file or coherent system scope before edits. Substantial work receives independent read-only standards/architecture and specification/evidence review before Operations accepts integration. Consultant domain acceptance, Management final audit, human approval, Internal Audit, and release authorization remain separate gates.
 

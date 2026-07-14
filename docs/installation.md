@@ -131,7 +131,7 @@ Four threads is a concurrency ceiling, not a Contractor target; a runtime can im
 
 Open the generated `README.md` and copy its complete **First project prompt** into a new Codex task using the Management reasoning level. The prompt is inline so no bootstrap file can drift. It is governance-only: establish direction, confirm the configured company, prepare canonical state, and leave one explicit baton before project implementation begins.
 
-Management, Operations, and active Consultants are permanent top-level tasks woken only by new task messages. They never operate persistent Codex goals, even when complete controls exist. Current repository policy supersedes older onboarding prompts; legacy automatic continuations perform no speculative work and are reported for removal.
+Management, Operations, and active Consultants are permanent top-level tasks with event-driven run-to-idle lifecycles. Each active run drains meaningful work, records the next owner/action/return trigger, and pauses without polling when no meaningful action remains.
 
 ## Local candidate testing
 

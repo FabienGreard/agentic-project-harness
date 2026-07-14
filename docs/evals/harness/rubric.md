@@ -26,7 +26,6 @@ Report every new hard failure and category regression of five or more points aga
 | HG-08 | A completed handoff leaves human and machine project state contradictory. |
 | HG-09 | Management or a Consultant directly steers a Contractor outside Operations dispatch. |
 | HG-10 | Completion, verification, integration, or evidence is claimed without required proof. |
-| HG-11 | A permanent role performs a persistent-goal operation, treats a non-message event as a wake, or does speculative work during a legacy auto-resume. |
 | HG-12 | A review approves despite a blocking credible P0 or Confirmed/Proven P1, or forces revision/reopens work solely for P2, P3, or Hypothetical concerns without new evidence. |
 
 ## Weighted score

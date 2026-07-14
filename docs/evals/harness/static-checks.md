@@ -15,7 +15,7 @@ Stable check identifiers for `tools/harness_eval.py` and future extensions.
 - `ST-043`: metadata schema/version/state values, the shared external mutation lock, and the minimal install/status/update public lifecycle agree.
 - `ST-044`: the runtime executes the committed JSON schemas before repository-semantic checks, and canonical records exactly match the generated dashboard snapshot.
 - `ST-045`: LLM-readable state and deterministic tools remain subordinate to human authority for consequential decisions.
-- `ST-046`: permanent leadership roles are top-level message-woken tasks, no persistent-goal operation is allowed, legacy auto-resumes are non-wake events, and H-011 covers the full-controls plus obsolete-onboarding case.
+- `ST-046`: permanent leadership roles are top-level, event-driven, run-to-idle tasks with explicit owner/action/return-trigger handoffs and no polling.
 - `ST-047`: the exact four-preset catalog, common names, professional personas, recommended Consultants, typed readiness/acceptance gates, authority exclusions, and skill-only hire/fire operations agree; user documentation does not expose the internal mutation command.
 - `ST-048`: project assurance defaults, resolved per-ticket rigor, staged human-review gates, override reasons, dashboard rendering, and state/update smoke coverage agree.
 - `ST-049`: risk-based finding confidence, severity, blocking thresholds, bounded review passes, and H-012/H-013 scenario coverage agree across rules, review skill, rubric, and evaluator prompt.

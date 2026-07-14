@@ -44,7 +44,7 @@
       "source": "preset",
       "status": "active",
       "configPath": ".codex/agents/consultant-product-designer.toml",
-      "configBaselineSha256": "7aefe99be55b43496883c856b70f34f7aae71c1d31acd26021f07601fa6ffd9d",
+      "configBaselineSha256": "b04092c5db877b1e9a9f18fcad53af940be987216303123368bde6626222642b",
       "hiredAt": "2026-07-14T11:57:56+00:00",
       "firedAt": "",
       "preservedConfig": false,

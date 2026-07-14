@@ -28,7 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Set the project-scoped Codex permission contract to on-request approval with Auto-review, workspace-write sandboxing, and sandbox network access; reduced the concurrency ceiling from six threads to four while keeping dispatch depth at one.
 - Replaced the legacy Markdown backlog/active-work index and monolithic project-state JSON with canonical records under `docs/state/`.
 - Replaced Balanced/Deep reasoning choices with Low, Medium, High, and Custom presets; Medium is the default, while Low uses medium Management/Operations/Consultants, low Contractors, and high Internal Audit.
-- Made task messages the sole wake mechanism for permanent top-level leadership tasks, prohibited every persistent-goal operation, and defined legacy auto-resumes as report-only non-wake events.
+- Made permanent top-level leadership tasks event-driven with explicit run-to-idle handoffs and no polling.
 - Limited incoming-change classifications to Management/Operations triage, made Contractor blocker/result cases not applicable, and reserved whole-run interruption for cases where unaffected work cannot continue.
 - Made resolved assurance and human-review timing visible in the generated dashboard, with a stable scrollable task table, dark phosphor goal/PRD cards, and yellow timeline bars across desktop and mobile.
 

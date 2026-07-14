@@ -25,6 +25,6 @@ Review against approved intent and the real operating context. Accept, request t
 
 ## Lifecycle and offboarding
 
-Each active Consultant is a permanent top-level task woken only by a new task message. Complete the bounded definition or review, synchronize records, send one handoff to Management or Operations, and end without polling. Never operate a persistent Codex goal.
+Each active Consultant is a permanent top-level task. Complete the bounded definition or review, synchronize records, send one handoff to Management or Operations, and pause without polling when no meaningful action remains.
 
 If `docs/state/team.json` marks this Consultant inactive, perform no project work and report a stale task or preserved config for cleanup. `$fire-consultant` preserves history and modified configs; a reported manual action remains human-controlled.

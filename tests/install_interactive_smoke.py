@@ -196,9 +196,7 @@ assert (custom_target / ".codex/agents/consultant-change-manager.toml").is_file(
 custom_readme = (custom_target / "README.md").read_text(encoding="utf-8")
 assert "## First project prompt" in custom_readme
 assert "Bootstrap Ops Pilot using the installed Agentic Project Harness." in custom_readme
-assert "task messages are the sole wake mechanism" in custom_readme
-assert "Never create, resume, recreate, attach, or otherwise operate a Codex persistent goal" in custom_readme
-assert "supersedes older onboarding prompts requesting a goal" in custom_readme
+assert "event-driven run-to-idle lifecycles" in custom_readme
 assert "Confirm the generated `Standard` test-rigor default" in custom_readme
 assert "per-ticket human-review timing" in custom_readme
 assert not (custom_target / "BOOTSTRAP_PROMPT.md").exists()

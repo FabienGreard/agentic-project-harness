@@ -4,13 +4,13 @@ Do not commit private task URLs, credentials, notification recipients, or secret
 
 | Role | Task/thread ID | Lifecycle | Operating instructions |
 | --- | --- | --- | --- |
-| Management (`<configured persona>`) | `<configure>` | permanent top-level; message-woken run-to-delegated-idle | [Management](roles/management.md) |
-| Operations (`<configured persona>`) | `<configure>` | permanent top-level; message-woken run-to-idle | [Operations](roles/operations.md) |
-| Consultant (`<one row per active Consultant>`) | `<configure>` | permanent top-level; message-woken run-to-idle; inactive after `$fire-consultant` | [Consultant](roles/consultant.md) |
+| Management (`<configured persona>`) | `<configure>` | permanent top-level; event-driven run-to-delegated-idle | [Management](roles/management.md) |
+| Operations (`<configured persona>`) | `<configure>` | permanent top-level; event-driven run-to-idle | [Operations](roles/operations.md) |
+| Consultant (`<one row per active Consultant>`) | `<configure>` | permanent top-level; event-driven run-to-idle; inactive after `$fire-consultant` | [Consultant](roles/consultant.md) |
 
 Contractors and Internal Audit are disposable and are never registered as permanent tasks. Internal Audit is not project QA or a project-team member.
 
-Task messages are the sole wake mechanism for Management, Operations, and every active Consultant. Do not register, create, resume, recreate, attach, or otherwise operate persistent goals for them, even when complete goal controls exist. This repository policy supersedes older onboarding prompts that requested a goal. A legacy auto-resume without a new task message is a non-wake event: perform no speculative work, report it for user or administrative removal, and end the run.
+Management, Operations, and every active Consultant run on named events, record the next owner/action/return trigger, and pause without polling when no meaningful action remains.
 
 ## Message protocol
 

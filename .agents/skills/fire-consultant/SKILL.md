@@ -23,7 +23,7 @@ python3 tools/harness_team.py fire --project-root . --consultant <id> --yes --js
 
 The engine marks the Consultant inactive and preserves employment/domain history. It removes only an unchanged generated config. If the config differs from its generated baseline, the engine preserves it, records a manual action, and reports that cleanup remains required; never delete, overwrite, move, or normalize that file automatically.
 
-An inactive Consultant task must perform no project work. Report stale task/config cleanup to the user, but do not use persistent-goal operations or attempt to control the Codex app.
+An inactive Consultant task must perform no project work. Report stale task/config cleanup to the user, but do not attempt to control the Codex app.
 
 ## Verify and report
 

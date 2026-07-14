@@ -34,4 +34,4 @@ Operations owns Contractor dispatch, exclusive ownership, integration, verificat
 
 ## 7. Run to delegated idle
 
-Management, Operations, and active Consultants are permanent top-level tasks woken only by new task messages. They never operate persistent Codex goals. Each run drains safe actionable work, records the next owner/action/return trigger, sends one handoff, and ends without polling.
+Management, Operations, and active Consultants are permanent top-level tasks. Each active run drains safe actionable work, records the next owner/action/return trigger, sends one handoff, and pauses without polling when no meaningful action remains.

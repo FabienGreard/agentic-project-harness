@@ -27,7 +27,7 @@ Only `Ready` work enters execution. Internal delivery detail is recorded on acti
 
 Goals use the smaller lifecycle `Needs Definition`, `Ready`, `Active`, `Review`, and `Done`. `project.currentGoal` identifies at most one non-completed primary goal. A blocked current goal remains current and records its blocker owner and exact resume condition; the pipeline never promotes itself automatically. Each goal carries a concise inline context summary plus optional PRD and decision paths. Optional `plannedStart` and `plannedEnd` ISO dates must be supplied together and place the goal on the generated Gantt timeline. `Done` additionally requires a result summary, completion date, repository evidence, terminal linked tickets, cleared ownership/blockers, and any required human approval.
 
-These repository project goals are observable milestones, not Codex persistent goals. They do not wake tasks or control role lifecycle.
+These repository project goals are observable milestones in the durable project control plane.
 
 ## Priority vocabulary
 
@@ -39,13 +39,9 @@ These repository project goals are observable milestones, not Codex persistent g
 
 Dependencies, risk, and integration safety may override simple priority order.
 
-## Permanent-task wake policy
+## Permanent-role lifecycle
 
-Management, Operations, and each active Consultant are permanent top-level tasks with event-driven run-to-idle lifecycles. A new message to the relevant task is the sole wake mechanism. Contractors and Internal Audit are disposable. Repository changes, timers, remembered instructions, and automatic continuations are not wakes by themselves.
-
-Never create, inspect, resume, recreate, attach, pause, clear, complete, or otherwise operate a Codex persistent goal for a permanent role, even when the surface exposes complete goal controls. Current repository policy supersedes older onboarding prompts that requested a persistent goal.
-
-If a legacy persistent goal or platform continuation automatically resumes a role without a new task message, the role performs no repository refresh, speculative work, dispatch, state transition, or persistent-goal operation. It reports the legacy continuation for user or administrative removal and ends immediately. Delegated idle is neither blocked nor complete.
+Management, Operations, and each active Consultant are permanent top-level tasks with event-driven run-to-idle lifecycles. Contractors and Internal Audit are disposable. Each active run drains meaningful work, records a named owner/action/return trigger, and pauses without polling when no meaningful action remains. Delegated idle is neither blocked nor complete.
 
 ## Definition of Ready
 

@@ -12,7 +12,6 @@ Candidates receive only `inputs/<ID>.md`; independent judges receive the matchin
 - H-008 — Operations reaches idle
 - H-009 — Management delegates and waits
 - H-010 — human approval gate
-- H-011 — legacy persistent-goal auto-resume with full controls
 - H-012 — risk-based initial review with mixed finding quality
 - H-013 — bounded follow-up review and stopping condition
 
