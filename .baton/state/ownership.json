@@ -1,20 +1,5 @@
 {
   "schemaVersion": 1,
   "recordType": "ownership",
-  "ownership": [
-    {
-      "ticket": "BATON-001",
-      "owner": "Operations",
-      "scopes": [
-        "Baton source identity and repository configuration",
-        "Source-only root .baton project control plane",
-        "Generated consumer source and .baton payloads",
-        "Release classification, manifests, installer, update, migration, backup, and rollback",
-        "AGENTS.md, Codex configuration, custom agents, and skill integrations",
-        "Runtime integration, candidate assembly, final verification, and review handoff"
-      ],
-      "status": "Verifying",
-      "returnDestination": "Management task for final audit and explicit release decision"
-    }
-  ]
+  "ownership": []
 }

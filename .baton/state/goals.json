@@ -5,15 +5,17 @@
     {
       "id": "BATON-GOAL-001",
       "title": "Separate Baton product development from consumer control planes",
-      "status": "Active",
+      "status": "Review",
       "priority": "P1",
-      "owner": "Operations",
+      "owner": "Management",
       "objective": "Rename the product to Baton and ship clean new-project and adoption payloads centered on an isolated .baton control plane.",
       "context": "The stable v0.5.0 adoption copied the source repository into a mature project, conflicted with project identity, scanned ignored vendor trees, and activated contradictory starter state.",
       "dependencies": [],
       "blockers": [],
       "decisionPaths": [],
-      "evidencePaths": []
+      "evidencePaths": [
+        ".baton/implementation-reports/BATON-001.md"
+      ]
     }
   ]
 }

@@ -5,12 +5,13 @@
     {
       "id": "BATON-001",
       "title": "Build the isolated Baton distribution and migration architecture",
-      "status": "In Progress",
+      "status": "Done",
       "priority": "P1",
       "owner": "Operations",
       "goal": "BATON-GOAL-001",
       "dependencies": [],
       "objective": "Convert Baton into the Baton source product and produce fail-closed new-project and mature-adoption payloads whose complete control plane lives under .baton.",
+      "reportPath": ".baton/implementation-reports/BATON-001.md",
       "scope": [
         "Rename active product identity, commands, metadata, documentation, and generated consumer content to Baton while preserving historical release evidence.",
         "Give the Baton source repository its own root .baton control plane that is always source-only and never enters consumer payloads.",

@@ -63,6 +63,12 @@ Required human review stages and current status: Release — pending; no release
 
 None. `requiredConsultantIds` is empty; Internal Audit remains independent and outside the project team.
 
+## Integration review
+
+- Standards/architecture follow-up: **APPROVE** at `30d14ae`; SA-01 through SA-05 were closed. Its one non-blocking P2 documentation clarification for unsafe `AGENTS.md` activation was incorporated.
+- Specification/evidence follow-up: **REVISE** at `30d14ae` for one remaining P1: the v0.2/v0.3 fixtures incorrectly supplied an installed commit that authentic remote metadata did not contain. Commit `039acf1` now uses authentic null revisions, labels separately verified official version anchors, and reruns the migration and full dual-runtime matrices. The single permitted follow-up review loop ended there.
+- Disposable independent Internal Audit at clean `039acf1`: **PASS**, 12/12 scenarios, 100/100 mean, no hard gates, and no P0-P3 findings. It independently reran strict evaluation, both Python matrices, exact bundle build/validation, and direct, piped, and mature-adoption asset smokes.
+
 ## Human review
 
 Human Release approval remains pending. Candidate preparation, a local commit, and GitHub repository-setting changes do not authorize push, merge, tag, release, asset upload, or modification of `releases/latest`.
@@ -76,10 +82,10 @@ Human Release approval remains pending. Candidate preparation, a local commit, a
 
 ## Follow-up work
 
-- Run the independent two-axis integration review and disposable Internal Audit against the pinned candidate.
-- Rebuild and validate the exact final candidate assets after source-only evidence/state reconciliation.
+- Rebuild and validate the exact final candidate assets after this source-only evidence/state reconciliation.
 - Await an explicit human Release decision before any push, merge, tag, GitHub release, or upload.
+- After any authorized publication, run the immutable-SHA standalone remote smoke before treating the stable release as fully accepted.
 
 ## Ownership returned
 
-Operations returns the fully verified unpublished candidate, review findings, exact local asset evidence, limitations, and release boundary to Management. Publication remains human-gated.
+Operations returns the fully verified unpublished candidate, closed review findings, exact local asset evidence, limitations, and release boundary to Management. Publication remains human-gated.
