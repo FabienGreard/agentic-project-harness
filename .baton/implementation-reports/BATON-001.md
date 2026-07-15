@@ -1,6 +1,6 @@
 # BATON-001 — Implementation report
 
-Completed/returned: 2026-07-15 (reopened for payload-projection simplification; return pending)
+Completed/returned: 2026-07-15
 
 Reviewed by: Operations
 
@@ -60,6 +60,8 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 - Direct and stdin-piped fresh installs plus mature adoption from those exact assets — PASS. Fresh status was `Installed`, mature status was `Needs Integration`, 53 installed local Markdown links resolved, mature identity files were unchanged, and new installations created `.baton/metadata.json` without creating `.agent-harness.json`.
 - Exact source-layout implementation commit `dab40c1a8b5599ef4943cbc54ea65fa117e8445d`: bundle build/validate PASS with 75 new-project and 76 adoption paths. Asset SHA-256 values: `install.sh` `e256ddd5c92dc924b4de6274c77090c465a553ff16e3a1e1e215535f384937d0`; new-project archive `f1bef229bb79987a1cc2c771f59acd13cd85725b25c41a53e3f2ed1100d1a177`; adoption archive `8be073c5b5e008d4e82151753a7c063093dbd9abc3ed406e9133c79f70a1c36e`; manifest `613c3708f2c0fd33f5975004809161b453ca21c9eef58d634180d656c15b3f4e`; checksum file `fb50a62e090b2c398c57dd1e1a8005a49b0f353e9e499888695cc8c0d3aaede3`.
 - Direct and stdin-piped fresh installs plus mature non-empty adoption from the exact source-layout assets — PASS. Fresh status was `Installed`; mature status was `Needs Integration`; all three checks passed; mature `VERSION`, `LICENSE`, `.github`, `tests`, and `tools` fixtures remained byte-identical; archives exactly matched their manifests and stayed under `.baton/`.
+- Exact payload-projection implementation commit `08245272b69108eb50d918518cf9db08c953d1c9`: strict evaluation 16/16; current Python 40/40; Python 3.9 40/40; Baton state, shell syntax, source links, and diff checks PASS. Bundle build/validate produced 62 shared, 13 starter, and 1 adoption-only source; 75 new-project paths and 76 adoption paths. Asset SHA-256 values: `install.sh` `e256ddd5c92dc924b4de6274c77090c465a553ff16e3a1e1e215535f384937d0`; new-project archive `8ac0e847c2b6f278f304b27fc890daf3533ecf362ea093df5dd112588c7de9dd`; adoption archive `9e74436b76b9ba387b78d95e7aae66c1d3cf4339447286a44003e67f6ba9b34f`; manifest `7cbe2649293be4ccf67e3c1875e207823d5520989407050efe0ed658f36368cb`; checksum file `8507995d700b8b4309e737017d520b11eb31187114116173cbd7012925158535`.
+- Direct and stdin-piped fresh installs from those exact assets returned `Installed`, passed status/check, and resolved 53/53 local Markdown links. Mature non-empty adoption returned `Needs Integration`, quarantined starter state, passed check, and preserved every pre-existing `VERSION`, `LICENSE`, `.github`, documentation, test, and tool fixture byte-for-byte. The canonical `/private/tmp` rerun passed after the first `/tmp` spelling was intentionally rejected because macOS exposes it through a symbolic link.
 
 Resolved test rigor: Thorough.
 
@@ -79,6 +81,7 @@ None. `requiredConsultantIds` is empty; Internal Audit remains independent and o
 - Reopened source-layout standards/architecture review at staged boundary `64089d1e5b794affeebbd0747fca29f2f8b79b5c4e34af7b9df9584abecaa120`: **APPROVE**. SA-001 (P2) correctly identified the temporary mismatch between the reopened canonical state and this previously completed report; this revision and the final transactional return reconcile it.
 - Reopened source-layout specification/evidence review: **REVISE** only for SE-001 (P1), requiring exact-commit Internal Audit before return; the reviewer otherwise confirmed the intended layout and evidence. Disposable Internal Audit `IA-20260715-dab40c1-STATIC-01` at exact clean implementation commit `dab40c1a8b5599ef4943cbc54ea65fa117e8445d`: **PASS**, 100/100, no hard gates and no P0-P3 findings. It independently reran strict evaluation 16/16, classification, Baton state, focused tests 12/12, exact bundle build/validation, installed-link checks, and targeted layout/reference checks. This closes SE-001.
 - Payload-projection simplification review: specification/evidence **APPROVE**; standards/architecture initially **REVISE** for SA-001 (P1), because the release validator and installed lifecycle trusted a checksum-consistent manifest's `sourcePath` and `projection` claims. The accepted correction independently recomputes the source-to-projection-to-destination invariant in both surfaces. The one bounded follow-up review at staged diff `17463332802970c28997076ffe5cde4d65ac4743ebc9a80f2b5be2b9873e2e65` returned **APPROVE** with no P0-P3 findings: re-signed false-provenance fixtures fail closed, focused tamper tests pass 2/2, affected release/lifecycle tests pass 29/29, and the full dual-runtime matrix passes 40/40.
+- Disposable Internal Audit `IA-20260715-08245272-STATIC-01` at clean implementation commit `08245272b69108eb50d918518cf9db08c953d1c9`: **PASS**, 100/100, no hard gates and no P0-P3 findings. It independently reran Baton state, strict evaluation 16/16, current Python 40/40, Python 3.9 40/40, local installer smoke 40/40, shell/diff checks, exact bundle construction, projection recomputation, provenance-tamper rejection, direct/piped fresh installation, and mature adoption preservation. It recommends accepting this as the unpublished candidate for Management handoff.
 
 ## Human review
 
@@ -98,4 +101,4 @@ Human Release approval remains pending. Candidate preparation, a local commit, a
 
 ## Ownership returned
 
-BATON-001 is currently reopened under Operations for the approved payload-projection simplification. Operations will return the fully verified unpublished candidate, closed review findings, exact local asset evidence, limitations, and release boundary to Management after final clean-commit verification. Publication remains human-gated.
+BATON-001 is returned to Management with the fully verified unpublished candidate, closed review findings, exact local asset evidence, limitations, and release boundary. Operations ownership is cleared. Publication remains human-gated and requires a new explicit Release instruction.
