@@ -14,7 +14,7 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 import uuid
 
 sys.dont_write_bytecode = True
@@ -288,10 +288,20 @@ def integration_plan(
     generated: list[str] = []
     manual: list[str] = []
     agents_path = project_root / "AGENTS.md"
-    existing_agents = agents_path.read_text(encoding="utf-8") if agents_path.is_file() else None
-    merged_agents, _ = merge_agents(existing_agents, status)
-    (prepared / "AGENTS.md").write_text(merged_agents, encoding="utf-8")
-    managed.append("AGENTS.md")
+    if agents_path.is_symlink() or (agents_path.exists() and not agents_path.is_file()):
+        proposal = prepared / ".baton/integration/AGENTS.md"
+        proposal.parent.mkdir(parents=True, exist_ok=True)
+        proposal.write_text(default_agents_block(status) + "\n", encoding="utf-8")
+        generated.append(".baton/integration/AGENTS.md")
+        manual.append(
+            "Existing AGENTS.md is not a safe regular file and was preserved. "
+            "Merge the Baton block from .baton/integration/AGENTS.md manually."
+        )
+    else:
+        existing_agents = agents_path.read_text(encoding="utf-8") if agents_path.is_file() else None
+        merged_agents, _ = merge_agents(existing_agents, status)
+        (prepared / "AGENTS.md").write_text(merged_agents, encoding="utf-8")
+        managed.append("AGENTS.md")
 
     desired_config = render_codex_config(agent_names)
     config_path = project_root / ".codex/config.toml"
@@ -406,9 +416,9 @@ def configure_adoption(
         (agents / filename).write_text(content, encoding="utf-8")
     prompt = f"""Integrate Baton into {project_name} without replacing existing project identity or records.
 
-Read AGENTS.md, .baton/metadata.json, this transaction's report and backup, and every file under .baton/integration/starter/. Inspect the live repository and translate its mature direction, goals, tickets, ownership, reviews, and team into schema-valid records under a temporary directory. Do not parse Markdown mechanically or invent facts. Keep legacy files unchanged.
+Read AGENTS.md, `.baton/metadata.json` including `legacyMigration`, this transaction's report and backup, and every file under .baton/integration/starter/. Inspect the live repository and translate its mature direction, goals, tickets, ownership, reviews, and team into schema-valid records under a temporary directory. Do not parse Markdown mechanically or invent facts. Keep legacy files unchanged.
 
-Validate the proposed records and activate them with the installed Baton internal activation command only after the human confirms that the migrated state is complete. Then run `.baton/bin/baton status --json` and `.baton/bin/baton check --json`.
+Validate the proposed records and, only after the human confirms that the migrated state is complete, run `.baton/bin/baton _activate --from /absolute/path/to/reviewed-proposal --json`. Then run `.baton/bin/baton status --json` and `.baton/bin/baton check --json`.
 
 Report preserved legacy files, conflicts or manual actions, and the external transactional backup and rollback location. For every cleanup or migration candidate, include its local path plus direct GitHub `blob/<immutable-commit>/<source-path>` links derived from `.baton/metadata.json` and the verified release manifest; include a GitHub compare link when both immutable commits are known. Never link a moving branch as evidence. Never delete a legacy file or backup without explicit human approval.
 """
@@ -506,6 +516,7 @@ def apply_plan(
     replace: list[str],
     transaction: Path,
     baselines: dict[str, dict[str, Any]] | None = None,
+    finalize: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     backup = transaction / "backup"
     proposed = transaction / "proposed"
@@ -536,8 +547,21 @@ def apply_plan(
             writes += 1
             if fail_after is not None and writes >= fail_after:
                 raise LifecycleError("injected Baton transaction failure")
+        result = {
+            "result": "applied",
+            "backupPath": str(backup),
+            "proposedPath": str(proposed),
+            "add": add,
+            "replace": replace,
+            "changes": changes,
+        }
+        if os.environ.get("BATON_TEST_FAIL_DURING_FINALIZE"):
+            raise LifecycleError("injected Baton finalization failure")
+        if finalize is not None:
+            finalize(result)
     except BaseException as error:
         failures = restore_entries(project_root, backup, touched, missing_parents)
+        (transaction / "cleanup-prompt.txt").unlink(missing_ok=True)
         report = {
             "result": "rolled-back",
             "error": str(error),
@@ -550,35 +574,92 @@ def apply_plan(
         if failures:
             raise LifecycleError("transaction failed and rollback was incomplete: " + "; ".join(failures)) from error
         raise LifecycleError(f"transaction failed and was rolled back: {error}") from error
-    return {
-        "result": "applied",
-        "backupPath": str(backup),
-        "proposedPath": str(proposed),
-        "add": add,
-        "replace": replace,
-        "changes": changes,
-    }
+    return result
 
 
-def legacy_cleanup_candidates(root: Path) -> list[str]:
+def legacy_cleanup_plan(root: Path) -> tuple[list[str], dict[str, Any] | None]:
     legacy = root / LEGACY_METADATA_PATH
-    if not legacy.is_file():
-        return []
     if legacy.is_symlink():
         raise LifecycleError("legacy metadata may not be a symbolic link")
+    if not legacy.is_file():
+        return [], None
     candidates: set[str] = {LEGACY_METADATA_PATH}
     try:
         metadata = read_project_json(root, LEGACY_METADATA_PATH)
     except LifecycleError:
-        return [LEGACY_METADATA_PATH]
+        return [LEGACY_METADATA_PATH], {
+            "metadataPath": LEGACY_METADATA_PATH,
+            "baselineMode": "unavailable",
+            "reason": "legacy metadata could not be parsed; no legacy project path was inferred",
+            "files": [],
+        }
+    source = metadata.get("source")
+    repository = source if isinstance(source, str) else source.get("repository") if isinstance(source, dict) else None
+    commit = metadata.get("sourceRevision")
+    if not isinstance(commit, str) and isinstance(source, dict):
+        commit = source.get("commit")
+    evidence: dict[str, Any] = {
+        "metadataPath": LEGACY_METADATA_PATH,
+        "schemaVersion": metadata.get("schemaVersion"),
+        "harnessVersion": metadata.get("harnessVersion"),
+        "baselineMode": "unavailable",
+        "source": {
+            "repository": repository,
+            "commit": commit if isinstance(commit, str) and re.fullmatch(r"[0-9a-f]{40}", commit) else None,
+            "ref": metadata.get("ref"),
+        },
+        "files": [],
+    }
+    if (
+        isinstance(repository, str)
+        and evidence["source"]["commit"] is not None
+        and repository in OFFICIAL_REPOSITORIES
+    ):
+        evidence["source"]["tree"] = (
+            f"https://github.com/{repository}/tree/{evidence['source']['commit']}"
+        )
     managed = metadata.get("managedFiles")
     if isinstance(managed, dict):
-        for raw in managed:
+        evidence["baselineMode"] = "managed-files"
+        for raw, record in sorted(managed.items()):
             try:
-                candidates.add(safe_relative(raw))
+                relative = safe_relative(raw)
             except LifecycleError:
                 continue
-    return sorted(candidates)
+            ownership = record.get("ownership") if isinstance(record, dict) else None
+            baseline = record.get("baselineSha256") if isinstance(record, dict) else None
+            current = entry_digest(inside(root, relative))
+            eligible = (
+                ownership in {"harness-managed", "generated-config"}
+                and is_sha256(baseline)
+                and current == baseline
+            )
+            status = (
+                "unchanged-managed-candidate"
+                if eligible
+                else "project-owned-preserved"
+                if ownership == "project-owned"
+                else "missing-preserved"
+                if current is None
+                else "modified-preserved"
+            )
+            if eligible:
+                candidates.add(relative)
+            evidence["files"].append(
+                {
+                    "path": relative,
+                    "ownership": ownership,
+                    "baselineSha256": baseline if is_sha256(baseline) else None,
+                    "currentSha256": current,
+                    "status": status,
+                }
+            )
+    else:
+        evidence["reason"] = (
+            "legacy schema has no per-file baselines; every non-metadata project path is preserved "
+            "for LLM/human comparison against immutable source evidence"
+        )
+    return sorted(candidates), evidence
 
 
 def build_metadata(
@@ -597,6 +678,7 @@ def build_metadata(
     project_owned_paths: list[str],
     manual_actions: list[str],
     cleanup_candidates: list[str],
+    legacy_migration: dict[str, Any] | None,
     transaction_id: str,
 ) -> dict[str, Any]:
     managed: dict[str, dict[str, str]] = {}
@@ -642,9 +724,14 @@ def build_metadata(
         "updatedAt": utc_now(),
         "lastTransactionId": transaction_id,
         "managedFiles": dict(sorted(managed.items())),
-        "managedBlocks": {"AGENTS.md": sha256_bytes(default_agents_block(status).encode("utf-8"))},
+        "managedBlocks": (
+            {"AGENTS.md": sha256_bytes(default_agents_block(status).encode("utf-8"))}
+            if "AGENTS.md" in integration_paths
+            else {}
+        ),
         "projectOwnedFiles": sorted(set(project_owned_paths)),
         "legacyCleanupCandidates": cleanup_candidates,
+        "legacyMigration": legacy_migration,
         "pendingIntegration": manual_actions,
     }
 
@@ -672,7 +759,13 @@ def plan_install(project_root: Path, prepared: Path) -> tuple[list[str], list[st
 def extract_agents_block(text: str) -> str | None:
     start = text.find(AGENTS_START)
     end = text.find(AGENTS_END)
-    if start == -1 or end == -1 or end < start:
+    if (
+        start == -1
+        or end == -1
+        or end < start
+        or text.find(AGENTS_START, start + 1) != -1
+        or text.find(AGENTS_END, end + 1) != -1
+    ):
         return None
     return text[start : end + len(AGENTS_END)]
 
@@ -710,15 +803,22 @@ def inspect_status(project_root: Path) -> dict[str, Any]:
             modified.append(relative)
     block_status = "missing"
     agents_path = root / "AGENTS.md"
-    if agents_path.is_file():
+    expected_block = metadata.get("managedBlocks", {}).get("AGENTS.md")
+    pending_agents = expected_block is None and any(
+        "AGENTS.md" in item for item in metadata.get("pendingIntegration", [])
+    )
+    if pending_agents:
+        block_status = "pending-manual"
+    elif agents_path.is_symlink():
+        block_status = "modified"
+    elif agents_path.is_file():
         block = extract_agents_block(agents_path.read_text(encoding="utf-8"))
-        expected_block = metadata.get("managedBlocks", {}).get("AGENTS.md")
         if metadata.get("installationStatus") == "Source Repository" and expected_block is None:
             block_status = "ok" if block else "missing"
         else:
             block_status = "ok" if block and sha256_bytes(block.encode("utf-8")) == expected_block else "modified"
     return {
-        "ok": not modified and not missing and block_status == "ok",
+        "ok": not modified and not missing and block_status in {"ok", "pending-manual"},
         "batonVersion": metadata.get("batonVersion"),
         "projectVersion": metadata.get("projectVersion"),
         "stateSchemaVersion": metadata.get("stateSchemaVersion"),
@@ -750,20 +850,23 @@ def install_or_adopt(
 ) -> dict[str, Any]:
     root = project_root.absolute()
     validate_target(root)
-    if (root / METADATA_PATH).exists():
-        raise LifecycleError("Baton is already installed; use update")
-    if (root / ".baton").exists() or (root / ".baton").is_symlink():
-        raise LifecycleError("target already contains an unrecognized .baton path")
     root.mkdir(parents=True, exist_ok=True)
-    was_empty = next(root.iterdir(), None) is None
-    expected_payload = "new-project" if was_empty else "adoption"
-    if payload != expected_payload:
-        raise LifecycleError(f"installer selected {payload}, but target requires {expected_payload}")
     payload_records = validate_payload_tree(payload_root, manifest, payload)
     transaction_id = f"{payload}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
     transaction = transaction_directory(root, transaction_id)
     created_git = False
     with mutation_lock(root, f"lifecycle-{payload}"):
+        validate_target(root)
+        if (root / METADATA_PATH).exists():
+            raise LifecycleError("Baton is already installed; use update")
+        if (root / ".baton").exists() or (root / ".baton").is_symlink():
+            raise LifecycleError("target already contains an unrecognized .baton path")
+        was_empty = next(root.iterdir(), None) is None
+        expected_payload = "new-project" if was_empty else "adoption"
+        if payload != expected_payload:
+            raise LifecycleError(
+                f"installer selected {payload}, but target requires {expected_payload}"
+            )
         with tempfile.TemporaryDirectory(prefix="baton-prepared-") as raw:
             prepared = Path(raw) / "project"
             copy_payload(payload_root, prepared, payload_records)
@@ -808,9 +911,14 @@ def install_or_adopt(
                     0,
                     "Review a complete schema-valid mature-project state, then activate it with .baton/bin/baton _activate --from PATH; quarantined starter state is not authoritative.",
                 )
-            cleanup_candidates = legacy_cleanup_candidates(root)
+            cleanup_candidates, legacy_migration = legacy_cleanup_plan(root)
             if cleanup_candidates:
                 manual_actions.append("Legacy harness files were preserved and listed as human-approved cleanup candidates.")
+            if legacy_migration and legacy_migration.get("baselineMode") == "unavailable":
+                manual_actions.append(
+                    "Legacy metadata has no per-file baselines. Baton preserved every non-metadata path; "
+                    "use the recorded immutable source evidence for LLM/human comparison."
+                )
             metadata = build_metadata(
                 manifest=manifest,
                 manifest_sha256=manifest_sha256,
@@ -826,6 +934,7 @@ def install_or_adopt(
                 project_owned_paths=project_owned,
                 manual_actions=manual_actions,
                 cleanup_candidates=cleanup_candidates,
+                legacy_migration=legacy_migration,
                 transaction_id=transaction_id,
             )
             write_json(prepared / METADATA_PATH, metadata)
@@ -838,8 +947,36 @@ def install_or_adopt(
                 except (FileNotFoundError, subprocess.CalledProcessError) as error:
                     raise LifecycleError("git initialization failed before installation") from error
                 created_git = True
+
+            def finalize_install(report: dict[str, Any]) -> None:
+                report.update(
+                    {
+                        "transactionId": transaction_id,
+                        "mode": payload,
+                        "version": manifest["version"],
+                        "installationStatus": status,
+                        "preserved": preserve,
+                        "manualActions": manual_actions,
+                        "legacyCleanupCandidates": cleanup_candidates,
+                        "legacyMigration": legacy_migration,
+                        "rollbackLocation": str(transaction / "backup"),
+                        "sourceEvidence": github_evidence(manifest, payload_records),
+                    }
+                )
+                write_json(transaction / "update-report.json", report)
+                prompt_source = prepared / ".baton/integration/cleanup-prompt.txt"
+                if prompt_source.is_file():
+                    shutil.copy2(prompt_source, transaction / "cleanup-prompt.txt")
+
             try:
-                report = apply_plan(root, prepared, add, replace, transaction)
+                report = apply_plan(
+                    root,
+                    prepared,
+                    add,
+                    replace,
+                    transaction,
+                    finalize=finalize_install,
+                )
             except BaseException:
                 if created_git:
                     shutil.rmtree(root / ".git", ignore_errors=True)
@@ -847,23 +984,6 @@ def install_or_adopt(
                     for path in list(root.iterdir()):
                         remove_entry(path)
                 raise
-            report.update(
-                {
-                    "transactionId": transaction_id,
-                    "mode": payload,
-                    "version": manifest["version"],
-                    "installationStatus": status,
-                    "preserved": preserve,
-                    "manualActions": manual_actions,
-                    "legacyCleanupCandidates": cleanup_candidates,
-                    "rollbackLocation": str(transaction / "backup"),
-                    "sourceEvidence": github_evidence(manifest, payload_records),
-                }
-            )
-            write_json(transaction / "update-report.json", report)
-            prompt_source = prepared / ".baton/integration/cleanup-prompt.txt"
-            if prompt_source.is_file():
-                shutil.copy2(prompt_source, transaction / "cleanup-prompt.txt")
             return {
                 "ok": True,
                 "mode": payload,
@@ -876,6 +996,7 @@ def install_or_adopt(
                 "cleanupPromptPath": str(transaction / "cleanup-prompt.txt") if (transaction / "cleanup-prompt.txt").is_file() else None,
                 "manualActions": manual_actions,
                 "legacyCleanupCandidates": cleanup_candidates,
+                "legacyMigration": legacy_migration,
                 "sourceEvidence": report["sourceEvidence"],
             }
 
@@ -942,6 +1063,12 @@ def update_installation(
     transaction_id = f"update-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
     transaction = transaction_directory(root, transaction_id)
     with mutation_lock(root, "lifecycle-update"):
+        locked_metadata = read_project_json(root, METADATA_PATH)
+        if locked_metadata != metadata:
+            raise LifecycleError("Baton state changed while update was waiting for the lock; retry")
+        integrity = inspect_status(root)
+        if not integrity["ok"]:
+            raise LifecycleError("installed Baton-managed files differ from their baselines")
         with tempfile.TemporaryDirectory(prefix="baton-update-") as raw:
             prepared = Path(raw) / "project"
             copy_payload(payload_root, prepared, payload_records)
@@ -1079,21 +1206,32 @@ def update_installation(
             replace.append(METADATA_PATH)
             add = sorted(set(add))
             replace = sorted(set(replace))
-            report = apply_plan(root, prepared, add, replace, transaction, managed)
-            report.update(
-                {
-                    "transactionId": transaction_id,
-                    "mode": "update",
-                    "fromVersion": metadata["batonVersion"],
-                    "toVersion": manifest["version"],
-                    "cleanupCandidates": sorted(cleanup_candidates),
-                    "rollbackLocation": str(transaction / "backup"),
-                    "sourceEvidence": github_evidence(
-                        manifest, payload_records, metadata.get("source")
-                    ),
-                }
+
+            def finalize_update(report: dict[str, Any]) -> None:
+                report.update(
+                    {
+                        "transactionId": transaction_id,
+                        "mode": "update",
+                        "fromVersion": metadata["batonVersion"],
+                        "toVersion": manifest["version"],
+                        "cleanupCandidates": sorted(cleanup_candidates),
+                        "rollbackLocation": str(transaction / "backup"),
+                        "sourceEvidence": github_evidence(
+                            manifest, payload_records, metadata.get("source")
+                        ),
+                    }
+                )
+                write_json(transaction / "update-report.json", report)
+
+            report = apply_plan(
+                root,
+                prepared,
+                add,
+                replace,
+                transaction,
+                managed,
+                finalize_update,
             )
-            write_json(transaction / "update-report.json", report)
             return {
                 "ok": True,
                 "mode": "update",
@@ -1183,6 +1321,12 @@ def activate_adoption(
     transaction_id = f"activate-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
     transaction = transaction_directory(root, transaction_id)
     with mutation_lock(root, "lifecycle-activate"):
+        locked_metadata = read_project_json(root, METADATA_PATH)
+        if locked_metadata != metadata:
+            raise LifecycleError("Baton state changed while activation was waiting for the lock; retry")
+        integrity = inspect_status(root)
+        if not integrity["ok"]:
+            raise LifecycleError("cannot activate because Baton-managed files differ from their baselines")
         with tempfile.TemporaryDirectory(prefix="baton-activation-") as raw:
             prepared = Path(raw) / "project"
             active_project_owned: list[str] = []
@@ -1218,11 +1362,6 @@ def activate_adoption(
                 path.write_text(content, encoding="utf-8")
                 generated[relative] = sha256_bytes(content.encode("utf-8"))
 
-            agents_path = root / "AGENTS.md"
-            existing_agents = agents_path.read_text(encoding="utf-8") if agents_path.is_file() else None
-            installed_agents, _ = merge_agents(existing_agents, "Installed")
-            (prepared / "AGENTS.md").write_text(installed_agents, encoding="utf-8")
-
             desired_codex = render_codex_config(active_agent_names(team))
             managed = metadata.get("managedFiles")
             if not isinstance(managed, dict):
@@ -1246,9 +1385,20 @@ def activate_adoption(
             updated["installationStatus"] = "Installed"
             updated["updatedAt"] = utc_now()
             updated["lastTransactionId"] = transaction_id
-            updated["managedBlocks"]["AGENTS.md"] = sha256_bytes(
-                default_agents_block("Installed").encode("utf-8")
-            )
+            managed_blocks = updated.get("managedBlocks")
+            if not isinstance(managed_blocks, dict):
+                raise LifecycleError("installed Baton metadata has no managed-block map")
+            manage_agents = is_sha256(managed_blocks.get("AGENTS.md"))
+            if manage_agents:
+                agents_path = inside(root, "AGENTS.md", allow_leaf_symlink=False)
+                if not agents_path.is_file():
+                    raise LifecycleError("cannot activate because managed AGENTS.md is missing or unsafe")
+                existing_agents = agents_path.read_text(encoding="utf-8")
+                installed_agents, _ = merge_agents(existing_agents, "Installed")
+                (prepared / "AGENTS.md").write_text(installed_agents, encoding="utf-8")
+                managed_blocks["AGENTS.md"] = sha256_bytes(
+                    default_agents_block("Installed").encode("utf-8")
+                )
             for relative, digest in generated.items():
                 managed[relative] = {"ownership": "generated-config", "baselineSha256": digest}
             managed[codex_target] = {
@@ -1274,12 +1424,33 @@ def activate_adoption(
             write_json(prepared / METADATA_PATH, updated)
 
             add: list[str] = []
-            replace = ["AGENTS.md", METADATA_PATH, codex_target]
+            replace = [METADATA_PATH, codex_target]
+            if manage_agents:
+                replace.append("AGENTS.md")
             for relative in [*active_project_owned, *generated]:
                 current = inside(root, relative)
                 if current.exists() or current.is_symlink():
                     raise LifecycleError(f"activation target already exists and was preserved: {relative}")
                 add.append(relative)
+
+            def finalize_activation(report: dict[str, Any]) -> None:
+                report.update(
+                    {
+                        "transactionId": transaction_id,
+                        "mode": "activate",
+                        "installationStatus": "Installed",
+                        "adoptionTransactionId": metadata.get("lastTransactionId"),
+                        "projectOwnedFiles": sorted(active_project_owned),
+                        "rollbackLocation": str(transaction / "backup"),
+                        "sourceEvidence": {
+                            "release": f"https://github.com/{metadata['source']['repository']}/releases/tag/{metadata['source']['tag']}",
+                            "manifest": f"https://github.com/{metadata['source']['repository']}/releases/download/{metadata['source']['tag']}/baton-manifest.json",
+                            "sourceTree": f"https://github.com/{metadata['source']['repository']}/tree/{metadata['source']['commit']}/packages/consumer",
+                        },
+                    }
+                )
+                write_json(transaction / "update-report.json", report)
+
             report = apply_plan(
                 root,
                 prepared,
@@ -1287,23 +1458,8 @@ def activate_adoption(
                 sorted(set(replace)),
                 transaction,
                 prior_managed,
+                finalize_activation,
             )
-            report.update(
-                {
-                    "transactionId": transaction_id,
-                    "mode": "activate",
-                    "installationStatus": "Installed",
-                    "adoptionTransactionId": metadata.get("lastTransactionId"),
-                    "projectOwnedFiles": sorted(active_project_owned),
-                    "rollbackLocation": str(transaction / "backup"),
-                    "sourceEvidence": {
-                        "release": f"https://github.com/{metadata['source']['repository']}/releases/tag/{metadata['source']['tag']}",
-                        "manifest": f"https://github.com/{metadata['source']['repository']}/releases/download/{metadata['source']['tag']}/baton-manifest.json",
-                        "sourceTree": f"https://github.com/{metadata['source']['repository']}/tree/{metadata['source']['commit']}/packages/consumer",
-                    },
-                }
-            )
-            write_json(transaction / "update-report.json", report)
             return {
                 "ok": True,
                 "mode": "activate",

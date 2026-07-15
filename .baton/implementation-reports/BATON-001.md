@@ -10,7 +10,7 @@ Goal ID: BATON-GOAL-001
 
 Baton is now a normal source/product repository rather than a GitHub project template. Reusable consumer content has one canonical source under `packages/consumer/.baton/`; the source repository operates from its own source-only `.baton/` control plane. The release builder projects exact new-project and mature-adoption payloads without copying project identity, licensing, community, source, tests, tools, evaluator, or release infrastructure into consuming repositories.
 
-The code boundary is `9ecef4486784d1412d590ee9b9a1e42c2fc73402..0353fc33061b7ce1e4fc74fbcec84a763b1a3917`. This report and final review-state reconciliation are source-only follow-up records; the final unpublished candidate SHA is supplied in the external release handoff because a commit cannot embed its own immutable SHA.
+The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its first implementation commit is `0353fc33061b7ce1e4fc74fbcec84a763b1a3917`. Review fixes and source-state reconciliation follow that commit. The final unpublished candidate SHA is supplied in the external release handoff because a commit cannot embed its own immutable SHA.
 
 ## Changed files, systems, or outputs
 
@@ -22,31 +22,32 @@ The code boundary is `9ecef4486784d1412d590ee9b9a1e42c2fc73402..0353fc33061b7ce1
 - Added schema-v3 Baton provenance, separate nullable `projectVersion`, immutable source commit/manifest evidence, managed baselines, external transactions, rollback, cleanup candidates, and direct GitHub source/compare links.
 - Added mature-repository `Needs Integration` quarantine and explicit validated `_activate --from PATH` promotion.
 - Added exact project-scoped Codex semantics, four-thread/depth-one limits, role presets, individual skills, Consultant hire/fire reconciliation, and no-persistent-goal lifecycle policy.
-- Replaced legacy template smokes with a 27-test deterministic release/install/adoption/update/state/team/evaluator matrix.
+- Replaced legacy template smokes with a 36-test deterministic release/install/adoption/update/state/team/evaluator matrix.
 
 ## Important choices
 
 - Root project identity and legal/community files are always source-only; adoption payloads contain only `.baton/` paths.
 - New-project scaffolding becomes `.baton/integration/starter/` during mature adoption and is never authoritative until explicit activation.
-- Baton v0.6.0 is the first schema-v3 release and has no automatic schema-v3 upgrade origins. Legacy v0.2-v0.5 installations are additive migration fixtures whose files are preserved and surfaced as cleanup candidates.
+- Baton v0.6.0 is the first schema-v3 release and has no automatic schema-v3 upgrade origins. Legacy v0.2-v0.4 schemas have no per-file baselines, so Baton preserves every non-metadata path and records immutable evidence instead of guessing cleanup candidates. v0.5 only surfaces unchanged checksum-verified managed/generated paths; project-owned, modified, missing, or invalid entries remain preserved.
 - Future v0.6+ updates require both the exact origin commit and manifest SHA-256.
 - Project-owned state and modified managed files are never overwritten automatically; conflicts produce manual actions and an external rollback location.
 - Permanent Management, Operations, and Consultant tasks wake only from a new task message; persistent goals are never role identity or lifecycle control.
 
 ## Acceptance coverage
 
-- Source classification rehearsal at code commit `0353fc3`: 177 files—101 source-only, 62 shared, 13 template-only, and 1 adoption-runtime.
+- Current source classification: 178 files—102 source-only, 62 shared, 13 template-only, and 1 adoption-runtime, with zero unclassified paths.
 - Rehearsal payloads: 75 new-project paths and 76 adoption paths, all under `.baton/`.
 - Fresh direct and stdin-piped installs produced only `.git`, `.baton`, `.agents`, `.codex`, and the marked `AGENTS.md` at repository root.
 - Mature adoption, activation, legacy preservation, state-preserving updates, starter advancement, collision behavior, rollback, unsafe targets, and concurrent locking are covered by deterministic fixtures.
+- Review-driven regressions cover unsafe `AGENTS.md` preservation, exactly one managed block, all-managed-file integrity before activation/update, lock-time compare-and-swap checks, rollback during report/prompt finalization, exact five-asset validation, and version-accurate legacy metadata.
 - Generated configuration parses to `approval_policy = "on-request"`, `approvals_reviewer = "auto_review"`, `sandbox_mode = "workspace-write"`, `max_threads = 4`, `max_depth = 1`, and workspace-write network access enabled.
 - The public GitHub repository is `FabienGreard/baton`, public, on `main`, and `isTemplate = false`; historical v0.5.0 and its four original assets remain intact.
 
 ## Verification performed
 
 - `PYTHONDONTWRITEBYTECODE=1 python3 tools/harness_eval.py --strict --json` — PASS, 16/16.
-- `PYTHONDONTWRITEBYTECODE=1 python3 tests/run_smokes.py` — PASS, 27/27.
-- `PYTHONDONTWRITEBYTECODE=1 python3.9 tests/run_smokes.py` — PASS, 27/27.
+- `PYTHONDONTWRITEBYTECODE=1 python3 tests/run_smokes.py` — PASS, 36/36.
+- `PYTHONDONTWRITEBYTECODE=1 python3.9 tests/run_smokes.py` — PASS, 36/36.
 - `PYTHONDONTWRITEBYTECODE=1 .baton/bin/baton check --json` — PASS.
 - `bash -n install.sh tests/install_smoke.sh tests/install_remote_smoke.sh` — PASS.
 - `git diff --check` — PASS.

@@ -96,7 +96,7 @@ Only stable release manifests are valid. A manifest pins its source to a full co
 - `managedFiles`: ownership class and baseline checksum per managed path;
 - `managedBlocks`: checksum for the Baton section inside shared files such as `AGENTS.md`;
 - `projectOwnedFiles`: paths Baton must preserve across updates;
-- `legacyCleanupCandidates` and `pendingIntegration`; and
+- `legacyCleanupCandidates`, `legacyMigration`, and `pendingIntegration`; and
 - external transaction identity.
 
 Baton never derives `batonVersion` from a project's `VERSION`, package metadata, Git tags, or release files. Those surrounding files remain optional and project-owned.
@@ -141,7 +141,7 @@ A stable update compares three states:
 
 An unchanged managed path may be replaced by its new stable form. A new Baton path may be added only if no collision exists. Modified managed/generated paths, missing baselines, unsupported provenance, downgrade attempts, or colliding additions block the update. Project-owned paths remain untouched.
 
-Paths retired from Baton's managed runtime become cleanup candidates; they are not deleted automatically.
+Paths retired from Baton's managed runtime become cleanup candidates only when Baton has a valid managed baseline and the current file still matches it; they are not deleted automatically. Legacy schemas without per-file baselines never produce guessed project-path candidates. Baton instead records the available legacy metadata, immutable source evidence, and a manual comparison requirement while preserving every non-metadata path.
 
 ## Transactions and cleanup
 
@@ -152,6 +152,7 @@ Cleanup is a separate human boundary. The report and generated prompt retain:
 - exact added/replaced/preserved/colliding or retired paths;
 - baseline, current, and target checksums;
 - legacy cleanup candidates;
+- legacy per-file baseline status or an explicit statement that baselines were unavailable;
 - transaction report and backup locations;
 - the stable release URL;
 - a direct immutable comparison such as `https://github.com/FabienGreard/baton/compare/<origin-full-sha>...<target-full-sha>`; and

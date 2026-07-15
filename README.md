@@ -69,7 +69,7 @@ The same verified installer chooses the safe mode from the target:
 | Empty directory | Installs the new-project payload, initializes Git on `main` without a commit, and records `Installed`. |
 | Non-empty directory | Uses additive Adoption mode, preserves project files, quarantines starter records, and records `Needs Integration`. |
 | Baton metadata present | Offers or runs a stable update through the adoption-runtime payload. |
-| Supported v0.2-v0.5 legacy metadata present | Migrates through Adoption mode and preserves every legacy path as evidence or a human-approved cleanup candidate. |
+| Supported v0.2-v0.5 legacy metadata present | Migrates through Adoption mode and preserves every legacy path; only checksum-verified unchanged managed paths become human-approved cleanup candidates. |
 | Unrecognized `.baton/`, unsafe path, ambiguous provenance, or managed-file drift | Fails closed without guessing ownership. |
 
 Outside `.baton/`, Baton may touch only:
@@ -107,7 +107,7 @@ Baton never treats a root `VERSION`, package manifest, Git tag, or release file 
 
 ## Safe cleanup and direct evidence
 
-Adoption and migration preserve legacy files and transaction backups. Their generated report and cleanup prompt identify exact candidates, baseline/current/target checksums, the stable release, an immutable GitHub comparison, and direct target-source links such as:
+Adoption and migration preserve legacy files and transaction backups. Their generated report and cleanup prompt identify exact candidates, available baseline/current/target checksums, the stable release, an immutable GitHub comparison, and direct target-source links such as:
 
 ```text
 https://github.com/FabienGreard/baton/compare/<origin-full-sha>...<target-full-sha>
@@ -115,6 +115,8 @@ https://github.com/FabienGreard/baton/blob/<target-full-sha>/packages/consumer/<
 ```
 
 An LLM may inspect that evidence and prepare a cleanup recommendation. Only a human may approve archival or deletion, and neither `--yes` nor successful activation grants that authority.
+
+Early v0.2-v0.4 metadata has no trustworthy per-file baselines, so Baton does not guess: it preserves every non-metadata path and records immutable source evidence for manual comparison. v0.5 paths become candidates only when their recorded ownership is Baton-managed and their current checksum still equals the legacy baseline; project-owned, modified, missing, or invalid entries remain preserved.
 
 ## Codex permission contract
 

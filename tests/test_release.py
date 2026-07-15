@@ -155,6 +155,17 @@ class ReleaseDistributionTests(unittest.TestCase):
         )
         self.assertIn("checksum mismatch: baton-adoption.tar.gz", failed.stderr)
 
+    def test_validator_rejects_an_unexpected_sixth_asset(self) -> None:
+        polluted = self.base / "polluted"
+        shutil.copytree(self.bundle, polluted)
+        (polluted / "source-repository.zip").write_bytes(b"must not ship")
+        failed = run(
+            [sys.executable, RELEASE_TOOL, "validate", "--bundle", polluted],
+            expected=1,
+        )
+        self.assertIn("release bundle artifact set is not exact", failed.stderr)
+        self.assertIn("source-repository.zip", failed.stderr)
+
     def test_manifest_provenance_and_origin_records_are_immutable(self) -> None:
         release_manifest = manifest(self.bundle)
         self.assertEqual(release_manifest["version"], "0.6.0")

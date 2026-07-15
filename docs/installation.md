@@ -153,7 +153,14 @@ All other root paths—including `README.md`, `VERSION`, package manifests, lice
 
 Legacy Agentic Project Harness installations do not have `.baton/bin/baton`. Once v0.6.0 is stable, run the new stable Baton installer directly in the legacy repository.
 
-The migration uses mature Adoption mode even when old starter records exist. It preserves `.agent-harness.json` and every legacy managed path, puts Baton starter state in quarantine, records exact cleanup candidates, and requires reviewed activation. It does not infer canonical state from legacy Markdown or automatically retire old files.
+The migration uses mature Adoption mode even when old starter records exist. It preserves `.agent-harness.json` and every legacy project path, puts Baton starter state in quarantine, records the available migration evidence, and requires reviewed activation. It does not infer canonical state from legacy Markdown or automatically retire old files.
+
+Legacy evidence is deliberately version-aware:
+
+- v0.2-v0.4 schema-1 records do not contain trustworthy per-file baselines. Baton never guesses which surrounding files are disposable: only the legacy metadata itself is a cleanup candidate, while every other path is preserved for LLM/human comparison against the recorded immutable source tree.
+- v0.5 schema-2 records can identify unchanged `harness-managed` or `generated-config` paths. Only those checksum-matching paths become human-approved cleanup candidates. Modified, missing, invalid, or `project-owned` entries remain preserved.
+
+`.baton/metadata.json` stores this distinction under `legacyMigration`, including the baseline mode, available immutable source evidence, and per-file status when the legacy schema supports it. Cleanup still requires explicit human approval.
 
 v0.2.0, v0.3.0, and v0.5.0 have verified legacy migration anchors but are not schema-v3 automatic-update origins; they enter the additive legacy Adoption path. No v0.4.0 stable Git tag was published, so v0.4 compatibility is only a migration fixture. Automatic stable origins begin with future v0.6+ updates and must be pinned by both full commit and manifest SHA-256. See [Releasing](releasing.md) for the immutable anchors.
 
@@ -174,7 +181,7 @@ All three support `--json`; `update` also supports `--yes`.
 - `batonVersion`, optional `projectVersion`, and state schema version;
 - installation status and immutable stable provenance;
 - modified or missing managed paths and the marked `AGENTS.md` block status;
-- pending integration, human-approved cleanup candidates, and last transaction.
+- pending integration, legacy migration evidence, human-approved cleanup candidates, and last transaction.
 
 `update` downloads the same latest stable installer. It refuses prereleases, moving branches, forks outside the approved repository set, automatic downgrades, unsupported origins, incomplete provenance, checksum mismatch, modified managed/generated paths, destination collisions, unsafe symlinks, and ambiguous state. A same-version update must match the exact recorded release commit and manifest digest.
 

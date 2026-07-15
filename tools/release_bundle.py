@@ -524,8 +524,15 @@ def parse_checksums(path: Path) -> dict[str, str]:
 
 
 def validate_bundle(bundle: Path) -> None:
-    if not bundle.is_dir() or any(not (bundle / name).is_file() for name in REQUIRED_ARTIFACTS):
-        fail("release bundle is missing a required artifact")
+    if not bundle.is_dir():
+        fail("release bundle is not a directory")
+    actual = {path.name for path in bundle.iterdir()}
+    if actual != set(REQUIRED_ARTIFACTS) or any(not (bundle / name).is_file() for name in REQUIRED_ARTIFACTS):
+        fail(
+            "release bundle artifact set is not exact; "
+            f"missing={sorted(set(REQUIRED_ARTIFACTS) - actual)}, "
+            f"unexpected={sorted(actual - set(REQUIRED_ARTIFACTS))}"
+        )
     manifest = load_manifest(bundle / MANIFEST_NAME)
     checksums = parse_checksums(bundle / CHECKSUMS_NAME)
     for name, digest in checksums.items():
