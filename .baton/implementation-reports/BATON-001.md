@@ -22,7 +22,7 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 - Added schema-v3 Baton provenance, separate nullable `projectVersion`, immutable source commit/manifest evidence, managed baselines, external transactions, rollback, cleanup candidates, and direct GitHub source/compare links.
 - Added mature-repository `Needs Integration` quarantine and explicit validated `_activate --from PATH` promotion.
 - Added exact project-scoped Codex semantics, four-thread/depth-one limits, role presets, individual skills, Consultant hire/fire reconciliation, and no-persistent-goal lifecycle policy.
-- Replaced legacy template smokes with a 36-test deterministic release/install/adoption/update/state/team/evaluator matrix.
+- Replaced legacy template smokes with a 37-test deterministic release/install/adoption/update/state/team/evaluator matrix.
 
 ## Important choices
 
@@ -46,14 +46,15 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 ## Verification performed
 
 - `PYTHONDONTWRITEBYTECODE=1 python3 scripts/harness_eval.py --strict --json` — PASS, 16/16.
-- `PYTHONDONTWRITEBYTECODE=1 python3 tests/run_smokes.py` — PASS, 36/36.
-- `PYTHONDONTWRITEBYTECODE=1 python3.9 tests/run_smokes.py` — PASS, 36/36.
+- `PYTHONDONTWRITEBYTECODE=1 python3 tests/run_smokes.py` — PASS, 37/37 independently rerun by Internal Audit at `206705bf653b713c0af8fcee6c5b4217f50aae30`.
+- `PYTHONDONTWRITEBYTECODE=1 python3.9 tests/run_smokes.py` — PASS, 37/37.
 - `PYTHONDONTWRITEBYTECODE=1 .baton/bin/baton check --json` — PASS.
 - `bash -n scripts/install.sh tests/install_smoke.sh tests/install_remote_smoke.sh` — PASS.
 - `git diff --check` — PASS.
 - `python3 scripts/release_bundle.py classify --source .` — PASS with zero drift at the reviewed code boundary.
-- `python3 scripts/release_bundle.py build ...` and `validate` — the previous architecture candidate passed; the reorganized exact candidate rebuild remains required after its source commit.
-- Direct and stdin-piped fresh installs from the local release directory, followed by `status` and `check` — PASS. `/tmp` was correctly rejected on macOS because it traverses a symlink; canonical `/private/tmp` passed.
+- `python3 scripts/release_bundle.py build ...` and `validate` against clean implementation commit `206705bf653b713c0af8fcee6c5b4217f50aae30` — PASS; exactly five assets, 75 new-project paths, and 76 adoption paths.
+- Exact implementation-commit assets: `install.sh` `e256ddd5c92dc924b4de6274c77090c465a553ff16e3a1e1e215535f384937d0`; new-project archive `f1bef229bb79987a1cc2c771f59acd13cd85725b25c41a53e3f2ed1100d1a177`; adoption archive `8be073c5b5e008d4e82151753a7c063093dbd9abc3ed406e9133c79f70a1c36e`; manifest `9300a650d61cded2811a1957d62b486a7803a038307fbfe9b939bee5e2ca3de4`; checksum file `9234c49a9aaa559c96b2ce64c37c6e811958772d48579f72c4b7da670ab88dd2`.
+- Direct and stdin-piped fresh installs plus mature adoption from those exact assets — PASS. Fresh status was `Installed`, mature status was `Needs Integration`, 53 installed local Markdown links resolved, mature identity files were unchanged, and new installations created `.baton/metadata.json` without creating `.agent-harness.json`.
 
 Resolved test rigor: Thorough.
 
@@ -68,7 +69,8 @@ None. `requiredConsultantIds` is empty; Internal Audit remains independent and o
 - Standards/architecture follow-up: **APPROVE** at `30d14ae`; SA-01 through SA-05 were closed. Its one non-blocking P2 documentation clarification for unsafe `AGENTS.md` activation was incorporated.
 - Specification/evidence follow-up: **REVISE** at `30d14ae` for one remaining P1: the v0.2/v0.3 fixtures incorrectly supplied an installed commit that authentic remote metadata did not contain. Commit `039acf1` now uses authentic null revisions, labels separately verified official version anchors, and reruns the migration and full dual-runtime matrices. The single permitted follow-up review loop ended there.
 - Disposable independent Internal Audit at clean `039acf1`: **PASS** for the previous architecture boundary, 12/12 scenarios, 100/100 mean, no hard gates, and no P0-P3 findings. It does not cover the reorganized candidate and must be rerun against its exact source commit.
-- Staged layout revision review: standards/architecture reported SA-01 (P3 dangling obsolete-path detection); specification/evidence reported SE-001 (P1 exact-candidate verification pending), SE-002 (P2 stale inventory/commands), and SE-003 (P3 stale release-guide paths). SA-01, SE-002, and SE-003 are corrected in the candidate; SE-001 remains the explicit pre-completion verification boundary.
+- Layout revision review: standards/architecture reported SA-01 (P3 dangling obsolete-path detection); specification/evidence reported SE-001 (P1 exact-candidate verification pending), SE-002 (P2 stale inventory/commands), and SE-003 (P3 stale release-guide paths). SA-01, SE-002, and SE-003 closed in the single follow-up review; SE-001 closed through the exact committed bundle, asset smokes, and independent audit below.
+- Disposable Internal Audit `IA-20260715-206705b-STATIC-01` at clean implementation commit `206705bf653b713c0af8fcee6c5b4217f50aae30`: **PASS**, 97/100, no hard gates. It independently reran strict evaluation 16/16 and the current-Python matrix 37/37, validated the exact five assets and 75/76 projections, confirmed the new source topology and legacy migration behavior, and reported only IA-001 (P2 state/report completion mismatch) and IA-002 (P3 stale 36-test count). This evidence-only reconciliation closes both findings. The audit did not rerun scenario smoke or Python 3.9; Operations independently reran Python 3.9 at 37/37.
 
 ## Human review
 
@@ -83,10 +85,9 @@ Human Release approval remains pending. Candidate preparation, a local commit, a
 
 ## Follow-up work
 
-- Rebuild and validate the exact final candidate assets after this source-only evidence/state reconciliation.
 - Await an explicit human Release decision before any push, merge, tag, GitHub release, or upload.
 - After any authorized publication, run the immutable-SHA standalone remote smoke before treating the stable release as fully accepted.
 
 ## Ownership returned
 
-Operations will return the fully verified unpublished candidate only after the reorganized clean commit passes exact bundle construction, asset smokes, and disposable Internal Audit. Publication remains human-gated.
+Operations returns the fully verified unpublished candidate, closed review findings, exact local asset evidence, limitations, and release boundary to Management. The final evidence-only commit and its rebuilt asset checksums are supplied in the external handoff because a commit cannot embed its own SHA. Publication remains human-gated.

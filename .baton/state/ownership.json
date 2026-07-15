@@ -1,29 +1,5 @@
 {
   "schemaVersion": 1,
   "recordType": "ownership",
-  "ownership": [
-    {
-      "ticket": "BATON-001",
-      "owner": "Operations",
-      "scopes": [
-        "packages",
-        "template",
-        "examples",
-        "install.sh",
-        "tools",
-        "scripts",
-        "docs",
-        "README.md",
-        "CHANGELOG.md",
-        "CONTRIBUTING.md",
-        "THIRD_PARTY_NOTICES.md",
-        ".github/PULL_REQUEST_TEMPLATE.md",
-        "release",
-        "tests",
-        ".baton"
-      ],
-      "status": "Verifying",
-      "returnDestination": "Management release review after complete v0.6 candidate verification"
-    }
-  ]
+  "ownership": []
 }

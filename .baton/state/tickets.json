@@ -5,7 +5,7 @@
     {
       "id": "BATON-001",
       "title": "Build the isolated Baton distribution and migration architecture",
-      "status": "In Progress",
+      "status": "Done",
       "priority": "P1",
       "owner": "Operations",
       "goal": "BATON-GOAL-001",

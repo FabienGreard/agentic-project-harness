@@ -4,7 +4,7 @@
   "project": {
     "name": "Baton",
     "outcome": "Give teams a self-contained, updateable multi-agent project control plane without taking ownership of the surrounding repository.",
-    "phase": "Candidate verification",
+    "phase": "Release review",
     "currentGoal": "BATON-GOAL-001",
     "lastVerified": "2026-07-15",
     "agentProvider": "codex",
@@ -17,8 +17,8 @@
     }
   },
   "baton": {
-    "owner": "Operations",
-    "action": "Commit and verify the exact reorganized unpublished Baton v0.6.0 candidate",
-    "returnTrigger": "Exact bundle, asset smoke, independent audit, and source-state reconciliation complete"
+    "owner": "Management",
+    "action": "Review the fully verified unpublished Baton v0.6.0 candidate and decide whether publication is authorized",
+    "returnTrigger": "An explicit human instruction to publish v0.6.0 or a bounded revision request"
   }
 }
