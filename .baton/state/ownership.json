@@ -1,19 +1,5 @@
 {
   "schemaVersion": 1,
   "recordType": "ownership",
-  "ownership": [
-    {
-      "ticket": "BATON-001",
-      "owner": "Operations",
-      "scopes": [
-        "docs",
-        "tests",
-        "release",
-        "scripts",
-        ".baton"
-      ],
-      "status": "Building",
-      "returnDestination": "Management release review after complete v0.6 candidate verification"
-    }
-  ]
+  "ownership": []
 }

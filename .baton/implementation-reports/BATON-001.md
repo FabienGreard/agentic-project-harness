@@ -1,6 +1,6 @@
 # BATON-001 — Implementation report
 
-Completed/returned: 2026-07-15 (reopened for source-layout refinement; return pending)
+Completed/returned: 2026-07-15
 
 Reviewed by: Operations
 
@@ -58,6 +58,8 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 - `python3 scripts/release_bundle.py build ...` and `validate` against clean implementation commit `206705bf653b713c0af8fcee6c5b4217f50aae30` — PASS; exactly five assets, 75 new-project paths, and 76 adoption paths.
 - Exact implementation-commit assets: `install.sh` `e256ddd5c92dc924b4de6274c77090c465a553ff16e3a1e1e215535f384937d0`; new-project archive `f1bef229bb79987a1cc2c771f59acd13cd85725b25c41a53e3f2ed1100d1a177`; adoption archive `8be073c5b5e008d4e82151753a7c063093dbd9abc3ed406e9133c79f70a1c36e`; manifest `9300a650d61cded2811a1957d62b486a7803a038307fbfe9b939bee5e2ca3de4`; checksum file `9234c49a9aaa559c96b2ce64c37c6e811958772d48579f72c4b7da670ab88dd2`.
 - Direct and stdin-piped fresh installs plus mature adoption from those exact assets — PASS. Fresh status was `Installed`, mature status was `Needs Integration`, 53 installed local Markdown links resolved, mature identity files were unchanged, and new installations created `.baton/metadata.json` without creating `.agent-harness.json`.
+- Exact source-layout implementation commit `dab40c1a8b5599ef4943cbc54ea65fa117e8445d`: bundle build/validate PASS with 75 new-project and 76 adoption paths. Asset SHA-256 values: `install.sh` `e256ddd5c92dc924b4de6274c77090c465a553ff16e3a1e1e215535f384937d0`; new-project archive `f1bef229bb79987a1cc2c771f59acd13cd85725b25c41a53e3f2ed1100d1a177`; adoption archive `8be073c5b5e008d4e82151753a7c063093dbd9abc3ed406e9133c79f70a1c36e`; manifest `613c3708f2c0fd33f5975004809161b453ca21c9eef58d634180d656c15b3f4e`; checksum file `fb50a62e090b2c398c57dd1e1a8005a49b0f353e9e499888695cc8c0d3aaede3`.
+- Direct and stdin-piped fresh installs plus mature non-empty adoption from the exact source-layout assets — PASS. Fresh status was `Installed`; mature status was `Needs Integration`; all three checks passed; mature `VERSION`, `LICENSE`, `.github`, `tests`, and `tools` fixtures remained byte-identical; archives exactly matched their manifests and stayed under `.baton/`.
 
 Resolved test rigor: Thorough.
 
@@ -75,6 +77,7 @@ None. `requiredConsultantIds` is empty; Internal Audit remains independent and o
 - Layout revision review: standards/architecture reported SA-01 (P3 dangling obsolete-path detection); specification/evidence reported SE-001 (P1 exact-candidate verification pending), SE-002 (P2 stale inventory/commands), and SE-003 (P3 stale release-guide paths). SA-01, SE-002, and SE-003 closed in the single follow-up review; SE-001 closed through the exact committed bundle, asset smokes, and independent audit below.
 - Disposable Internal Audit `IA-20260715-206705b-STATIC-01` at clean implementation commit `206705bf653b713c0af8fcee6c5b4217f50aae30`: **PASS**, 97/100, no hard gates. It independently reran strict evaluation 16/16 and the current-Python matrix 37/37, validated the exact five assets and 75/76 projections, confirmed the new source topology and legacy migration behavior, and reported only IA-001 (P2 state/report completion mismatch) and IA-002 (P3 stale 36-test count). This evidence-only reconciliation closes both findings. The audit did not rerun scenario smoke or Python 3.9; Operations independently reran Python 3.9 at 37/37.
 - Reopened source-layout standards/architecture review at staged boundary `64089d1e5b794affeebbd0747fca29f2f8b79b5c4e34af7b9df9584abecaa120`: **APPROVE**. SA-001 (P2) correctly identified the temporary mismatch between the reopened canonical state and this previously completed report; this revision and the final transactional return reconcile it.
+- Reopened source-layout specification/evidence review: **REVISE** only for SE-001 (P1), requiring exact-commit Internal Audit before return; the reviewer otherwise confirmed the intended layout and evidence. Disposable Internal Audit `IA-20260715-dab40c1-STATIC-01` at exact clean implementation commit `dab40c1a8b5599ef4943cbc54ea65fa117e8445d`: **PASS**, 100/100, no hard gates and no P0-P3 findings. It independently reran strict evaluation 16/16, classification, Baton state, focused tests 12/12, exact bundle build/validation, installed-link checks, and targeted layout/reference checks. This closes SE-001.
 
 ## Human review
 
@@ -94,4 +97,4 @@ Human Release approval remains pending. Candidate preparation, a local commit, a
 
 ## Ownership returned
 
-BATON-001 is currently reopened under Operations for the approved source-layout refinement. Operations will return the fully verified unpublished candidate, closed review findings, exact local asset evidence, limitations, and release boundary to Management after the final clean-commit verification. Publication remains human-gated.
+Operations returns the fully verified unpublished candidate, closed review findings, exact local asset evidence, limitations, and release boundary to Management. The final evidence-only commit and its rebuilt asset checksums are supplied in the external handoff because a commit cannot embed its own SHA. Publication remains human-gated.
