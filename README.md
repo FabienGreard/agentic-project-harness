@@ -116,7 +116,7 @@ https://github.com/FabienGreard/baton/blob/<target-full-sha>/packages/consumer/<
 
 An LLM may inspect that evidence and prepare a cleanup recommendation. Only a human may approve archival or deletion, and neither `--yes` nor successful activation grants that authority.
 
-Early v0.2-v0.4 metadata has no trustworthy per-file baselines, so Baton does not guess: it preserves every non-metadata path and records immutable source evidence for manual comparison. v0.5 paths become candidates only when their recorded ownership is Baton-managed and their current checksum still equals the legacy baseline; project-owned, modified, missing, or invalid entries remain preserved.
+Early v0.2-v0.4 metadata has no trustworthy per-file baselines, so Baton does not guess: it preserves every non-metadata path and records the available immutable source evidence for manual comparison. Remote v0.2/v0.3 metadata did not record the installed commit; Baton reports that absence and labels the official stable tag/commit only as a version anchor. v0.5 paths become candidates only when their recorded ownership is Baton-managed and their current checksum still equals the legacy baseline; project-owned, modified, missing, or invalid entries remain preserved.
 
 ## Codex permission contract
 

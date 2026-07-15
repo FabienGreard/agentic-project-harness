@@ -141,7 +141,7 @@ A stable update compares three states:
 
 An unchanged managed path may be replaced by its new stable form. A new Baton path may be added only if no collision exists. Modified managed/generated paths, missing baselines, unsupported provenance, downgrade attempts, or colliding additions block the update. Project-owned paths remain untouched.
 
-Paths retired from Baton's managed runtime become cleanup candidates only when Baton has a valid managed baseline and the current file still matches it; they are not deleted automatically. Legacy schemas without per-file baselines never produce guessed project-path candidates. Baton instead records the available legacy metadata, immutable source evidence, and a manual comparison requirement while preserving every non-metadata path.
+Paths retired from Baton's managed runtime become cleanup candidates only when Baton has a valid managed baseline and the current file still matches it; they are not deleted automatically. Legacy schemas without per-file baselines never produce guessed project-path candidates. Baton instead records the available legacy metadata, immutable source evidence, and a manual comparison requirement while preserving every non-metadata path. When a historical remote installer did not record its installed commit, Baton keeps that value absent and labels any known stable tag/commit as a version anchor rather than misrepresenting it as installation provenance.
 
 ## Transactions and cleanup
 

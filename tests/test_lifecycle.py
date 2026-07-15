@@ -348,8 +348,8 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
                         "provider": "codex",
                         "source": "FabienGreard/agentic-project-harness",
                         "ref": "main",
-                        "sourceMode": "remote",
-                        "sourceRevision": source_commit,
+                        "sourceMode": "remote" if version in {"0.2.0", "0.3.0"} else "local",
+                        "sourceRevision": None if version in {"0.2.0", "0.3.0"} else source_commit,
                         "sourceDirty": False,
                         "installed": True,
                         "installedAt": "2026-01-01T00:00:00+00:00",
@@ -363,7 +363,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
                             "channel": "stable",
                             "tag": "v0.5.0",
                             "commit": source_commit,
-                            "manifestSha256": "7" * 64,
+                            "manifestSha256": "744041e438990c37f3303666560c49cfbb919dec84e937e15307bae1fad3c88a",
                         },
                         "managedFiles": {
                             "HARNESS.md": {
@@ -403,8 +403,17 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
                 migration = metadata["legacyMigration"]
                 self.assertEqual(migration["schemaVersion"], legacy_metadata["schemaVersion"])
                 self.assertEqual(migration["harnessVersion"], version)
-                self.assertEqual(migration["source"]["commit"], source_commit)
-                self.assertIn(source_commit, migration["source"]["tree"])
+                if version in {"0.2.0", "0.3.0"}:
+                    self.assertIsNone(migration["source"]["commit"])
+                    self.assertNotIn("tree", migration["source"])
+                    anchor = migration["source"]["versionAnchor"]
+                    self.assertEqual(anchor["commit"], source_commit)
+                    self.assertIn(source_commit, anchor["tree"])
+                    self.assertIn(f"v{version}", anchor["release"])
+                    self.assertIn("did not record", anchor["note"])
+                else:
+                    self.assertEqual(migration["source"]["commit"], source_commit)
+                    self.assertIn(source_commit, migration["source"]["tree"])
                 if version == "0.5.0":
                     statuses = {item["path"]: item["status"] for item in migration["files"]}
                     self.assertEqual(statuses["HARNESS.md"], "unchanged-managed-candidate")

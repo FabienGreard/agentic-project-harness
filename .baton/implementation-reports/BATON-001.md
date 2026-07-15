@@ -28,7 +28,7 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 
 - Root project identity and legal/community files are always source-only; adoption payloads contain only `.baton/` paths.
 - New-project scaffolding becomes `.baton/integration/starter/` during mature adoption and is never authoritative until explicit activation.
-- Baton v0.6.0 is the first schema-v3 release and has no automatic schema-v3 upgrade origins. Legacy v0.2-v0.4 schemas have no per-file baselines, so Baton preserves every non-metadata path and records immutable evidence instead of guessing cleanup candidates. v0.5 only surfaces unchanged checksum-verified managed/generated paths; project-owned, modified, missing, or invalid entries remain preserved.
+- Baton v0.6.0 is the first schema-v3 release and has no automatic schema-v3 upgrade origins. Legacy v0.2-v0.4 schemas have no per-file baselines, so Baton preserves every non-metadata path and records available evidence instead of guessing cleanup candidates. Authentic remote v0.2/v0.3 fixtures retain their missing installed revision and separately label verified official stable tag/commit anchors. v0.5 only surfaces unchanged checksum-verified managed/generated paths; project-owned, modified, missing, or invalid entries remain preserved.
 - Future v0.6+ updates require both the exact origin commit and manifest SHA-256.
 - Project-owned state and modified managed files are never overwritten automatically; conflicts produce manual actions and an external rollback location.
 - Permanent Management, Operations, and Consultant tasks wake only from a new task message; persistent goals are never role identity or lifecycle control.

@@ -117,7 +117,7 @@ After human review, activate the proposal:
 .baton/bin/baton _activate --from /absolute/path/to/reviewed-proposal
 ```
 
-Activation is internal because it is a one-time adoption gate, not a routine lifecycle command. It validates metadata schema, proposal schemas, cross-record relationships, team preset and reasoning, current baselines, and every destination. Any existing activation target blocks rather than being replaced. A successful transaction writes active `.baton/state/`, dashboard, role configs, the active `AGENTS.md` block, and approved config integration, then records `Installed`.
+Activation is internal because it is a one-time adoption gate, not a routine lifecycle command. It validates metadata schema, proposal schemas, cross-record relationships, team preset and reasoning, current baselines, and every destination. Any existing activation target blocks rather than being replaced. A successful transaction writes active `.baton/state/`, dashboard, role configs, the active `AGENTS.md` block, and approved config integration, then records `Installed`. If the repository's `AGENTS.md` is a symlink or another unsafe non-regular entry, Baton preserves it and keeps the manual AGENTS merge action pending through activation; `Installed` does not mean agent discovery is complete until that merge is performed.
 
 Activation does not delete `.baton/integration/starter/`, legacy files, cleanup candidates, reports, or backups.
 
@@ -157,7 +157,7 @@ The migration uses mature Adoption mode even when old starter records exist. It 
 
 Legacy evidence is deliberately version-aware:
 
-- v0.2-v0.4 schema-1 records do not contain trustworthy per-file baselines. Baton never guesses which surrounding files are disposable: only the legacy metadata itself is a cleanup candidate, while every other path is preserved for LLM/human comparison against the recorded immutable source tree.
+- v0.2-v0.4 schema-1 records do not contain trustworthy per-file baselines. Baton never guesses which surrounding files are disposable: only the legacy metadata itself is a cleanup candidate, while every other path is preserved for LLM/human comparison. Real remote v0.2/v0.3 metadata also recorded no installed commit, so Baton reports that absence honestly and provides a separately labelled immutable official release/tag anchor; it does not claim the anchor was the installed revision. A v0.4 local-development fixture can retain its actually recorded source revision, but there is no v0.4 stable release anchor.
 - v0.5 schema-2 records can identify unchanged `harness-managed` or `generated-config` paths. Only those checksum-matching paths become human-approved cleanup candidates. Modified, missing, invalid, or `project-owned` entries remain preserved.
 
 `.baton/metadata.json` stores this distinction under `legacyMigration`, including the baseline mode, available immutable source evidence, and per-file status when the legacy schema supports it. Cleanup still requires explicit human approval.

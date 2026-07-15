@@ -37,6 +37,18 @@ METADATA_PATH = ".baton/metadata.json"
 LEGACY_METADATA_PATH = ".agent-harness.json"
 MANIFEST_SCHEMA = "baton.release-bundle/v1"
 OFFICIAL_REPOSITORIES = {"FabienGreard/baton", "FabienGreard/agentic-project-harness"}
+LEGACY_RELEASE_ANCHORS = {
+    "0.2.0": {
+        "repository": "FabienGreard/baton",
+        "tag": "v0.2.0",
+        "commit": "8c3f9da8b08fca2408fa37bbf2a52d94e3fe8ad8",
+    },
+    "0.3.0": {
+        "repository": "FabienGreard/baton",
+        "tag": "v0.3.0",
+        "commit": "a8c041c2737f0cdec0834e5307906a4f9f15fabf",
+    },
+}
 SKILL_NAMES = (
     "brainstorm",
     "code-review",
@@ -618,6 +630,23 @@ def legacy_cleanup_plan(root: Path) -> tuple[list[str], dict[str, Any] | None]:
         evidence["source"]["tree"] = (
             f"https://github.com/{repository}/tree/{evidence['source']['commit']}"
         )
+    anchor = LEGACY_RELEASE_ANCHORS.get(metadata.get("harnessVersion"))
+    if (
+        evidence["source"]["commit"] is None
+        and metadata.get("schemaVersion") == 1
+        and metadata.get("sourceMode") == "remote"
+        and repository in OFFICIAL_REPOSITORIES
+        and anchor is not None
+    ):
+        anchor_repository = anchor["repository"]
+        anchor_tag = anchor["tag"]
+        anchor_commit = anchor["commit"]
+        evidence["source"]["versionAnchor"] = {
+            **anchor,
+            "release": f"https://github.com/{anchor_repository}/releases/tag/{anchor_tag}",
+            "tree": f"https://github.com/{anchor_repository}/tree/{anchor_commit}",
+            "note": "official stable version anchor; the legacy remote installer did not record its installed commit",
+        }
     managed = metadata.get("managedFiles")
     if isinstance(managed, dict):
         evidence["baselineMode"] = "managed-files"
