@@ -15,6 +15,7 @@
     ".baton/dashboard/index.html": "source-only",
     ".baton/docs/direction.md": "source-only",
     ".baton/docs/overview.md": "source-only",
+    ".baton/implementation-reports/BATON-001.md": "source-only",
     ".baton/lib": "source-only",
     ".baton/metadata.json": "source-only",
     ".baton/roles": "source-only",
