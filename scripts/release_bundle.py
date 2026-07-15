@@ -29,8 +29,12 @@ CHANNEL = "stable"
 TEMPLATE_PREFIX = "template/.baton/"
 PROJECTIONS = {"shared", "starter", "adoption-only"}
 ADOPTION_ONLY_PATH = "template/.baton/integration/README.md"
-STARTER_PATH = "template/.baton/thread-registry.md"
+STARTER_PATHS = {
+    "template/.baton/AGENTS.md",
+    "template/.baton/thread-registry.md",
+}
 STARTER_PREFIXES = (
+    "template/.baton/memory/",
     "template/.baton/state/",
     "template/.baton/dashboard/",
     "template/.baton/docs/",
@@ -157,8 +161,9 @@ def template_sources(paths: list[str]) -> list[str]:
         fail("consumer source template/.baton is empty")
     if ADOPTION_ONLY_PATH not in template_paths:
         fail(f"adoption-only source is missing: {ADOPTION_ONLY_PATH}")
-    if STARTER_PATH not in template_paths:
-        fail(f"starter source is missing: {STARTER_PATH}")
+    missing_starter = sorted(STARTER_PATHS - set(template_paths))
+    if missing_starter:
+        fail(f"starter sources are missing: {missing_starter}")
     return sorted(template_paths)
 
 
@@ -167,7 +172,7 @@ def projection_for(source_path: str) -> str:
         fail(f"consumer source is outside template/.baton: {source_path}")
     if source_path == ADOPTION_ONLY_PATH:
         return "adoption-only"
-    if source_path == STARTER_PATH or source_path.startswith(STARTER_PREFIXES):
+    if source_path in STARTER_PATHS or source_path.startswith(STARTER_PREFIXES):
         return "starter"
     return "shared"
 
@@ -327,6 +332,7 @@ def build(args: argparse.Namespace) -> None:
             "commit": commit,
         },
         "stateSchemaVersion": args.state_schema_version,
+        "memorySchemaVersion": args.memory_schema_version,
         "supportedUpgradeOrigins": origins,
         "payloads": {
             "new-project": manifest_payload(new_entries, NEW_PROJECT_ARCHIVE, sha256_bytes(new_archive)),
@@ -405,7 +411,7 @@ def load_manifest(path: Path) -> dict[str, Any]:
         fail("manifest must be an object")
     required = {
         "schema", "channel", "version", "stableTag", "source",
-        "stateSchemaVersion", "supportedUpgradeOrigins",
+        "stateSchemaVersion", "memorySchemaVersion", "supportedUpgradeOrigins",
         "payloads", "artifacts",
     }
     if set(value) != required or value["schema"] != MANIFEST_SCHEMA or value["channel"] != CHANNEL:
@@ -417,6 +423,8 @@ def load_manifest(path: Path) -> dict[str, Any]:
         fail("manifest source is not immutable")
     if type(value["stateSchemaVersion"]) is not int or value["stateSchemaVersion"] < 1:
         fail("manifest state schema version is invalid")
+    if type(value["memorySchemaVersion"]) is not int or value["memorySchemaVersion"] < 1:
+        fail("manifest memory schema version is invalid")
     if not isinstance(value["supportedUpgradeOrigins"], dict):
         fail("manifest upgrade origins are invalid")
     for tag, origin in value["supportedUpgradeOrigins"].items():
@@ -539,6 +547,7 @@ def parser() -> argparse.ArgumentParser:
     build_parser.add_argument("--repository", default="FabienGreard/baton")
     build_parser.add_argument("--supported-upgrade-origin", action="append", default=[])
     build_parser.add_argument("--state-schema-version", type=int, default=1)
+    build_parser.add_argument("--memory-schema-version", type=int, default=1)
     build_parser.set_defaults(handler=build)
     validate_parser = commands.add_parser("validate", help="validate exact bundle checksums and payloads")
     validate_parser.add_argument("--bundle", required=True)

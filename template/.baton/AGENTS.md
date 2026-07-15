@@ -21,12 +21,16 @@ This file is a navigation map only. Normative behavior lives under `rules/`. The
 | Notifications | [rules/external-notifications.md](rules/external-notifications.md) |
 | Repository safety | [rules/repository-safety.md](rules/repository-safety.md) |
 | LLM-first operability | [rules/llm-first-operability.md](rules/llm-first-operability.md) |
+| Company memory | [rules/company-memory.md](rules/company-memory.md) |
+| Bootstrap and task registration | [rules/bootstrap-and-task-registration.md](rules/bootstrap-and-task-registration.md) |
 
 ## Skills and roles
 
 | Need | Source |
 | --- | --- |
-| Project skills | [skills](skills) |
+| Bootstrap Baton | [skills/bootstrap-baton/SKILL.md](skills/bootstrap-baton/SKILL.md) |
+| Inspect or change memory | [skills/memory/SKILL.md](skills/memory/SKILL.md) |
+| Other project skills | [skills](skills) |
 | Management | [roles/management.md](roles/management.md) |
 | Operations | [roles/operations.md](roles/operations.md) |
 | Consultants | [roles/consultant.md](roles/consultant.md) |
@@ -42,5 +46,6 @@ This file is a navigation map only. Normative behavior lives under `rules/`. The
 | Project and baton | [state/project.json](state/project.json) |
 | Goals, tickets, ownership, and reviews | [state/goals.json](state/goals.json), [state/tickets.json](state/tickets.json), [state/ownership.json](state/ownership.json), [state/reviews.json](state/reviews.json) |
 | Team | [state/team.json](state/team.json) |
+| Company memory | [memory/memory.json](memory/memory.json), [memory/history.jsonl](memory/history.jsonl) |
 | Workflow | [workflow.md](workflow.md) |
 | Installation status and provenance | [metadata.json](metadata.json) |

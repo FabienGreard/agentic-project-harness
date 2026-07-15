@@ -1,6 +1,6 @@
 # Baton distribution architecture
 
-Baton v0.6.0 separates product development from installed project control planes. This repository is a normal source repository; a consumer receives only a release-built `.baton/` payload plus three narrow, collision-preserving root integrations.
+Baton separates product development from installed project control planes. This repository is a normal source repository; a consumer receives only a release-built `.baton/` payload plus three narrow, collision-preserving root integrations.
 
 ## System boundary
 
@@ -46,10 +46,12 @@ Most template content is `shared`. Only the two behaviors that differ between in
 | Projection | Meaning | New-project payload | Adoption payload |
 | --- | --- | --- | --- |
 | `shared` | Consumer runtime needed in both modes | `.baton/<path>` | `.baton/<path>` |
-| `starter` | Starter project direction, records, dashboard inputs, decisions, PRDs, tickets, and report scaffolding | Active `.baton/<path>` | Quarantined `.baton/integration/starter/<path>` |
+| `starter` | Starter agent map, project direction, records, memory, dashboard inputs, decisions, PRDs, tickets, and report scaffolding | Active `.baton/<path>` | Quarantined `.baton/integration/starter/<path>` |
 | `adoption-only` | Guidance needed only while integrating a mature project | Excluded | `.baton/integration/<path>` |
 
 The generated manifest is the exact auditable payload inventory. Consumer payload construction strips only the `template/` prefix and rejects duplicate, unsafe, unsigned, or non-`.baton/` archive entries.
+
+Mature adoption generates the quarantined dashboard and a small set of relative link bridges so the starter map remains browsable against shared rules, roles, skills, templates, workflow, and installation metadata. Those generated bridges are baseline-managed while status is `Needs Integration`, are never treated as a second active control plane, and are skipped when reviewed starter records are activated.
 
 The source repository's root `.baton/` can therefore never enter a payload because it is outside the only eligible source root.
 
@@ -64,6 +66,8 @@ The release builder creates:
 - `SHA256SUMS`.
 
 `baton-manifest.json` records the stable version/tag, official repository, full source commit, state schema version, supported upgrade origins, and an exact sorted file record for each payload. Every file record includes destination path, source path, projection, entry kind, and SHA-256 digest.
+
+Memory has its own monotonic `memorySchemaVersion`. It is independent from canonical `stateSchemaVersion` because active memory is project-owned durable data. Runtime updates never replace active memory from a payload; a schema change requires a sequential validated migration with an external before-image and rollback evidence.
 
 Archives are deterministic: sorted entries, normalized ownership, zero timestamps, constrained modes, safe relative paths, and safe relative symlinks. Validation rejects duplicate paths, hard links, devices, FIFOs, unsafe symlink traversal, unsigned/missing entries, wrong checksums, and forbidden root files.
 
@@ -90,6 +94,7 @@ Only stable release manifests are valid. A manifest pins its source to a full co
 - `batonVersion`: installed runtime version from the verified stable manifest;
 - `projectVersion`: optional, independent project information, initialized to `null`;
 - `stateSchemaVersion`: canonical state contract version;
+- `memorySchemaVersion`: project-local company-memory contract version;
 - `installationStatus`: `Installed`, `Needs Integration`, or source/legacy states where applicable;
 - `source`: repository, stable channel, tag, full commit, and manifest digest;
 - `managedFiles`: ownership class and baseline checksum per managed path;
@@ -139,6 +144,16 @@ A stable update compares three states:
 3. the target stable payload path and checksum.
 
 An unchanged managed path may be replaced by its new stable form. A new Baton path may be added only if no collision exists. Modified managed/generated paths, missing baselines, unsupported provenance, downgrade attempts, or colliding additions block the update. Project-owned paths remain untouched.
+
+## Snapshot-authoritative company memory
+
+`.baton/memory/memory.json` is the editable current truth for confirmed company/user claims, candidates, named personnel, task registration, bounded working styles, and contextual performance summaries. `.baton/memory/history.jsonl` is a subordinate value-minimized chronology; it is never replayed over the current snapshot and does not duplicate project-management decisions or evidence.
+
+One deep deterministic memory module owns inspection, expected-revision mutation, authority, privacy, bootstrap reconciliation, context selection, schema migration, external transaction evidence, and recovery. Its only genuine adapter seam is the live Codex task surface versus copy-ready fallback. Users invoke `$bootstrap-baton` and `$memory`; hidden `_memory` plumbing is not a fourth public command.
+
+Memory, history, generated `.baton/thread-registry.md`, dashboard projection, and metadata baseline changes share the external project lock. Complete history is staged and replaced before `memory.json`, which is the logical commit marker. Failure restores every touched path from the external transaction. Forgetting redacts current local memory and matching local chronology values but never rewrites Git history or silently removes retained backups.
+
+Automatic context selection uses confirmed claims only, is role- and assignment-specific, and stops at 10 claims or a conservative 600-token estimate. Raw history, candidates, superseded claims, inactive personnel, old reviews, and content already present in the assignment are excluded. A disposable Internal Audit can request the same bounded read-only projection only by declaring its exact authorized evaluation boundary; that path does not add Internal Audit to personnel, permanent task roles, or memory mutation authority. Explicit `$memory` retrieval can inspect more without silently enlarging later automatic briefings.
 
 Paths retired from Baton's managed runtime become cleanup candidates only when Baton has a valid managed baseline and the current file still matches it; they are not deleted automatically. Legacy schemas without per-file baselines never produce guessed project-path candidates. Baton instead records the available legacy metadata, immutable source evidence, and a manual comparison requirement while preserving every non-metadata path. When a historical remote installer did not record its installed commit, Baton keeps that value absent and labels any known stable tag/commit as a version anchor rather than misrepresenting it as installation provenance.
 

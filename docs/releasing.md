@@ -2,7 +2,7 @@
 
 Baton releases are stable-only and human-authorized. This procedure separates candidate preparation from publication.
 
-> **BATON-001 stop boundary:** v0.6.0 is currently an unpublished candidate. The authorized source-repository rename to `FabienGreard/baton` and conversion out of GitHub template mode are complete. Complete local preparation and verification, then return the exact evidence to Management. Those repository setting changes do not authorize a push, merge, tag, release, asset upload, or change to `releases/latest`.
+> **BATON-002 stop boundary:** v0.7.0 is currently an unpublished candidate. The source-repository rename and isolated distribution architecture from the unpublished v0.6 candidate remain complete. Finish bootstrap/memory integration and verification, then return exact evidence to Management. No candidate work authorizes a push, merge, tag, release, asset upload, or change to `releases/latest`.
 
 ## Release policy
 
@@ -10,7 +10,7 @@ Baton releases are stable-only, human-authorized, immutable, and reproducible. T
 
 ### Current boundary and human authority
 
-Version `0.6.0` in this checkout is an unpublished candidate. BATON-001 explicitly excludes publication. Until a separate human Release decision approves an exact commit and stable version, [Agentic Project Harness v0.5.0](https://github.com/FabienGreard/agentic-project-harness/releases/tag/v0.5.0) remains the latest published stable release and the future `FabienGreard/baton` install URL must not be presented as live.
+Version `0.7.0` in this checkout is an unpublished candidate. BATON-002 explicitly excludes publication. Until a separate human Release decision approves an exact commit and stable version, [Agentic Project Harness v0.5.0](https://github.com/FabienGreard/agentic-project-harness/releases/tag/v0.5.0) remains the latest published stable release and the future `FabienGreard/baton` install URL must not be presented as live.
 
 Management owns release readiness and presents the exact candidate, evidence, limitations, and independent review. Operations may integrate and verify but does not publish merely because checks pass. Contractors, Consultants, and Internal Audit cannot authorize publication. General permission to continue, tolerate drift, merge, or prepare artifacts is not release authorization.
 
@@ -36,7 +36,7 @@ The release builder starts from a clean committed source tree and produces exact
 
 Both archives contain only `.baton/` entries generated from `template/.baton/`. This repository's root `.baton/`, product identity, docs, scripts, tests, evaluator, legal/community files, version history, and release machinery are structurally outside the payload root.
 
-The manifest binds the version/tag, official repository, full candidate commit, state schema, supported origins, exact payload path lists, source paths, projections, kinds, and checksums. `SHA256SUMS` binds the installer, both archives, and manifest.
+The manifest binds the version/tag, official repository, full candidate commit, independent state and memory schemas, supported origins, exact payload path lists, source paths, projections, kinds, and checksums. `SHA256SUMS` binds the installer, both archives, and manifest.
 
 ### Upgrade history
 
@@ -64,15 +64,17 @@ Publication is accepted only when:
 
 Before release-grade verification, confirm:
 
-- `VERSION` contains exactly `0.6.0`;
+- `VERSION` contains exactly `0.7.0`;
 - active product text says Baton while historical Agentic Project Harness evidence remains historically accurate;
-- `CHANGELOG.md` has an unreleased v0.6.0 candidate section and all prior sections/links remain intact;
+- `CHANGELOG.md` has an unreleased v0.7.0 candidate section and all prior sections/links remain intact;
 - root `.baton/` is Baton's source-repository control plane and cannot enter a consumer payload;
 - consumer source exists only under `template/.baton/`;
 - both payloads contain only `.baton/` paths;
 - the stable-URL `install.sh` remains a release bootstrap asset and is not installed in consumers;
 - the public installed CLI is exactly `status`, `update`, and `check`; and
-- mature adoption activates only non-template reviewed state through `.baton/bin/baton _activate --from PATH` while starter state stays quarantined.
+- mature adoption activates only non-template reviewed state through `.baton/bin/baton _activate --from PATH` while starter state and memory stay quarantined;
+- the public skills include `$bootstrap-baton` and `$memory`, while the public CLI remains exactly three commands; and
+- active memory is project-owned, snapshot-authoritative, independently schema-versioned, and never replaced by update payloads.
 
 Review the exact source diff and exclude unrelated work. Release construction requires a clean committed source tree, but preparing docs or running pre-commit checks is not publication.
 
@@ -82,7 +84,7 @@ There is no source-classification file to maintain. Verify instead that:
 
 - every Git-tracked path under `template/` starts with `template/.baton/`;
 - `template/.baton/integration/README.md` is the explicit adoption-only source;
-- starter state, dashboard inputs, direction, decisions, PRDs, tickets, and report scaffolding follow the documented starter path conventions;
+- the starter agent map, state, memory, dashboard inputs, direction, decisions, PRDs, tickets, and report scaffolding follow the documented starter path conventions;
 - all remaining `template/.baton/` content is shared by default; and
 - source-repository paths outside `template/.baton/` never appear in either generated manifest.
 
@@ -107,12 +109,14 @@ The verification owner must also retain exact results for:
 
 - fresh new-project install outside the source repository;
 - mature non-empty adoption with forbidden root-path snapshots;
+- fresh and mature installed-tree Markdown link audits, including the generated quarantined map/dashboard and shared-runtime bridges;
 - non-template proposal review, quarantine, `_activate --from`, and post-activation checks;
 - v0.2, v0.3, v0.4 fixture, and v0.5 migration smokes with no automatic deletion;
 - status, stable update, same-version provenance, collision, rollback, symlink, unreadable-target, injected-failure, and concurrent-lock paths;
 - marked `AGENTS.md`, existing Codex config, custom-agent registration, and per-skill discovery collisions;
 - ignored root and nested vendor traversal regression;
-- canonical state, dashboard, team, assurance, and lifecycle behavior;
+- canonical state, dashboard, team, memory, history, assurance, and lifecycle behavior;
+- native/fallback/interrupted bootstrap, duplicate-task prevention, privacy rejection, forgetting/redaction, context-budget, and personnel-history behavior;
 - Python 3.9 and the current supported Python runtime;
 - exact new-project/adoption manifest path lists and checksums;
 - independent two-axis review; and
@@ -122,16 +126,16 @@ If a listed command has changed during candidate integration, the implementation
 
 ## 4. Preserve immutable historical origins
 
-The v0.6 manifest may support only verified stable origins. The reviewed historical anchors are:
+The v0.7 manifest may support only verified stable origins. The reviewed historical anchors are:
 
-| Release | Full release commit | Manifest SHA-256 | v0.6 treatment |
+| Release | Full release commit | Manifest SHA-256 | v0.7 treatment |
 | --- | --- | --- | --- |
-| v0.1.0 | `2bea1a571ca4584a56d3fb231fe583f9710ccb95` | none | Historical only; not an automatic v0.6 origin |
+| v0.1.0 | `2bea1a571ca4584a56d3fb231fe583f9710ccb95` | none | Historical only; not an automatic v0.7 origin |
 | v0.2.0 | `8c3f9da8b08fca2408fa37bbf2a52d94e3fe8ad8` | none | Legacy additive migration fixture; not a schema-v3 update origin |
 | v0.3.0 | `a8c041c2737f0cdec0834e5307906a4f9f15fabf` | none | Legacy additive migration fixture; not a schema-v3 update origin |
 | v0.5.0 | `4191fe4be3a8da1ce3cea075bfb8f81a8d0d737c` | `744041e438990c37f3303666560c49cfbb919dec84e937e15307bae1fad3c88a` | Legacy additive migration fixture; not a schema-v3 update origin |
 
-No v0.4.0 stable Git tag or GitHub release was published. v0.4 migration coverage proves compatibility with legacy development-shaped state; it must not appear as an invented stable origin. Baton v0.6.0 is the first schema-v3 release and therefore has no automatic `supportedUpgradeOrigins`. Future v0.6+ updates must pin both the origin's full commit and manifest SHA-256 as `TAG=COMMIT,MANIFEST_SHA256`.
+No v0.4.0 stable Git tag or GitHub release was published. v0.4 migration coverage proves compatibility with legacy development-shaped state; it must not appear as an invented stable origin. The v0.6 architecture candidate was not published and is not an automatic origin. Baton v0.7.0 would be the first stable schema-v3 release and therefore has no automatic `supportedUpgradeOrigins`. Future stable updates must pin both the origin's full commit and manifest SHA-256 as `TAG=COMMIT,MANIFEST_SHA256`.
 
 Before any future release build, re-verify these anchors against local tags and the public historical release assets. If history or checksum evidence differs, stop and resolve the contradiction rather than editing this table opportunistically.
 
@@ -154,12 +158,13 @@ Build outside the source worktree from the clean candidate:
 ```sh
 python3 scripts/release_bundle.py build \
   --source . \
-  --output /tmp/baton-v0.6.0 \
-  --tag v0.6.0 \
+  --output /tmp/baton-v0.7.0 \
+  --tag v0.7.0 \
   --repository FabienGreard/baton \
-  --state-schema-version 1
+  --state-schema-version 1 \
+  --memory-schema-version 1
 
-python3 scripts/release_bundle.py validate --bundle /tmp/baton-v0.6.0
+python3 scripts/release_bundle.py validate --bundle /tmp/baton-v0.7.0
 ```
 
 The output directory must contain exactly:
@@ -188,15 +193,15 @@ Before publication, exercise the built assets through the release-directory fixt
 
 ```sh
 target=$(mktemp -d)
-BATON_RELEASE_DIR=/tmp/baton-v0.6.0 \
-  bash /tmp/baton-v0.6.0/install.sh --target "$target" --yes --json
+BATON_RELEASE_DIR=/tmp/baton-v0.7.0 \
+  bash /tmp/baton-v0.7.0/install.sh --target "$target" --yes --json
 "$target/.baton/bin/baton" status --json
 "$target/.baton/bin/baton" check --json
 ```
 
 Run a separate non-empty target for Adoption mode. Prove its project-owned root snapshot is unchanged, status is `Needs Integration`, starter state is quarantined, and activation accepts only reviewed non-template state. Exercise updates from all supported origins with the same assets.
 
-Do not use `releases/latest` for this phase; v0.6.0 does not exist there yet.
+Do not use `releases/latest` for this phase; v0.7.0 does not exist there yet.
 
 ## 8. Return the unpublished candidate for approval
 
@@ -223,7 +228,7 @@ Only after the human approves the exact candidate may the release owner:
 
 1. verify the official repository is the intended normal source repository and not configured as a template;
 2. push/merge the exact approved candidate through the authorized workflow;
-3. create tag `v0.6.0` at the approved full commit;
+3. create tag `v0.7.0` at the approved full commit;
 4. create a non-prerelease GitHub release from that tag;
 5. upload all five locally validated assets without rebuilding from another commit;
 6. enable immutable-release protection when available; and
@@ -236,12 +241,12 @@ Do not mutate an uploaded asset in place. If any identity or checksum differs, s
 After assets exist publicly, run the standalone smoke against the full commit recorded by `baton-manifest.json`:
 
 ```sh
-bash tests/install_remote_smoke.sh v0.6.0 <full-candidate-commit-sha>
+bash tests/install_remote_smoke.sh v0.7.0 <full-candidate-commit-sha>
 ```
 
 Then verify:
 
-- `https://github.com/FabienGreard/baton/releases/tag/v0.6.0` resolves to the approved tag and commit;
+- `https://github.com/FabienGreard/baton/releases/tag/v0.7.0` resolves to the approved tag and commit;
 - all five custom assets download and match `SHA256SUMS`;
 - both payload records and archives still validate;
 - `https://github.com/FabienGreard/baton/releases/latest/download/install.sh` resolves only now, after stable publication;

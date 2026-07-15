@@ -2,6 +2,8 @@
   "schemaVersion": 1,
   "discovery": ".agents/skills/<name> -> .baton/skills/<name>",
   "skills": [
+    "bootstrap-baton",
+    "memory",
     "brainstorm",
     "improve-codebase-architecture",
     "code-review",

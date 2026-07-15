@@ -21,6 +21,7 @@ sys.dont_write_bytecode = True
 
 from harness_lock import MutationLockError, mutation_lock
 from harness_state import render_dashboard, validate_records
+from baton_memory import inspect as inspect_memory, render_thread_registry
 from codex_config_contract import base_semantics, parse_codex_config_text, render_codex_config
 from harness_team import (
     TeamError,
@@ -38,8 +39,12 @@ LEGACY_METADATA_PATH = ".agent-harness.json"
 MANIFEST_SCHEMA = "baton.release-bundle/v1"
 TEMPLATE_PREFIX = "template/.baton/"
 ADOPTION_ONLY_SOURCE = "template/.baton/integration/README.md"
-STARTER_SOURCE = "template/.baton/thread-registry.md"
+STARTER_SOURCES = {
+    "template/.baton/AGENTS.md",
+    "template/.baton/thread-registry.md",
+}
 STARTER_SOURCE_PREFIXES = (
+    "template/.baton/memory/",
     "template/.baton/state/",
     "template/.baton/dashboard/",
     "template/.baton/docs/",
@@ -63,16 +68,29 @@ LEGACY_RELEASE_ANCHORS = {
     },
 }
 SKILL_NAMES = (
+    "bootstrap-baton",
     "brainstorm",
     "code-review",
     "fire-consultant",
     "hire-consultant",
     "improve-codebase-architecture",
+    "memory",
 )
 AGENTS_START = "<!-- BATON:START -->"
 AGENTS_END = "<!-- BATON:END -->"
 MANAGED_OWNERSHIP = {"baton-managed", "generated-config", "integration-link"}
 REASONING_KEYS = {"management", "operations", "consultants", "contractors", "internalAudit"}
+ADOPTION_STARTER_BRIDGES = {
+    "metadata.json": "../../metadata.json",
+    "roles": "../../roles",
+    "rules": "../../rules",
+    "skills": "../../skills",
+    "templates": "../../templates",
+}
+ADOPTION_STARTER_WORKFLOW = """# Shared Baton workflow
+
+The starter uses [Baton's managed workflow](../../workflow.md). This bridge exists only while a mature repository is in `Needs Integration` mode.
+"""
 
 
 class LifecycleError(RuntimeError):
@@ -85,6 +103,14 @@ def utc_now() -> str:
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def memory_projection(root: Path) -> dict[str, Any] | None:
+    memory = root / ".baton/memory/memory.json"
+    history = root / ".baton/memory/history.jsonl"
+    if not memory.is_file() or not history.is_file():
+        return None
+    return inspect_memory(root, {"section": "projection"})
 
 
 def sha256_file(path: Path) -> str:
@@ -183,6 +209,10 @@ def manifest_payload(manifest: dict[str, Any], payload: str) -> dict[str, Any]:
     version = manifest.get("version")
     if not isinstance(version, str) or manifest.get("stableTag") != f"v{version}":
         raise LifecycleError("release manifest version and tag do not match")
+    if type(manifest.get("stateSchemaVersion")) is not int or manifest["stateSchemaVersion"] < 1:
+        raise LifecycleError("release manifest state schema version is invalid")
+    if type(manifest.get("memorySchemaVersion")) is not int or manifest["memorySchemaVersion"] < 1:
+        raise LifecycleError("release manifest memory schema version is invalid")
     source = manifest.get("source")
     if (
         not isinstance(source, dict)
@@ -204,7 +234,7 @@ def payload_projection(source_path: str) -> str:
         raise LifecycleError(f"consumer source is outside template/.baton: {source_path}")
     if source_path == ADOPTION_ONLY_SOURCE:
         return "adoption-only"
-    if source_path == STARTER_SOURCE or source_path.startswith(STARTER_SOURCE_PREFIXES):
+    if source_path in STARTER_SOURCES or source_path.startswith(STARTER_SOURCE_PREFIXES):
         return "starter"
     return "shared"
 
@@ -428,16 +458,34 @@ def configure_new_project(
     validate_records(records, errors)
     if errors:
         raise LifecycleError("generated project state is invalid: " + "; ".join(errors))
+    projection = memory_projection(prepared)
     dashboard = prepared / ".baton/dashboard/index.html"
     dashboard.parent.mkdir(parents=True, exist_ok=True)
-    dashboard.write_text(render_dashboard(records), encoding="utf-8")
+    dashboard.write_text(render_dashboard(records, projection), encoding="utf-8")
+    memory = read_json(prepared / ".baton/memory/memory.json")
+    registry = render_thread_registry(memory, team)
+    (prepared / ".baton/thread-registry.md").write_text(registry, encoding="utf-8")
     agent_names = ["management", "operations", "contractor", "internal_audit"]
     agent_names.extend(
         f"consultant_{item['id'].replace('-', '_')}"
         for item in team["consultants"]
         if item["status"] == "active"
     )
-    return agent_names, [".baton/dashboard/index.html"]
+    return agent_names, [
+        ".baton/dashboard/index.html",
+        ".baton/thread-registry.md",
+    ]
+
+
+def adoption_memory_projection(prepared: Path, starter: Path) -> dict[str, Any] | None:
+    """Inspect quarantined starter memory without making it an active control plane."""
+    with tempfile.TemporaryDirectory(prefix="baton-starter-memory-") as raw:
+        project = Path(raw) / "project"
+        baton = project / ".baton"
+        baton.mkdir(parents=True)
+        shutil.copytree(starter / "memory", baton / "memory")
+        shutil.copytree(prepared / ".baton/schemas", baton / "schemas")
+        return memory_projection(project)
 
 
 def configure_adoption(
@@ -447,7 +495,7 @@ def configure_adoption(
     project_type: str,
     reasoning: dict[str, str],
     selected_consultants: list[str],
-) -> list[str]:
+) -> tuple[list[str], list[str]]:
     starter = prepared / ".baton/integration/starter"
     project_path = starter / "state/project.json"
     project_record = read_json(project_path)
@@ -471,6 +519,32 @@ def configure_adoption(
     agents.mkdir(parents=True, exist_ok=True)
     for filename, content in configs.items():
         (agents / filename).write_text(content, encoding="utf-8")
+    records = {
+        name: read_json(starter / f"state/{name}.json")
+        for name in ("project", "goals", "tickets", "ownership", "reviews", "team")
+    }
+    errors: list[str] = []
+    validate_records(records, errors)
+    if errors:
+        raise LifecycleError("generated adoption starter state is invalid: " + "; ".join(errors))
+    dashboard = render_dashboard(
+        records,
+        adoption_memory_projection(prepared, starter),
+    )
+    dashboard_path = starter / "dashboard/index.html"
+    dashboard_path.parent.mkdir(parents=True, exist_ok=True)
+    dashboard_path.write_text(dashboard, encoding="utf-8")
+    registry = render_thread_registry(
+        read_json(starter / "memory/memory.json"),
+        team,
+    )
+    (starter / "thread-registry.md").write_text(registry, encoding="utf-8")
+    for relative, target in ADOPTION_STARTER_BRIDGES.items():
+        destination = starter / relative
+        if destination.exists() or destination.is_symlink():
+            raise LifecycleError(f"adoption starter bridge collides with payload content: {relative}")
+        destination.symlink_to(target)
+    (starter / "workflow.md").write_text(ADOPTION_STARTER_WORKFLOW, encoding="utf-8")
     prompt = f"""Integrate Baton into {project_name} without replacing existing project identity or records.
 
 Read AGENTS.md, `.baton/metadata.json` including `legacyMigration`, this transaction's report and backup, and every file under .baton/integration/starter/. Inspect the live repository and translate its mature direction, goals, tickets, ownership, reviews, and team into schema-valid records under a temporary directory. Do not parse Markdown mechanically or invent facts. Keep legacy files unchanged.
@@ -486,7 +560,21 @@ Report preserved legacy files, conflicts or manual actions, and the external tra
         for item in team["consultants"]
         if item["status"] == "active"
     )
-    return agent_names
+    generated = [
+        ".baton/integration/cleanup-prompt.txt",
+        ".baton/integration/starter/dashboard/index.html",
+        ".baton/integration/starter/thread-registry.md",
+        ".baton/integration/starter/workflow.md",
+    ]
+    generated.extend(
+        f".baton/integration/starter/{relative}"
+        for relative in ADOPTION_STARTER_BRIDGES
+    )
+    generated.extend(
+        f".baton/integration/starter/agents/{filename}"
+        for filename in configs
+    )
+    return agent_names, sorted(generated)
 
 
 def transaction_directory(project_root: Path, transaction_id: str) -> Path:
@@ -757,6 +845,8 @@ def build_metadata(
 ) -> dict[str, Any]:
     managed: dict[str, dict[str, str]] = {}
     for relative, record in payload_records.items():
+        if relative.startswith(".baton/memory/"):
+            continue
         if record["projection"] == "starter" and status != "Needs Integration":
             continue
         digest = entry_digest(inside(prepared, relative))
@@ -781,6 +871,7 @@ def build_metadata(
         "batonVersion": manifest["version"],
         "projectVersion": None,
         "stateSchemaVersion": manifest["stateSchemaVersion"],
+        "memorySchemaVersion": manifest["memorySchemaVersion"],
         "provider": "codex",
         "installationStatus": status,
         "projectName": project_name,
@@ -896,6 +987,7 @@ def inspect_status(project_root: Path) -> dict[str, Any]:
         "batonVersion": metadata.get("batonVersion"),
         "projectVersion": metadata.get("projectVersion"),
         "stateSchemaVersion": metadata.get("stateSchemaVersion"),
+        "memorySchemaVersion": metadata.get("memorySchemaVersion"),
         "installationStatus": metadata.get("installationStatus"),
         "source": metadata.get("source"),
         "integrity": {
@@ -965,9 +1057,14 @@ def install_or_adopt(
                     for relative in all_entries(prepared)
                     if relative.startswith(".baton/agents/")
                 )
+                project_owned = [
+                    relative
+                    for relative in project_owned
+                    if relative not in set(generated)
+                ]
                 status = "Installed"
             else:
-                agent_names = configure_adoption(
+                agent_names, generated = configure_adoption(
                     prepared,
                     project_name=project_name,
                     project_type=project_type,
@@ -1108,6 +1205,23 @@ def update_installation(
         raise LifecycleError(
             "this stable update changes the project-owned state schema and requires an explicit Baton migration path"
         )
+    target_memory_schema = manifest.get("memorySchemaVersion")
+    installed_memory_schema = metadata.get("memorySchemaVersion")
+    active_memory = root / ".baton/memory"
+    if installed_memory_schema is None:
+        if active_memory.exists() or active_memory.is_symlink():
+            raise LifecycleError(
+                "installed Baton memory has no recorded schema version; initialize or migrate it explicitly before update"
+            )
+        installed_memory_schema = target_memory_schema
+    if type(installed_memory_schema) is not int or type(target_memory_schema) is not int:
+        raise LifecycleError("installed or target memory schema version is invalid")
+    if target_memory_schema < installed_memory_schema:
+        raise LifecycleError("automatic memory-schema downgrade is not supported")
+    if target_memory_schema != installed_memory_schema:
+        raise LifecycleError(
+            "this stable update changes the project-owned memory schema and requires an explicit sequential memory migration"
+        )
     if target == current:
         installed_source = metadata.get("source", {})
         if (
@@ -1146,21 +1260,36 @@ def update_installation(
         with tempfile.TemporaryDirectory(prefix="baton-update-") as raw:
             prepared = Path(raw) / "project"
             copy_payload(payload_root, prepared, payload_records)
+            adoption_generated: list[str] = []
+            if metadata.get("installationStatus") == "Needs Integration":
+                installed_team = read_project_json(
+                    root,
+                    ".baton/integration/starter/state/team.json",
+                )
+                selected_consultants = [
+                    str(item.get("id"))
+                    for item in installed_team.get("consultants", [])
+                    if item.get("status") == "active" and item.get("id")
+                ]
+                _, adoption_generated = configure_adoption(
+                    prepared,
+                    project_name=str(metadata.get("projectName", "")),
+                    project_type=str(metadata.get("projectType", "")),
+                    reasoning=normalized_reasoning(metadata.get("reasoning")),
+                    selected_consultants=selected_consultants,
+                )
             add: list[str] = []
             replace: list[str] = []
             conflicts: list[str] = []
             new_managed: dict[str, dict[str, str]] = {}
-            for relative, record in payload_records.items():
-                if (
-                    record["projection"] == "starter"
-                    and metadata.get("installationStatus") != "Needs Integration"
-                ):
-                    continue
+
+            def reconcile_desired(relative: str, ownership: str) -> None:
                 desired = entry_digest(inside(prepared, relative))
                 baseline = managed.get(relative)
-                actual = entry_digest(inside(root, relative))
+                actual_path = inside(root, relative)
+                actual = entry_digest(actual_path)
                 if baseline is None:
-                    if actual is None and not inside(root, relative).exists():
+                    if actual is None and not actual_path.exists():
                         add.append(relative)
                     elif actual != desired:
                         conflicts.append(relative)
@@ -1170,9 +1299,23 @@ def update_installation(
                     replace.append(relative)
                 if desired is not None:
                     new_managed[relative] = {
-                        "ownership": "generated-config" if record["projection"] == "starter" else "baton-managed",
+                        "ownership": ownership,
                         "baselineSha256": desired,
                     }
+
+            for relative, record in payload_records.items():
+                if (
+                    record["projection"] == "starter"
+                    and metadata.get("installationStatus") != "Needs Integration"
+                ):
+                    continue
+                reconcile_desired(
+                    relative,
+                    "generated-config" if record["projection"] == "starter" else "baton-managed",
+                )
+            for relative in adoption_generated:
+                if relative not in payload_records:
+                    reconcile_desired(relative, "generated-config")
             if metadata.get("installationStatus") == "Installed":
                 team_path = inside(root, ".baton/state/team.json", allow_leaf_symlink=False)
                 if team_path.is_file():
@@ -1241,7 +1384,8 @@ def update_installation(
                             name: updated_team if name == "team" else read_project_json(root, f".baton/state/{name}.json")
                             for name in ("project", "goals", "tickets", "ownership", "reviews", "team")
                         }
-                        dashboard = render_dashboard(records)
+                        projection = memory_projection(root)
+                        dashboard = render_dashboard(records, projection)
                         dashboard_path = prepared / ".baton/dashboard/index.html"
                         dashboard_path.parent.mkdir(parents=True, exist_ok=True)
                         dashboard_path.write_text(dashboard, encoding="utf-8")
@@ -1250,6 +1394,27 @@ def update_installation(
                             "ownership": "generated-config",
                             "baselineSha256": sha256_bytes(dashboard.encode("utf-8")),
                         }
+                        registry_record = managed.get(".baton/thread-registry.md")
+                        memory_path = root / ".baton/memory/memory.json"
+                        if (
+                            isinstance(registry_record, dict)
+                            and registry_record.get("ownership") == "generated-config"
+                            and memory_path.is_file()
+                        ):
+                            registry = render_thread_registry(
+                                read_project_json(root, ".baton/memory/memory.json"),
+                                updated_team,
+                            )
+                            registry_path = prepared / ".baton/thread-registry.md"
+                            registry_path.parent.mkdir(parents=True, exist_ok=True)
+                            registry_path.write_text(registry, encoding="utf-8")
+                            replace.append(".baton/thread-registry.md")
+                            new_managed[".baton/thread-registry.md"] = {
+                                "ownership": "generated-config",
+                                "baselineSha256": sha256_bytes(
+                                    registry.encode("utf-8")
+                                ),
+                            }
             cleanup_candidates = set(metadata.get("legacyCleanupCandidates", []))
             for relative, record in managed.items():
                 if relative not in new_managed and (
@@ -1262,6 +1427,7 @@ def update_installation(
             updated = json.loads(json.dumps(metadata))
             updated["batonVersion"] = manifest["version"]
             updated["stateSchemaVersion"] = target_state_schema
+            updated["memorySchemaVersion"] = target_memory_schema
             updated["updatedAt"] = utc_now()
             updated["lastTransactionId"] = transaction_id
             updated["source"] = {
@@ -1406,7 +1572,13 @@ def activate_adoption(
             active_project_owned: list[str] = []
             for relative in all_entries(starter):
                 destination = f".baton/{relative}"
-                if destination.startswith(".baton/agents/") or destination == ".baton/dashboard/index.html":
+                if (
+                    destination.startswith(".baton/agents/")
+                    or destination == ".baton/dashboard/index.html"
+                    or destination == ".baton/thread-registry.md"
+                    or relative in ADOPTION_STARTER_BRIDGES
+                    or relative == "workflow.md"
+                ):
                     continue
                 copy_entry(starter, relative, prepared / ".baton")
                 active_project_owned.append(destination)
@@ -1422,12 +1594,30 @@ def activate_adoption(
                     target = prepared / ".baton/docs" / name
                     target.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(candidate, target)
-            dashboard = render_dashboard(records)
+            prepared_schemas = prepared / ".baton/schemas"
+            if not prepared_schemas.is_dir():
+                prepared_schemas.mkdir(parents=True, exist_ok=True)
+                for schema_name in (
+                    "memory.schema.json",
+                    "memory-event.schema.json",
+                ):
+                    shutil.copy2(
+                        root / ".baton/schemas" / schema_name,
+                        prepared_schemas / schema_name,
+                    )
+            projection = memory_projection(prepared)
+            dashboard = render_dashboard(records, projection)
             dashboard_path = prepared / ".baton/dashboard/index.html"
             dashboard_path.parent.mkdir(parents=True, exist_ok=True)
             dashboard_path.write_text(dashboard, encoding="utf-8")
+            memory = read_json(prepared / ".baton/memory/memory.json")
+            registry = render_thread_registry(memory, team)
+            (prepared / ".baton/thread-registry.md").write_text(
+                registry, encoding="utf-8"
+            )
             generated: dict[str, str] = {
-                ".baton/dashboard/index.html": sha256_bytes(dashboard.encode("utf-8"))
+                ".baton/dashboard/index.html": sha256_bytes(dashboard.encode("utf-8")),
+                ".baton/thread-registry.md": sha256_bytes(registry.encode("utf-8")),
             }
             for filename, content in configs.items():
                 relative = f".baton/agents/{filename}"

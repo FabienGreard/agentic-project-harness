@@ -7,8 +7,8 @@ Baton separates product-managed runtime from project-owned intent. Customize thr
 | Layer | Examples | Change path |
 | --- | --- | --- |
 | Baton-managed runtime | `.baton/bin/`, `.baton/lib/`, rules, schemas, shared roles, shared skills | Stable Baton update only |
-| Generated config | `.baton/agents/*.toml`, `.baton/dashboard/index.html`, generated config proposal | Team/state tools or activation/update |
-| Project-owned Baton content | direction, goals, tickets, decisions, PRDs, reviews, implementation reports, active team choices | Validated project workflow |
+| Generated config | `.baton/agents/*.toml`, `.baton/dashboard/index.html`, `.baton/thread-registry.md`, generated config proposal | Team/state/memory tools or activation/update |
+| Project-owned Baton content | direction, goals, tickets, decisions, PRDs, reviews, implementation reports, active team choices, company memory | Validated project workflow or `$memory` |
 | Narrow integration | Baton block in `AGENTS.md`, project Codex config registration, individual skill links | Installer/activation plus manual collision review |
 | Surrounding project | identity, source, root docs, `VERSION`, package manifests, license, `.github/`, tests, tools, release system | Project owners only |
 
@@ -49,7 +49,19 @@ Use the public check before relying on state:
 
 Use Baton's role and skill workflows for authorized state and team changes; their deterministic mutation plumbing is intentionally not a public CLI. Apply one schema-valid state transition at a time and keep project, goals, tickets, ownership, reviews, team, narrative evidence, and the generated dashboard consistent.
 
-Never hand-edit `.baton/dashboard/index.html`. It is a generated local view.
+Never hand-edit `.baton/dashboard/index.html` or `.baton/thread-registry.md`. They are generated local views; memory and team transactions refresh them together when task or personnel state changes.
+
+## Manage company memory through one skill
+
+Current company, user, and coworker memory lives in `.baton/memory/memory.json`; the value-minimized company chronology lives in `.baton/memory/history.jsonl`. The files are project-owned and inspectable, but accepted mutation, redaction, revision, and cross-record behavior belongs to `$memory` and its hidden deterministic writer.
+
+Use `$memory` to remember, inspect, confirm or reject a candidate, correct, forget, or explicitly retrieve more context. Do not add a second memory command, global store, import/sync layer, transcript archive, personnel database, or project-management mirror. Tickets, PRDs, decisions, ownership, approvals, and evidence remain authoritative in their existing records; memory may link to them without copying their contents.
+
+Only confirmed claims can enter automatic role briefings. The automatic packet is selected for the role and assignment and stops at 10 claims or the conservative 600-token budget. Candidates, superseded claims, raw history, old reviews, inactive coworkers, and assignment text already present are excluded. Explicit retrieval does not silently enlarge future automatic packets.
+
+Forgetting removes the active value, clears matching candidates, redacts matching local chronology values, refreshes generated views, and returns an external report and rollback location. Baton warns that earlier Git commits and retained external backups may still contain the value; it never rewrites Git history or deletes backups automatically.
+
+Names and bounded professional working styles may be edited through the supported memory flow. Stable IDs, generation seeds, task registrations, employment history, and evidence links must remain coherent. Permanent Management, Operations, or Consultant seat replacement requires explicit user approval; Operations may select and replace disposable Contractors inside approved delivery work.
 
 ## Tune assurance explicitly
 

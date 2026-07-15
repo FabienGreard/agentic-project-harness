@@ -1,6 +1,6 @@
 # Static distribution check contract
 
-`python3 scripts/harness_eval.py --strict` is the read-only source evaluator for the Baton v0.6.0 distribution boundary. It emits stable check IDs with concrete evidence and exits nonzero when any check fails.
+`python3 scripts/harness_eval.py --strict` is the read-only source evaluator for the Baton v0.7.0 distribution boundary. It emits stable check IDs with concrete evidence and exits nonzero when any check fails.
 
 ## Product and payload boundary
 
@@ -29,5 +29,6 @@
 
 - `BT-015`: supported Python code compiles on the current interpreter, Python 3.9 remains syntax-compatible when available, and Git-visible/bounded source paths contain no cache artifacts without traversing ignored vendor trees.
 - `BT-016`: public `docs/` contains only the five product guides, while the focused deterministic suite, evaluator specifications under `tests/evals/`, and local/remote smoke entrypoints are present.
+- `BT-017`: bootstrap and company-memory schemas, hidden transactions, bounded role briefings, generated dashboard/task-registry views, and Consultant personnel-history integration are present and source/consumer starters do not drift.
 
 Scenario IDs under `scenarios/` are a separate behavioral-evaluation surface. They do not replace these deterministic source/distribution gates, and permanent roles never grade their own candidate.

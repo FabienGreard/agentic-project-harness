@@ -1,6 +1,6 @@
 # BATON-002 — Bootstrap, company memory, and named workforce
 
-Status: Approved outcome definition; not execution-ready
+Status: Execution in progress for unpublished v0.7.0 candidate
 
 Owner: Management
 
@@ -156,9 +156,9 @@ The user manages all remembered information through one `$memory` skill using na
 
 ## Dependencies
 
-- BATON-001 must remain complete and its v0.6 release boundary must be resolved separately.
+- BATON-001 is complete; its exact unpublished v0.6 candidate remains isolated and publication remains a separate human Release decision.
 - Current Codex task-creation, task-listing, navigation, and messaging capabilities must be verified at implementation time.
-- The Product Designer Consultant should review bootstrap interaction, memory controls, and dashboard comprehension before execution readiness.
+- Product Designer readiness and implementation Acceptance are approved in `.baton/review-packets/BATON-002-product-designer-readiness.md` and `.baton/review-packets/BATON-002-acceptance-evidence.md`. Corrected disposable Internal Audit `IA-BATON-002-20260716T011303+0200-ebb65efc-dirty` passed at 98/100 with no hard gates or P0–P3 findings. Operations integration Acceptance is approved in `.baton/review-packets/BATON-002-operations-acceptance.md`; clean-commit packaging and human Release remain pending.
 
 ## Risks
 
@@ -212,7 +212,7 @@ The active Product Designer Consultant must approve bootstrap comprehension, int
 
 ## Human-review boundary
 
-Outcome behavior is approved by the user through the completed brainstorm. Implementation remains Backlog and must pass normal readiness. Any eventual publication remains separately human-gated at Release.
+Outcome behavior, implementation readiness, Product Designer Acceptance, two-axis review, deterministic verification, corrected disposable Internal Audit, and Operations integration Acceptance are complete. The unpublished v0.7.0 candidate must still produce exact clean-commit package evidence. Any eventual publication remains separately human-gated at Release.
 
 ## Suggested execution strategy
 

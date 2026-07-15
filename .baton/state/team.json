@@ -44,7 +44,7 @@
       "source": "preset",
       "status": "active",
       "configPath": ".baton/agents/consultant-product-designer.toml",
-      "configBaselineSha256": "bcda8032541fdb93cf1512461ebafad17b44ba037c3a12bae26f228524f27720",
+      "configBaselineSha256": "859bb5b1e67911a33a379aa9add020947e01492193f38d47e129940240781d43",
       "hiredAt": "2026-07-14T11:57:56+00:00",
       "firedAt": "",
       "preservedConfig": false,
@@ -77,5 +77,5 @@
     "contractors": "medium",
     "internalAudit": "xhigh"
   },
-  "updatedAt": "2026-07-15T11:50:15+00:00"
+  "updatedAt": "2026-07-15T20:52:19+00:00"
 }

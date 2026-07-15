@@ -133,6 +133,8 @@ def parser() -> argparse.ArgumentParser:
     state.add_argument("arguments", nargs=argparse.REMAINDER)
     team = commands.add_parser("_team", help=argparse.SUPPRESS)
     team.add_argument("arguments", nargs=argparse.REMAINDER)
+    memory = commands.add_parser("_memory", help=argparse.SUPPRESS)
+    memory.add_argument("arguments", nargs=argparse.REMAINDER)
     activation = commands.add_parser("_activate", help=argparse.SUPPRESS)
     activation.add_argument("--from", dest="proposal", type=Path, required=True)
     activation.add_argument("--yes", action="store_true")
@@ -153,6 +155,8 @@ def main(project_root: Path | None = None) -> int:
             return run_check(root, args.json)
         if args.command == "_state":
             return run_internal(root, "harness_state", args.arguments)
+        if args.command == "_memory":
+            return run_internal(root, "baton_memory", args.arguments)
         if args.command == "_activate":
             return activate(root, proposal=args.proposal, assume_yes=args.yes, as_json=args.json)
         return run_internal(root, "harness_team", args.arguments)

@@ -4,9 +4,9 @@
   "project": {
     "name": "Baton",
     "outcome": "Give teams a self-contained, updateable multi-agent project control plane without taking ownership of the surrounding repository.",
-    "phase": "Release review",
-    "currentGoal": "BATON-GOAL-001",
-    "lastVerified": "2026-07-15",
+    "phase": "Release candidate review",
+    "currentGoal": "",
+    "lastVerified": "2026-07-16",
     "agentProvider": "codex",
     "templateMode": false,
     "assuranceDefaults": {
@@ -18,7 +18,7 @@
   },
   "baton": {
     "owner": "Management",
-    "action": "Review the exact unpublished Baton v0.6.0 candidate",
-    "returnTrigger": "A new explicit human Release instruction"
+    "action": "Review the unpublished Baton v0.7.0 candidate and decide whether to authorize Release",
+    "returnTrigger": "Explicit human Release instruction"
   }
 }

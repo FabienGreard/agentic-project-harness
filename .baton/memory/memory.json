@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "recordType": "memory",
+  "revision": 0,
+  "historyHead": {
+    "revision": 0,
+    "eventId": "",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "claims": [],
+  "personnel": [],
+  "bootstrap": {
+    "status": "not-started",
+    "seed": "",
+    "roster": [],
+    "provisionalProject": {},
+    "confirmedAt": ""
+  },
+  "settings": {
+    "automaticContextMaxClaims": 10,
+    "automaticContextMaxUtf8Bytes": 1800,
+    "automaticContextMaxEstimatedTokens": 600,
+    "allowSensitiveMemory": false,
+    "historyCompaction": false
+  },
+  "idempotencyKeys": [],
+  "updatedAt": "1970-01-01T00:00:00+00:00"
+}

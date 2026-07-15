@@ -64,6 +64,8 @@ class ReleaseDistributionTests(unittest.TestCase):
         self.assertTrue(template_paths)
         self.assertTrue(all(path.startswith("template/.baton/") for path in template_paths))
         self.assertEqual(inferred_projection("template/.baton/guide.md"), "shared")
+        self.assertEqual(inferred_projection("template/.baton/AGENTS.md"), "starter")
+        self.assertEqual(inferred_projection("template/.baton/memory/memory.json"), "starter")
         self.assertEqual(inferred_projection("template/.baton/state/project.json"), "starter")
         self.assertEqual(
             inferred_projection("template/.baton/integration/README.md"),
@@ -113,8 +115,27 @@ class ReleaseDistributionTests(unittest.TestCase):
         }
         self.assertTrue(all(path.startswith(".baton/") for path in new_paths | adoption_paths))
         self.assertIn(".baton/state/project.json", new_paths)
+        self.assertIn(".baton/AGENTS.md", new_paths)
+        self.assertEqual(
+            {path for path in new_paths if path.startswith(".baton/memory/")},
+            {".baton/memory/history.jsonl", ".baton/memory/memory.json"},
+        )
         self.assertNotIn(".baton/state/project.json", adoption_paths)
+        self.assertNotIn(".baton/AGENTS.md", adoption_paths)
+        self.assertIn(".baton/integration/starter/AGENTS.md", adoption_paths)
         self.assertIn(".baton/integration/starter/state/project.json", adoption_paths)
+        self.assertEqual(
+            {
+                path
+                for path in adoption_paths
+                if path.startswith(".baton/integration/starter/memory/")
+            },
+            {
+                ".baton/integration/starter/memory/history.jsonl",
+                ".baton/integration/starter/memory/memory.json",
+            },
+        )
+        self.assertFalse(any(path.startswith(".baton/memory/") for path in adoption_paths))
         self.assertIn(".baton/integration/README.md", adoption_paths)
         self.assertNotIn(".baton/integration/README.md", new_paths)
         self.assertFalse(any(path.startswith(".codex/skills") for path in new_paths | adoption_paths))
@@ -205,9 +226,29 @@ class ReleaseDistributionTests(unittest.TestCase):
         release_manifest = manifest(self.bundle)
         self.assertEqual(release_manifest["version"], "0.6.0")
         self.assertEqual(release_manifest["stableTag"], "v0.6.0")
+        self.assertEqual(release_manifest["stateSchemaVersion"], 1)
+        self.assertEqual(release_manifest["memorySchemaVersion"], 1)
         self.assertEqual(release_manifest["source"]["commit"], git_commit(self.source))
         self.assertRegex(release_manifest["source"]["commit"], r"^[0-9a-f]{40}$")
         self.assertNotIn("sourceClassificationSha256", release_manifest)
+
+    def test_manifest_rejects_missing_or_invalid_memory_schema_version(self) -> None:
+        for label, mutation in (
+            ("missing", lambda document: document.pop("memorySchemaVersion")),
+            ("zero", lambda document: document.__setitem__("memorySchemaVersion", 0)),
+            ("boolean", lambda document: document.__setitem__("memorySchemaVersion", True)),
+        ):
+            with self.subTest(label=label):
+                tampered = self.base / f"memory-schema-{label}"
+                shutil.copytree(self.bundle, tampered)
+                document = manifest(tampered)
+                mutation(document)
+                resign_manifest(tampered, document)
+                failed = run(
+                    [sys.executable, RELEASE_TOOL, "validate", "--bundle", tampered],
+                    expected=1,
+                )
+                self.assertIn("manifest", failed.stderr)
 
 
 if __name__ == "__main__":

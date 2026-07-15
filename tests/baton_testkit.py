@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Disposable source, release, and consumer fixtures for Baton v0.6.0 tests."""
+"""Disposable source, release, and consumer fixtures for Baton tests."""
 
 from __future__ import annotations
 
@@ -25,11 +25,13 @@ ARTIFACTS = {
     "SHA256SUMS",
 }
 SKILLS = (
+    "bootstrap-baton",
     "brainstorm",
     "code-review",
     "fire-consultant",
     "hire-consultant",
     "improve-codebase-architecture",
+    "memory",
 )
 
 
@@ -86,6 +88,7 @@ def inferred_projection(relative: str) -> str:
     if relative.startswith("template/.baton/"):
         payload_relative = relative.removeprefix("template/")
         template_prefixes = (
+            ".baton/memory/",
             ".baton/state/",
             ".baton/dashboard/",
             ".baton/docs/",
@@ -95,7 +98,7 @@ def inferred_projection(relative: str) -> str:
             ".baton/review-packets/",
             ".baton/tickets/",
         )
-        if payload_relative == ".baton/thread-registry.md" or payload_relative.startswith(template_prefixes):
+        if payload_relative in {".baton/AGENTS.md", ".baton/thread-registry.md"} or payload_relative.startswith(template_prefixes):
             return "starter"
         return "shared"
     raise ValueError(f"consumer source is outside template/.baton: {relative}")
@@ -160,6 +163,7 @@ def build_bundle(
     output: Path,
     *,
     origins: Iterable[Tuple[str, str, Optional[str]]] = (),
+    memory_schema_version: int = 1,
     expected: int = 0,
 ) -> subprocess.CompletedProcess[str]:
     version = (source / "VERSION").read_text(encoding="utf-8").strip()
@@ -175,6 +179,8 @@ def build_bundle(
         f"v{version}",
         "--state-schema-version",
         "1",
+        "--memory-schema-version",
+        str(memory_schema_version),
     ]
     for tag, commit, manifest_digest in origins:
         specification = f"{tag}={commit}"

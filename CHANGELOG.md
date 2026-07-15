@@ -6,7 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
-## [0.6.0] - Unreleased candidate
+## [0.7.0] - Unreleased candidate
+
+### Added
+
+- Added Management-first `$bootstrap-baton` onboarding with stable named coworkers, idempotent permanent-task reconciliation, copy-ready fallback, interruption recovery, and one-question project discovery.
+- Added one project-local company memory with confirmed claims, candidates, named personnel, evidence-backed reviews, privacy controls, local chronology, and bounded role-specific recall through `$memory`.
+- Added an independent memory schema/version boundary, snapshot-authoritative transactional writer, mature-adoption quarantine, sequential migration contract, external rollback evidence, and local-history redaction with accurate Git-retention warnings.
+
+### Changed
+
+- Replaced generic first-task instructions with the explicit bootstrap skill while preserving Management, Operations, Consultant, Contractor, and Internal Audit authority.
+- Extended the dashboard with privacy-filtered personnel, task-readiness, memory-candidate, and company-history views without universal worker scores or leaderboard behavior.
+- Kept the installed public command surface at `status`, `update`, and `check`; deterministic memory mutation remains hidden behind the two skills.
+
+## [0.6.0] - Unpublished candidate
 
 ### Changed
 

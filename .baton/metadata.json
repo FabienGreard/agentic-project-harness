@@ -1,7 +1,8 @@
 {
   "schemaVersion": 3,
-  "batonVersion": "0.6.0",
+  "batonVersion": "0.7.0",
   "stateSchemaVersion": 1,
+  "memorySchemaVersion": 1,
   "provider": "codex",
   "installationStatus": "Source Repository",
   "projectName": "Baton",
@@ -24,7 +25,10 @@
   },
   "managedFiles": {},
   "managedBlocks": {},
-  "projectOwnedFiles": [],
+  "projectOwnedFiles": [
+    ".baton/memory/history.jsonl",
+    ".baton/memory/memory.json"
+  ],
   "legacyCleanupCandidates": [],
   "pendingIntegration": [],
   "lastTransactionId": null

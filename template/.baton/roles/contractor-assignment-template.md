@@ -13,6 +13,8 @@
 - Independence rationale:
 - Start dependencies / required inputs:
 - Canonical operational state check / authorized state operation (if applicable):
+- Bounded memory briefing subject/query or explicit reason memory is not applicable:
+- Permitted memory candidate or self-reflection return (if any):
 - Integration order or checkpoint:
 - Approved decisions and constraints:
 - Required Consultant brief or review:

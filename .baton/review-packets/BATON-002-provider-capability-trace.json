@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-07-15T00:00:00+02:00",
+  "surface": "Codex desktop task provider",
+  "requiredCapabilities": {
+    "listAndReconcile": "codex_app__list_threads",
+    "createUserOwnedTask": "codex_app__create_thread",
+    "stableReturnedTaskId": "codex_app__create_thread result contract",
+    "readTask": "codex_app__read_thread",
+    "sendWakeMessage": "codex_app__send_message_to_thread"
+  },
+  "inventoryResult": "complete-surface-observed",
+  "readOnlyProbes": [
+    {
+      "operation": "codex_app__list_threads",
+      "input": {"query": "Baton", "limit": 5},
+      "result": "success",
+      "observedStableTaskId": "019f67b8-3be9-7682-b51e-5a765283510d",
+      "observedHostId": "local"
+    },
+    {
+      "operation": "codex_app__read_thread",
+      "input": {
+        "threadId": "019f67b8-3be9-7682-b51e-5a765283510d",
+        "hostId": "local",
+        "turnLimit": 1
+      },
+      "result": "success",
+      "observedTurnStatus": "completed"
+    }
+  ],
+  "mutatingProbes": {
+    "createInvoked": false,
+    "sendInvoked": false,
+    "reason": "The user authorized BATON-002 implementation, not creation or wake-up of adopter-owned permanent tasks. The provider contract and deterministic native-path fixtures are verified without broadening that authority."
+  },
+  "bootstrapDecisionForThisRun": "available-but-not-authorized",
+  "safetyResult": "No user-owned task or persistent goal was created, modified, or messaged."
+}

@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 import json
 from pathlib import Path
 import re
@@ -67,6 +67,10 @@ def _type_matches(value: Any, expected: str) -> bool:
         return isinstance(value, str)
     if expected == "boolean":
         return isinstance(value, bool)
+    if expected == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
     raise SchemaContractError(f"unsupported schema type: {expected}")
 
 
@@ -203,6 +207,9 @@ def _validate(
         min_items = schema.get("minItems")
         if isinstance(min_items, int) and len(value) < min_items:
             errors.append(f"{location}: requires at least {min_items} items")
+        max_items = schema.get("maxItems")
+        if isinstance(max_items, int) and len(value) > max_items:
+            errors.append(f"{location}: allows at most {max_items} items")
         if schema.get("uniqueItems") is True:
             if any(
                 _json_equal(item, previous)
@@ -228,6 +235,9 @@ def _validate(
         min_length = schema.get("minLength")
         if isinstance(min_length, int) and len(value) < min_length:
             errors.append(f"{location}: must contain at least {min_length} characters")
+        max_length = schema.get("maxLength")
+        if isinstance(max_length, int) and len(value) > max_length:
+            errors.append(f"{location}: must contain at most {max_length} characters")
         pattern = schema.get("pattern")
         if isinstance(pattern, str) and re.search(pattern, value) is None:
             errors.append(f"{location}: does not match the required pattern")
@@ -236,6 +246,23 @@ def _validate(
                 date.fromisoformat(value)
             except ValueError:
                 errors.append(f"{location}: must be an ISO date")
+
+        if schema.get("format") == "date-time":
+            try:
+                datetime.fromisoformat(
+                    value.removesuffix("Z")
+                    + ("+00:00" if value.endswith("Z") else "")
+                )
+            except ValueError:
+                errors.append(f"{location}: must be an ISO date-time")
+
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        minimum = schema.get("minimum")
+        if isinstance(minimum, (int, float)) and value < minimum:
+            errors.append(f"{location}: must be at least {minimum}")
+        maximum = schema.get("maximum")
+        if isinstance(maximum, (int, float)) and value > maximum:
+            errors.append(f"{location}: must be at most {maximum}")
 
     return errors
 

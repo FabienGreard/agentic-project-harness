@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -39,6 +40,26 @@ from baton_testkit import (  # noqa: E402
 )
 
 
+def markdown_link_failures(root: Path) -> tuple[int, list[str]]:
+    checked = 0
+    missing: list[str] = []
+    for document in root.rglob("*.md"):
+        for raw_target in re.findall(
+            r"(?<!!)\[[^]]+\]\(([^)]+)\)",
+            document.read_text(encoding="utf-8"),
+        ):
+            link = raw_target.strip().split()[0].strip("<>")
+            if not link or link.startswith(("http://", "https://", "mailto:", "#")):
+                continue
+            relative = link.split("#", 1)[0]
+            if not relative:
+                continue
+            checked += 1
+            if not (document.parent / relative).resolve().exists():
+                missing.append(f"{document.relative_to(root)} -> {link}")
+    return checked, missing
+
+
 class BatonInstallAndAdoptionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -69,9 +90,36 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         metadata = json.loads((target / ".baton/metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(metadata["schemaVersion"], 3)
         self.assertEqual(metadata["batonVersion"], "0.6.0")
+        self.assertEqual(metadata["memorySchemaVersion"], 1)
         self.assertIsNone(metadata["projectVersion"])
         self.assertEqual(metadata["source"]["commit"], git_commit(self.source))
         self.assertEqual(metadata["source"]["channel"], "stable")
+        self.assertEqual(
+            {
+                path.relative_to(target / ".baton/memory").as_posix(): path.read_bytes()
+                for path in (target / ".baton/memory").iterdir()
+            },
+            {
+                path.name: path.read_bytes()
+                for path in (self.source / "template/.baton/memory").iterdir()
+            },
+        )
+        self.assertTrue(
+            {".baton/memory/memory.json", ".baton/memory/history.jsonl"}
+            <= set(metadata["projectOwnedFiles"])
+        )
+        self.assertFalse(
+            any(path.startswith(".baton/memory/") for path in metadata["managedFiles"])
+        )
+        self.assertNotIn(".baton/thread-registry.md", metadata["projectOwnedFiles"])
+        self.assertEqual(
+            metadata["managedFiles"][".baton/thread-registry.md"]["ownership"],
+            "generated-config",
+        )
+        self.assertIn(
+            "This file is generated",
+            (target / ".baton/thread-registry.md").read_text(encoding="utf-8"),
+        )
         self.assertEqual(semantic_toml(target / ".codex/config.toml"), expected_consumer_config())
         for name in SKILLS:
             path = target / ".agents/skills" / name
@@ -80,8 +128,12 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         status = json_output(baton(target, ["status", "--json"], state_home))
         self.assertTrue(status["ok"])
         self.assertEqual(status["batonVersion"], "0.6.0")
+        self.assertEqual(status["memorySchemaVersion"], 1)
         self.assertEqual(status["integrity"], {"modified": [], "missing": [], "agentsBlock": "ok"})
         self.assertEqual(baton(target, ["check", "--json"], state_home).returncode, 0)
+        checked_links, missing_links = markdown_link_failures(target)
+        self.assertGreater(checked_links, 0)
+        self.assertEqual(missing_links, [])
         assert_no_python_cache(target)
 
     def test_install_rejects_false_projection_provenance(self) -> None:
@@ -186,6 +238,30 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         self.assertFalse((target / ".baton/state").exists())
         self.assertTrue((target / ".baton/integration/starter/state/project.json").is_file())
         self.assertTrue((target / ".baton/integration/starter/state/team.json").is_file())
+        self.assertFalse((target / ".baton/AGENTS.md").exists())
+        self.assertTrue((target / ".baton/integration/starter/AGENTS.md").is_file())
+        self.assertTrue((target / ".baton/integration/starter/dashboard/index.html").is_file())
+        for bridge, destination in {
+            "metadata.json": "../../metadata.json",
+            "roles": "../../roles",
+            "rules": "../../rules",
+            "skills": "../../skills",
+            "templates": "../../templates",
+        }.items():
+            path = target / ".baton/integration/starter" / bridge
+            self.assertTrue(path.is_symlink(), bridge)
+            self.assertEqual(path.readlink().as_posix(), destination)
+        self.assertEqual(
+            {
+                path.relative_to(target / ".baton/integration/starter/memory").as_posix(): path.read_bytes()
+                for path in (target / ".baton/integration/starter/memory").iterdir()
+            },
+            {
+                path.name: path.read_bytes()
+                for path in (self.source / "template/.baton/memory").iterdir()
+            },
+        )
+        self.assertFalse((target / ".baton/memory").exists())
         self.assertTrue((target / ".baton/integration/cleanup-prompt.txt").is_file())
         cleanup_prompt = (target / ".baton/integration/cleanup-prompt.txt").read_text(encoding="utf-8")
         self.assertIn(
@@ -199,6 +275,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         metadata = json.loads((target / ".baton/metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(metadata["installationStatus"], "Needs Integration")
         self.assertEqual(metadata["batonVersion"], "0.6.0")
+        self.assertEqual(metadata["memorySchemaVersion"], 1)
         self.assertIsNone(metadata["projectVersion"])
         self.assertEqual(metadata["legacyCleanupCandidates"], [])
         self.assertFalse((target / "install.sh").exists())
@@ -224,6 +301,9 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
             (target / ".agents/skills/brainstorm/SKILL.md").read_bytes(),
             fixtures[".agents/skills/brainstorm/SKILL.md"],
         )
+        checked_links, missing_links = markdown_link_failures(target)
+        self.assertGreater(checked_links, 0)
+        self.assertEqual(missing_links, [])
         assert_no_python_cache(target)
 
     def test_adoption_preserves_agents_symlink_as_manual_integration(self) -> None:
@@ -284,6 +364,15 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         self.assertEqual(activated["installationStatus"], "Installed")
         metadata = json.loads((target / ".baton/metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(metadata["installationStatus"], "Installed")
+        self.assertTrue((target / ".baton/memory/memory.json").is_file())
+        self.assertTrue((target / ".baton/memory/history.jsonl").is_file())
+        self.assertTrue(
+            {".baton/memory/memory.json", ".baton/memory/history.jsonl"}
+            <= set(metadata["projectOwnedFiles"])
+        )
+        self.assertFalse(
+            any(path.startswith(".baton/memory/") for path in metadata["managedFiles"])
+        )
         self.assertTrue((target / ".baton/state/team.json").is_file())
         project = json.loads((target / ".baton/state/project.json").read_text(encoding="utf-8"))
         self.assertFalse(project["project"]["templateMode"])
@@ -624,6 +713,10 @@ class BatonUpdateTests(unittest.TestCase):
             for name in ("project", "goals", "tickets", "ownership", "reviews", "team")
         }
         overview_before = overview.read_bytes()
+        memory_before = {
+            path.name: path.read_bytes()
+            for path in (target / ".baton/memory").iterdir()
+        }
         before = tree_snapshot(target)
         rejected = baton(
             target,
@@ -654,10 +747,90 @@ class BatonUpdateTests(unittest.TestCase):
             self.assertEqual((target / f".baton/state/{name}.json").read_bytes(), content, name)
         self.assertEqual(overview.read_bytes(), overview_before)
         self.assertEqual(
+            {
+                path.name: path.read_bytes()
+                for path in (target / ".baton/memory").iterdir()
+            },
+            memory_before,
+        )
+        self.assertFalse(
+            any(path.startswith(".baton/memory/") for path in metadata["managedFiles"])
+        )
+        self.assertEqual(
             semantic_toml(target / ".codex/config.toml"),
             expected_consumer_config(("product-designer", "security-lead")),
         )
         self.assertEqual(baton(target, ["check", "--json"], state_home).returncode, 0)
+
+    def test_update_does_not_initialize_memory_for_an_older_installed_project(self) -> None:
+        target, state_home = self.install_060("older-install-without-memory")
+        shutil.rmtree(target / ".baton/memory")
+        metadata_path = target / ".baton/metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata.pop("memorySchemaVersion")
+        metadata["projectOwnedFiles"] = [
+            path
+            for path in metadata["projectOwnedFiles"]
+            if not path.startswith(".baton/memory/")
+        ]
+        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+
+        updated = json_output(
+            baton(
+                target,
+                ["update", "--yes", "--json"],
+                state_home,
+                bundle=self.bundle_061,
+            )
+        )
+        self.assertEqual(updated["version"], "0.6.1")
+        self.assertFalse((target / ".baton/memory").exists())
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        self.assertEqual(metadata["memorySchemaVersion"], 1)
+        self.assertFalse(
+            any(path.startswith(".baton/memory/") for path in metadata["managedFiles"])
+        )
+        initialized = json_output(
+            baton(
+                target,
+                ["_memory", "initialize", "--json"],
+                state_home,
+            )
+        )
+        self.assertTrue(initialized["changed"])
+        self.assertTrue((target / ".baton/memory/memory.json").is_file())
+        self.assertTrue((target / ".baton/memory/history.jsonl").is_file())
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        self.assertTrue(
+            {
+                ".baton/memory/memory.json",
+                ".baton/memory/history.jsonl",
+            }
+            <= set(metadata["projectOwnedFiles"])
+        )
+        self.assertFalse(
+            any(path.startswith(".baton/memory/") for path in metadata["managedFiles"])
+        )
+        self.assertEqual(baton(target, ["check", "--json"], state_home).returncode, 0)
+
+    def test_update_rejects_memory_schema_change_without_explicit_sequential_migration(self) -> None:
+        target, state_home = self.install_060("memory-schema-migration-required")
+        schema_two_bundle = self.base / "bundle-061-memory-schema-2"
+        shutil.copytree(self.bundle_061, schema_two_bundle)
+        document = manifest(schema_two_bundle)
+        document["memorySchemaVersion"] = 2
+        resign_manifest(schema_two_bundle, document)
+        before = tree_snapshot(target)
+
+        failed = baton(
+            target,
+            ["update", "--yes", "--json"],
+            state_home,
+            bundle=schema_two_bundle,
+            expected=1,
+        )
+        self.assertIn("explicit sequential memory migration", failed.stdout + failed.stderr)
+        self.assertEqual(tree_snapshot(target), before)
 
     def test_needs_integration_update_advances_quarantined_starter_only(self) -> None:
         target = self.base / "needs-integration-update"
@@ -667,6 +840,8 @@ class BatonUpdateTests(unittest.TestCase):
         installed = json_output(install_bundle(self.bundle_060, target, state_home))
         self.assertEqual(installed["installationStatus"], "Needs Integration")
         starter_overview = target / ".baton/integration/starter/docs/overview.md"
+        starter_project = target / ".baton/integration/starter/state/project.json"
+        project_name = json.loads(starter_project.read_text(encoding="utf-8"))["project"]["name"]
         self.assertNotIn("v0.6.1 target", starter_overview.read_text(encoding="utf-8"))
 
         updated = json_output(
@@ -679,7 +854,14 @@ class BatonUpdateTests(unittest.TestCase):
         )
         self.assertEqual(updated["version"], "0.6.1")
         self.assertIn("v0.6.1 target", starter_overview.read_text(encoding="utf-8"))
+        self.assertEqual(
+            json.loads(starter_project.read_text(encoding="utf-8"))["project"]["name"],
+            project_name,
+        )
         self.assertFalse((target / ".baton/state").exists())
+        self.assertFalse((target / ".baton/AGENTS.md").exists())
+        self.assertTrue((target / ".baton/integration/starter/AGENTS.md").is_file())
+        self.assertTrue((target / ".baton/integration/starter/dashboard/index.html").is_file())
         for relative, content in fixtures.items():
             if relative == "AGENTS.md":
                 self.assertIn(content.decode("utf-8"), (target / relative).read_text(encoding="utf-8"))
@@ -692,6 +874,9 @@ class BatonUpdateTests(unittest.TestCase):
         metadata = json.loads((target / ".baton/metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(metadata["installationStatus"], "Needs Integration")
         self.assertFalse((target / ".codex/skills").exists())
+        checked_links, missing_links = markdown_link_failures(target)
+        self.assertGreater(checked_links, 0)
+        self.assertEqual(missing_links, [])
         assert_no_python_cache(target)
 
     def test_upgrade_rejects_modified_missing_or_duplicated_agents_block(self) -> None:

@@ -2,8 +2,10 @@
 
 This directory is the single source of truth for the project's reusable skills:
 
+- `bootstrap-baton` — explicit Management-first team and project onboarding with idempotent task registration and safe fallback;
+- `memory` — the sole explicit user interface for project-local company memory inspection, retrieval, confirmation, correction, and forgetting;
 - `brainstorm` — one-question outcome discovery and confirmed decision recording;
-- `improve-codebase-architecture` — read-only architecture discovery and disposable candidate report; and
+- `improve-codebase-architecture` — read-only architecture discovery and disposable candidate report;
 - `code-review` — pinned, read-only two-axis review against standards and approved intent;
 - `hire-consultant` — transactional curated or custom Consultant onboarding; and
 - `fire-consultant` — safe Consultant offboarding with modified-file preservation.

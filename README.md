@@ -2,7 +2,7 @@
 
 Baton is a project-scoped operating system for Codex teams. It gives a repository explicit authority, bounded delivery, transactional project state, stable updates, and evidence-backed review while leaving the surrounding project under its owners' control.
 
-> **v0.6.0 status:** this checkout is an unpublished candidate. The Baton release URL below is intentionally not live until a separate human-authorized stable release. The latest published historical release remains [Agentic Project Harness v0.5.0](https://github.com/FabienGreard/agentic-project-harness/releases/tag/v0.5.0).
+> **v0.7.0 status:** this checkout is an unpublished candidate built on the isolated v0.6 architecture candidate. The Baton release URL below is intentionally not live until a separate human-authorized stable release. The latest published historical release remains [Agentic Project Harness v0.5.0](https://github.com/FabienGreard/agentic-project-harness/releases/tag/v0.5.0).
 
 ## One company layer
 
@@ -36,7 +36,7 @@ Both archives contain only `.baton/` paths. A consumer never receives this repos
 
 ## Install or adopt
 
-After v0.6.0 is explicitly published as a stable release, run its one installer from the project directory:
+After a Baton stable release is explicitly published, run its one installer from the project directory:
 
 ```sh
 curl -fsSL https://github.com/FabienGreard/baton/releases/latest/download/install.sh | bash
@@ -96,6 +96,16 @@ An installed project has no root Baton installer or maintenance tools. Use the p
 
 Mature adoption remains non-authoritative until a human reviews a complete schema-valid proposal and the generated cleanup prompt invokes the internal activation step. Activation and updates are transactional, keep backups outside the worktree, and do not authorize deletion.
 
+## Bootstrap the company
+
+After status and checks pass, invoke `$bootstrap-baton` in Codex. Management starts first, asks your preferred name, gives every configured permanent coworker a stable professional identity, and reconciles the real Codex tasks for Management, Operations, and active Consultants. When the active Codex surface cannot safely list, create, identify, and wake tasks, bootstrap provides copy-ready prompts and marks those coworkers `Awaiting task` instead of guessing or creating duplicates.
+
+Management then asks exactly one project-definition question at a time and presents one final summary for confirmation. Discovery can continue while a task is awaiting creation, but delivery requiring that role remains blocked until a real task ID and wake path are registered. Bootstrap never creates persistent goals, permanent Contractor tasks, or Internal Audit tasks.
+
+One project-local memory lives at `.baton/memory/memory.json` with its value-minimized chronology at `.baton/memory/history.jsonl`. Invoke `$memory` to remember, inspect, confirm or reject candidates, correct, forget, or retrieve more context. Only confirmed claims enter automatic role briefings, capped at 10 claims and approximately 600 tokens; complete memory is never injected automatically. Forgetting redacts active local memory and local chronology transactionally, while warning that Git history and retained external backups may still contain earlier values. Baton never rewrites Git history automatically.
+
+Memory is supportive context, not project-management authority. Tickets, PRDs, decisions, ownership, approvals, and evidence remain authoritative in their existing records. Credentials, secrets, and sensitive personal values are rejected by default.
+
 ## Baton version is not the project version
 
 `.baton/metadata.json` schema v3 keeps two independent fields:
@@ -153,7 +163,7 @@ After installation:
 1. Run `.baton/bin/baton status --json`.
 2. If status is `Needs Integration`, complete the reviewed quarantine/activation flow in [Getting started](docs/getting-started.md).
 3. Run `.baton/bin/baton check --json`.
-4. Read `AGENTS.md` and `.baton/AGENTS.md`, then open the first Management task.
+4. Read `AGENTS.md` and `.baton/AGENTS.md`, then invoke `$bootstrap-baton`.
 
 Management, Operations, and active Consultants are permanent event-driven tasks. New messages to those exact tasks are their sole wake mechanism; Baton never uses persistent goals as role identity or lifecycle control. They drain actionable work, leave an explicit owner/action/return trigger, and pause without polling. Operations is the only Contractor dispatch and revision-routing center.
 

@@ -112,9 +112,9 @@
     {
       "id": "BATON-002",
       "title": "Build Management-first bootstrap and project-local company memory",
-      "status": "Backlog",
+      "status": "Done",
       "priority": "P3",
-      "owner": "Management",
+      "owner": "Operations",
       "goal": "BATON-GOAL-002",
       "dependencies": [
         "BATON-001"
@@ -188,15 +188,138 @@
         ],
         "overrideReason": ""
       },
-      "blockers": [
-        "Queued behind Management resolution of the BATON-GOAL-001 v0.6 release boundary."
+      "blockers": [],
+      "openDecisions": [],
+      "narrativePath": ".baton/prds/BATON-002-bootstrap-memory.md",
+      "reportPath": ".baton/implementation-reports/BATON-002.md"
+    },
+    {
+      "id": "BATON-003",
+      "title": "Design the bootstrap and memory module boundary",
+      "status": "Done",
+      "priority": "P2",
+      "owner": "Operations",
+      "goal": "BATON-GOAL-002",
+      "dependencies": [
+        "BATON-001"
       ],
-      "openDecisions": [
-        "Exact schema fields, compaction behavior, and migration versioning.",
-        "Exact Codex task capability contract and supported fallback surfaces.",
-        "Target post-v0.6 stable version."
+      "objective": "Compare contrasting evidence-backed interfaces for Baton's bootstrap, personnel memory, history, task registration, and bounded recall before selecting the implementation seam.",
+      "scope": [
+        "Inspect current consumer runtime, schemas, state, skills, installer projections, update migrations, dashboard, and tests.",
+        "Produce at least three independent designs with explicit interfaces, invariants, failure behavior, migration behavior, and deletion-test leverage.",
+        "Recommend one architecture and record rejected alternatives without implementing the feature."
       ],
-      "narrativePath": ".baton/prds/BATON-002-bootstrap-memory.md"
+      "nonGoals": [
+        "Implement schemas, runtime, skills, installer changes, dashboard changes, or migrations.",
+        "Publish, tag, or modify the frozen v0.6 candidate branch.",
+        "Expand the confirmed product contract or create new user-facing CLI commands."
+      ],
+      "affectedSystems": [
+        "Bootstrap and memory capability boundary",
+        "Consumer runtime and schemas",
+        "Task registration and role lifecycle",
+        "Installer, update, migration, and rollback",
+        "Dashboard, evaluator, and tests"
+      ],
+      "acceptanceCriteria": [
+        "Three contrasting independent proposals are grounded in the live repository.",
+        "The recommendation defines a small stable interface, storage authority, locking, transactions, migrations, privacy, task capability fallback, and context-budget behavior.",
+        "The deletion test and rejected alternatives show why the selected module is deep rather than a pass-through wrapper.",
+        "No feature implementation or publication occurs in the investigation."
+      ],
+      "requiredVerification": [
+        "Read-only inspection of targeted callers, schemas, release projections, and tests",
+        "Comparison against the confirmed BATON-002 PRD",
+        "State and link checks after the decision record is integrated"
+      ],
+      "expectedEvidence": [
+        "Three Contractor proposal summaries",
+        ".baton/decisions/BATON-002-architecture.md",
+        "Operations recommendation with explicit implementation seam and unresolved Product Designer inputs"
+      ],
+      "risks": [
+        "A storage-first design can leak JSONL and migration mechanics through skill contracts.",
+        "A task-provider adapter can imply capabilities unavailable on some Codex surfaces.",
+        "A broad memory module can become a second project-management authority.",
+        "An underspecified transaction boundary can corrupt current memory and append-only history together."
+      ],
+      "requiredConsultantIds": [],
+      "assurance": {
+        "testRigor": "Thorough",
+        "humanReviewStages": [
+          "Release"
+        ],
+        "overrideReason": ""
+      },
+      "blockers": [],
+      "openDecisions": [],
+      "reportPath": ".baton/decisions/BATON-002-architecture.md"
+    },
+    {
+      "id": "BATON-004",
+      "title": "Define Product Designer readiness for bootstrap and memory",
+      "status": "Done",
+      "priority": "P2",
+      "owner": "Product Designer",
+      "goal": "BATON-GOAL-002",
+      "dependencies": [
+        "BATON-003"
+      ],
+      "objective": "Translate the confirmed BATON-002 outcome and accepted architecture into explicit, accessible interaction requirements for bootstrap, interruption recovery, task fallback, memory control, personnel presentation, and dashboard comprehension.",
+      "scope": [
+        "Define the Management-first onboarding journey and one-question-at-a-time project discovery.",
+        "Define complete, interrupted, resumed, task-tools-unavailable, mature-adoption, and privacy-sensitive states.",
+        "Define copy-ready fallback prompts, task-online feedback, delivery gating, memory inspect/correct/forget/candidate flows, and repository-sharing warnings.",
+        "Define dashboard information hierarchy, safe personnel/history projection, keyboard behavior, accessibility, and mobile/desktop acceptance."
+      ],
+      "nonGoals": [
+        "Implement the memory engine, skills, task creation, dashboard, installer, or tests.",
+        "Change the confirmed product outcome, authority model, technical architecture, or public CLI.",
+        "Approve technical integration, publication, or Product Designer acceptance evidence."
+      ],
+      "affectedSystems": [
+        "Bootstrap skill and Management conversation",
+        "Memory skill and privacy controls",
+        "Task capability fallback and interruption recovery",
+        "Personnel and history dashboard views",
+        "Accessibility and responsive behavior"
+      ],
+      "acceptanceCriteria": [
+        "The target user, entry point, full journey, decision points, content, states, recovery behavior, and completion boundary are explicit.",
+        "Every task-capability state communicates what is online, awaiting user action, or delivery-blocking without exposing unnecessary agent mechanics.",
+        "Remember, inspect, confirm, correct, forget, candidate-review, and Git-retention behavior are understandable and reversible.",
+        "The light theatrical tone ends after onboarding and never obscures authority, privacy, errors, or recovery.",
+        "Keyboard, focus, contrast, screen-reader labeling, responsive layout, and reduced-motion expectations are testable.",
+        "The packet defines representative evidence required for later Product Designer acceptance."
+      ],
+      "requiredVerification": [
+        "Review against the BATON-002 PRD and accepted architecture decision",
+        "State-by-state normal, failure, interruption, privacy, and mature-adoption walkthrough",
+        "Product Designer readiness verdict with exact evidence path"
+      ],
+      "expectedEvidence": [
+        ".baton/review-packets/BATON-002-product-designer-readiness.md",
+        "Approved Product Designer Readiness review on BATON-002",
+        "No implementation changes during the readiness definition"
+      ],
+      "risks": [
+        "Role-play can become distracting or obscure actionable status.",
+        "Task fallback can look successful before a valid wake path exists.",
+        "Dashboard summaries can leak private claims or create a worker leaderboard.",
+        "Forgetting can overpromise deletion from Git or external backups.",
+        "Dense memory controls can exceed the simple one-skill interaction goal."
+      ],
+      "requiredConsultantIds": [],
+      "assurance": {
+        "testRigor": "Thorough",
+        "humanReviewStages": [
+          "Release"
+        ],
+        "overrideReason": ""
+      },
+      "blockers": [],
+      "openDecisions": [],
+      "reportPath": ".baton/review-packets/BATON-002-product-designer-readiness.md"
     }
   ]
 }

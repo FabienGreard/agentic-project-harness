@@ -22,6 +22,12 @@ sys.dont_write_bytecode = True
 
 from harness_lock import MutationLockError, mutation_lock
 from codex_config_contract import assert_codex_config, render_codex_config
+from baton_memory import (
+    MemoryError,
+    inspect as inspect_memory,
+    prepare_under_lock as prepare_memory_under_lock,
+    render_thread_registry,
+)
 
 try:
     import tomllib
@@ -62,6 +68,7 @@ def locked_team_mutation(function):
     @wraps(function)
     def wrapped(*, project_root: Path, **kwargs):
         with mutation_lock(project_root, f"team-{function.__name__}"):
+            recover_interrupted_team_transactions(project_root)
             return function(project_root=project_root, **kwargs)
 
     return wrapped
@@ -349,6 +356,7 @@ You are a Consultant serving as {consultant['title']} for the configured {consul
 Read AGENTS.md, every applicable .baton/rules/ file, .baton/state/team.json, and .baton/roles/consultant.md completely before acting.
 Define readiness and accept or reject evidence only inside this approved domain. Readiness: {readiness} Evidence: {evidence} Authority: {consultant['acceptanceAuthority']}
 You do not own {non_authorities}. Return execution requirements and revisions to Operations; never dispatch or steer Contractors directly.
+On each valid wake, request only the bounded Consultant and assignment briefing available through hidden `_memory` context selection. Never load full memory, candidates, or history.
 This is a permanent top-level task with an event-driven run-to-idle lifecycle. Only a new message to this exact task is a wake; never create, resume, recreate, or attach a persistent goal. A legacy automatic continuation is a non-wake event: do no work and report it for removal. If .baton/state/team.json marks this Consultant inactive, perform no project work and report the stale task or config for cleanup.
 """,
     )
@@ -371,6 +379,7 @@ def fixed_configs(
 You are Management, serving as {management['title']}. {management['headline']}
 Read AGENTS.md, every applicable .baton/rules/ file, .baton/state/team.json, and .baton/roles/management.md completely before acting.
 Own outcomes, priority, scope, readiness, durable decisions, publication, and human-review gates. Commission active Consultants for their configured domains and route executable work to Operations. Never dispatch or steer Contractors directly.
+On each valid wake, request only the bounded Management and assignment briefing available through hidden `_memory` context selection. Never load full memory, candidates, or history.
 This is a permanent top-level task with an event-driven run-to-idle lifecycle. Only a new message to this exact task is a wake; never create, resume, recreate, or attach a persistent goal. A legacy automatic continuation is a non-wake event: do no work and report it for removal.
 """,
         ),
@@ -382,6 +391,7 @@ This is a permanent top-level task with an event-driven run-to-idle lifecycle. O
 You are Operations, serving as {operations['title']}. {operations['headline']}
 Read AGENTS.md, every applicable .baton/rules/ file, .baton/state/team.json, and .baton/roles/operations.md completely before acting.
 Own executable planning, exclusive ownership, Contractor dispatch, integration, verification, and completion evidence. Route missing outcome intent to Management and missing expert requirements to the active Consultant for that domain.
+On each valid wake, request only the bounded Operations and assignment briefing available through hidden `_memory` context selection. Never load full memory, candidates, or history.
 This is a permanent top-level task with an event-driven run-to-idle lifecycle. Only a new message to this exact task is a wake; never create, resume, recreate, or attach a persistent goal. A legacy automatic continuation is a non-wake event: do no work and report it for removal.
 """,
         ),
@@ -392,6 +402,7 @@ This is a permanent top-level task with an event-driven run-to-idle lifecycle. O
             instructions=f"""
 You are a disposable Contractor selected by Operations for one bounded assignment. The available preset capabilities are: {bench}
 Read AGENTS.md, every applicable .baton/rules/ file, .baton/state/team.json, .baton/roles/contractor.md, and the complete assignment before acting.
+Request only the bounded Contractor briefing authorized by the assignment through hidden `_memory` context selection. Never load full memory, candidates, or history.
 Stay inside exclusive scope, do not invent intent or acceptance, verify proportionally, return exact evidence to Operations, and stop. The capability labels are routing hints, not job titles you must perform in conversation.
 """,
         ),
@@ -403,6 +414,7 @@ Stay inside exclusive scope, do not invent intent or acceptance, verify proporti
             instructions="""
 You are Internal Audit, a disposable independent evaluator of Baton rather than a member of the project team.
 Read AGENTS.md, applicable .baton/rules/ files, .baton/state/team.json, .baton/roles/internal-audit.md, and the exact evaluation contract.
+Use hidden `_memory` context selection only when memory is inside the authorized evaluation boundary, and pass that boundary explicitly with the request; never load full memory, candidates, or history.
 Audit only the bounded orchestration evidence. Do not perform project QA, mutate state, fix findings, message permanent roles, dispatch, accept project work, or publish. Return the report and stop.
 """,
         ),
@@ -718,15 +730,268 @@ def load_dashboard_module(root: Path):
     return module
 
 
-def dashboard_for(root: Path, team: dict[str, Any]) -> str:
+def dashboard_for(
+    root: Path,
+    team: dict[str, Any],
+    memory_projection: dict[str, Any] | None = None,
+) -> str:
     module = load_dashboard_module(root)
     errors: list[str] = []
     records = module.load_records(errors)
     records["team"] = team
     module.validate_records(records, errors)
+    projection = memory_projection or module.load_memory_projection(errors)
     if errors:
         raise TeamError("team state would invalidate the project dashboard: " + "; ".join(errors))
-    return module.render_dashboard(records)
+    return module.render_dashboard(records, projection)
+
+
+def prepare_consultant_memory(
+    *, root: Path, consultant: dict[str, Any], action: str
+) -> dict[str, Any] | None:
+    memory_path = inside(root, ".baton/memory/memory.json")
+    history_path = inside(root, ".baton/memory/history.jsonl")
+    if not memory_path.is_file() and not history_path.is_file():
+        return None
+    if (
+        memory_path.is_symlink()
+        or history_path.is_symlink()
+        or not memory_path.is_file()
+        or not history_path.is_file()
+    ):
+        raise TeamError("active company memory is incomplete or unsafe")
+    memory = read_project_record(root, ".baton/memory/memory.json")
+    people = memory.get("personnel", [])
+    existing = next(
+        (
+            person
+            for person in people
+            if person.get("role") == "Consultant"
+            and person.get("seat") == consultant["id"]
+        ),
+        None,
+    )
+    now = consultant.get("hiredAt") or consultant.get("firedAt") or utc_now()
+    base = {
+        "expectedRevision": memory.get("revision"),
+        "actor": "User",
+        "actorId": "consultant-lifecycle",
+        "operation": "personnel",
+        "sourceClass": "verified-personnel",
+        "references": [TEAM_NAME],
+        "timestamp": now,
+        "userApproved": True,
+    }
+    if action == "hire":
+        if existing and existing.get("employmentStatus") not in {
+            "former",
+            "retired",
+            "replaced",
+        }:
+            return None
+        if existing:
+            command = {
+                **base,
+                "action": "rehire",
+                "personnelId": existing["id"],
+                "idempotencyKey": "team-hire:%s:%s" % (consultant["id"], now),
+            }
+        else:
+            bootstrap_seed = memory.get("bootstrap", {}).get("seed")
+            seed = "%s:Consultant:%s" % (
+                bootstrap_seed or root.name,
+                consultant["id"],
+            )
+            command = {
+                **base,
+                "action": "ensure",
+                "role": "Consultant",
+                "seat": consultant["id"],
+                "specialty": consultant.get("domain", consultant.get("title", "")),
+                "seed": seed,
+                "idempotencyKey": "team-hire:%s:%s" % (consultant["id"], now),
+            }
+    elif action == "fire":
+        if existing is None or existing.get("employmentStatus") in {
+            "former",
+            "retired",
+            "replaced",
+        }:
+            return None
+        command = {
+            **base,
+            "action": "fire",
+            "personnelId": existing["id"],
+            "idempotencyKey": "team-fire:%s:%s" % (consultant["id"], now),
+        }
+    else:
+        raise TeamError("unsupported Consultant memory lifecycle action")
+    try:
+        return prepare_memory_under_lock(root, command)
+    except MemoryError as error:
+        raise TeamError("Consultant lifecycle could not update company memory: %s" % error) from error
+
+
+def generated_registry(
+    *, root: Path, metadata: dict[str, Any], team: dict[str, Any], memory: dict[str, Any]
+) -> str | None:
+    managed = metadata.get("managedFiles")
+    record = managed.get(".baton/thread-registry.md") if isinstance(managed, dict) else None
+    if record is None:
+        return None
+    if not isinstance(record, dict) or record.get("ownership") != "generated-config":
+        raise TeamError("thread registry baseline is not a generated Baton view")
+    return render_thread_registry(memory, team)
+
+
+def _atomic_write(path: Path, content: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, raw = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary = Path(raw)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _write_team_report(path: Path, report: dict[str, Any]) -> None:
+    _atomic_write(path, write_json_text(report).encode("utf-8"))
+
+
+def _transaction_digest(root: Path, relative: str) -> str | None:
+    path = inside(root, relative)
+    if path.is_symlink() or (path.exists() and not path.is_file()):
+        raise TeamError(f"team transaction artifact is missing or unsafe: {relative}")
+    return sha256_file(path) if path.is_file() else None
+
+
+def _restore_transaction_before(
+    *, root: Path, transaction: Path, artifacts: dict[str, dict[str, Any]]
+) -> None:
+    backup = transaction / "backup"
+    for relative, record in artifacts.items():
+        path = inside(root, relative)
+        before = record.get("beforeSha256")
+        if before is None:
+            path.unlink(missing_ok=True)
+            continue
+        backup_path = backup.joinpath(*PurePosixPath(relative).parts)
+        if backup_path.is_symlink() or not backup_path.is_file():
+            raise TeamError(
+                f"team transaction backup is missing or unsafe: {relative}"
+            )
+        content = backup_path.read_bytes()
+        if sha256_bytes(content) != before:
+            raise TeamError(f"team transaction backup digest is invalid: {relative}")
+        _atomic_write(path, content)
+
+
+def _validate_transaction_state(
+    *, root: Path, artifacts: dict[str, dict[str, Any]], state: str
+) -> None:
+    digest_key = f"{state}Sha256"
+    for relative, record in artifacts.items():
+        if _transaction_digest(root, relative) != record.get(digest_key):
+            raise TeamError(
+                f"team transaction {state} state did not validate: {relative}"
+            )
+    memory_relatives = {
+        ".baton/memory/memory.json",
+        ".baton/memory/history.jsonl",
+    }
+    if memory_relatives & set(artifacts):
+        memory_path = inside(root, ".baton/memory/memory.json")
+        history_path = inside(root, ".baton/memory/history.jsonl")
+        if memory_path.is_file() or history_path.is_file():
+            try:
+                inspect_memory(root, {"section": "projection"})
+            except MemoryError as error:
+                raise TeamError(
+                    f"team transaction memory state did not validate: {error}"
+                ) from error
+    if TEAM_NAME in artifacts and inside(root, TEAM_NAME).is_file():
+        team = read_project_record(root, TEAM_NAME)
+        errors = validate_team(team, load_catalog(root))
+        if errors:
+            raise TeamError(
+                "team transaction committed invalid team state: " + "; ".join(errors)
+            )
+        dashboard_path = inside(root, ".baton/dashboard/index.html")
+        if dashboard_path.is_file():
+            expected_dashboard = dashboard_for(root, team).encode("utf-8")
+            if dashboard_path.read_bytes() != expected_dashboard:
+                raise TeamError(
+                    "team transaction dashboard does not match committed team and memory state"
+                )
+
+
+def recover_interrupted_team_transactions(root: Path) -> None:
+    base = transaction_directory(root, "recovery").parent
+    if not base.is_dir():
+        return
+    for transaction in sorted(base.iterdir()):
+        report_path = transaction / "team-report.json"
+        if not report_path.exists():
+            continue
+        if report_path.is_symlink() or not report_path.is_file():
+            raise TeamError("an external team transaction report is unsafe")
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise TeamError("an external team transaction report is unreadable") from error
+        if report.get("result") != "prepared":
+            continue
+        artifacts = report.get("artifacts")
+        if not isinstance(artifacts, dict) or not artifacts:
+            raise TeamError("prepared team transaction has no artifact digest map")
+        current: dict[str, str | None] = {}
+        for relative, record in artifacts.items():
+            if not isinstance(relative, str) or not isinstance(record, dict):
+                raise TeamError("prepared team transaction artifact map is invalid")
+            if set(record) != {"beforeSha256", "afterSha256"}:
+                raise TeamError("prepared team transaction artifact digests are invalid")
+            digests = (record["beforeSha256"], record["afterSha256"])
+            if digests == (None, None) or any(
+                digest is not None
+                and (
+                    not isinstance(digest, str)
+                    or re.fullmatch(r"[a-f0-9]{64}", digest) is None
+                )
+                for digest in digests
+            ):
+                raise TeamError("prepared team transaction artifact digests are invalid")
+            current[relative] = _transaction_digest(root, relative)
+        if all(
+            current[relative] == record.get("afterSha256")
+            for relative, record in artifacts.items()
+        ):
+            _validate_transaction_state(root=root, artifacts=artifacts, state="after")
+            report["result"] = "committed-recovered"
+        elif all(
+            current[relative] == record.get("beforeSha256")
+            for relative, record in artifacts.items()
+        ):
+            _validate_transaction_state(root=root, artifacts=artifacts, state="before")
+            report["result"] = "rolled-back-recovered"
+        elif all(
+            current[relative]
+            in {record.get("beforeSha256"), record.get("afterSha256")}
+            for relative, record in artifacts.items()
+        ):
+            _restore_transaction_before(
+                root=root, transaction=transaction, artifacts=artifacts
+            )
+            _validate_transaction_state(root=root, artifacts=artifacts, state="before")
+            report["result"] = "rolled-back-recovered"
+        else:
+            raise TeamError(
+                "unrecognized interrupted team transaction; inspect external recovery evidence"
+            )
+        _write_team_report(report_path, report)
 
 
 def transaction_write(
@@ -736,6 +1001,7 @@ def transaction_write(
     transaction = transaction_directory(root, transaction_id)
     backup = transaction / "backup"
     transaction.mkdir(parents=True, exist_ok=False)
+    backup.mkdir(parents=True, exist_ok=False)
     affected = sorted(set(writes) | set(removes))
     previous: dict[str, bytes | None] = {}
     for relative in affected:
@@ -747,7 +1013,22 @@ def transaction_write(
             target = backup.joinpath(*PurePosixPath(relative).parts)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, target)
+    artifacts = {
+        relative: {
+            "beforeSha256": (
+                sha256_bytes(previous[relative])
+                if previous[relative] is not None
+                else None
+            ),
+            "afterSha256": (
+                sha256_bytes(writes[relative]) if relative in writes else None
+            ),
+        }
+        for relative in affected
+    }
     staged: dict[str, Path] = {}
+    report_path = transaction / "team-report.json"
+    final_result = str(report.get("result", "applied"))
     try:
         for relative, content in writes.items():
             path = inside(root, relative)
@@ -758,23 +1039,67 @@ def transaction_write(
                 handle.flush()
                 os.fsync(handle.fileno())
             staged[relative] = Path(raw_temp)
+        prepared = dict(report)
+        prepared.update(
+            {
+                "result": "prepared",
+                "backupPath": str(backup),
+                "rollbackLocation": str(backup),
+                "reportPath": str(report_path),
+                "artifacts": artifacts,
+                "commitMarker": (
+                    ".baton/memory/memory.json"
+                    if ".baton/memory/memory.json" in writes
+                    else ""
+                ),
+            }
+        )
+        _write_team_report(report_path, prepared)
         for relative in removes:
             inside(root, relative).unlink(missing_ok=True)
-        for relative, temporary in staged.items():
+        history = ".baton/memory/history.jsonl"
+        memory = ".baton/memory/memory.json"
+        replacement_order = []
+        if history in staged:
+            replacement_order.append(history)
+        replacement_order.extend(
+            relative
+            for relative in sorted(staged)
+            if relative not in {history, memory}
+        )
+        if memory in staged:
+            replacement_order.append(memory)
+        for relative in replacement_order:
+            temporary = staged[relative]
             os.replace(temporary, inside(root, relative))
-        report["backupPath"] = str(backup)
-        report["reportPath"] = str(transaction / "team-report.json")
-        (transaction / "team-report.json").write_text(write_json_text(report), encoding="utf-8")
+            if os.environ.get("BATON_TEST_TEAM_EXIT_AFTER") == relative:
+                os._exit(97)
+        _validate_transaction_state(root=root, artifacts=artifacts, state="after")
+        committed = dict(prepared)
+        committed["result"] = final_result
+        _write_team_report(report_path, committed)
     except BaseException as error:
-        for relative, content in previous.items():
-            path = inside(root, relative)
-            path.unlink(missing_ok=True)
-            if content is not None:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(content)
+        rollback_error = ""
+        try:
+            _restore_transaction_before(
+                root=root, transaction=transaction, artifacts=artifacts
+            )
+            _validate_transaction_state(root=root, artifacts=artifacts, state="before")
+        except BaseException as recovery_error:
+            rollback_error = str(recovery_error)
         rollback = dict(report)
-        rollback.update({"result": "rolled-back", "error": str(error), "backupPath": str(backup)})
-        (transaction / "team-report.json").write_text(write_json_text(rollback), encoding="utf-8")
+        rollback.update(
+            {
+                "result": "rolled-back" if not rollback_error else "rollback-incomplete",
+                "error": str(error),
+                "rollbackError": rollback_error,
+                "backupPath": str(backup),
+                "rollbackLocation": str(backup),
+                "reportPath": str(report_path),
+                "artifacts": artifacts,
+            }
+        )
+        _write_team_report(report_path, rollback)
         raise TeamError(f"team transaction failed and was rolled back: {error}") from error
     finally:
         for temporary in staged.values():
@@ -872,7 +1197,14 @@ def hire_consultant(
     if destination.exists() or destination.is_symlink():
         raise TeamError(f"Consultant config path is already occupied: {config_path}")
     transaction_id = f"hire-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
-    dashboard = dashboard_for(root, updated_team)
+    memory_update = prepare_consultant_memory(
+        root=root, consultant=target_record, action="hire"
+    )
+    dashboard = dashboard_for(
+        root,
+        updated_team,
+        memory_update["projection"] if memory_update else None,
+    )
     updated_metadata = metadata_with_team_change(
         metadata=metadata,
         add={"path": config_path, "sha256": consultant["configBaselineSha256"]},
@@ -882,6 +1214,27 @@ def hire_consultant(
         },
         transaction_id=transaction_id,
     )
+    memory_snapshot = (
+        memory_update["snapshot"]
+        if memory_update
+        else read_project_record(root, ".baton/memory/memory.json")
+        if inside(root, ".baton/memory/memory.json").is_file()
+        else None
+    )
+    registry = (
+        generated_registry(
+            root=root,
+            metadata=updated_metadata,
+            team=updated_team,
+            memory=memory_snapshot,
+        )
+        if memory_snapshot is not None
+        else None
+    )
+    if registry is not None:
+        updated_metadata["managedFiles"][".baton/thread-registry.md"][
+            "baselineSha256"
+        ] = sha256_bytes(registry.encode("utf-8"))
     codex_writes, updated_metadata, codex_actions = reconcile_codex_config(
         root=root,
         team=updated_team,
@@ -893,7 +1246,19 @@ def hire_consultant(
         "action": "hire",
         "transactionId": transaction_id,
         "consultant": {"id": identifier, "title": consultant["title"], "source": consultant["source"]},
-        "writes": [config_path, TEAM_NAME, ".baton/dashboard/index.html", METADATA_NAME, *codex_writes],
+        "writes": [
+            config_path,
+            TEAM_NAME,
+            ".baton/dashboard/index.html",
+            *([".baton/thread-registry.md"] if registry is not None else []),
+            *(
+                [".baton/memory/memory.json", ".baton/memory/history.jsonl"]
+                if memory_update
+                else []
+            ),
+            METADATA_NAME,
+            *codex_writes,
+        ],
         "removes": [],
         "manualActions": codex_actions,
     }
@@ -901,6 +1266,19 @@ def hire_consultant(
         config_path: config.encode("utf-8"),
         TEAM_NAME: write_json_text(updated_team).encode("utf-8"),
         ".baton/dashboard/index.html": dashboard.encode("utf-8"),
+        **(
+            {".baton/thread-registry.md": registry.encode("utf-8")}
+            if registry is not None
+            else {}
+        ),
+        **(
+            {
+                ".baton/memory/memory.json": memory_update["memoryAfter"],
+                ".baton/memory/history.jsonl": memory_update["historyAfter"],
+            }
+            if memory_update
+            else {}
+        ),
         METADATA_NAME: write_json_text(updated_metadata).encode("utf-8"),
         **codex_writes,
     }
@@ -915,8 +1293,13 @@ def hire_consultant(
         "action": "hire",
         "consultant": report["consultant"],
         "manualActions": codex_actions,
+        "memoryRevision": (
+            memory_update["snapshot"]["revision"] if memory_update else None
+        ),
+        "personnelIds": memory_update["personnelIds"] if memory_update else [],
         "transactionId": transaction_id,
         "backupPath": str(transaction / "backup"),
+        "rollbackLocation": str(transaction / "backup"),
         "reportPath": str(transaction / "team-report.json"),
     }
 
@@ -958,7 +1341,14 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
     )
     updated_team["updatedAt"] = record["firedAt"]
     transaction_id = f"fire-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
-    dashboard = dashboard_for(root, updated_team)
+    memory_update = prepare_consultant_memory(
+        root=root, consultant=record, action="fire"
+    )
+    dashboard = dashboard_for(
+        root,
+        updated_team,
+        memory_update["projection"] if memory_update else None,
+    )
     updated_metadata = metadata_with_team_change(
         metadata=metadata,
         remove=config_path if unchanged or config_missing else None,
@@ -973,6 +1363,27 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
         },
         transaction_id=transaction_id,
     )
+    memory_snapshot = (
+        memory_update["snapshot"]
+        if memory_update
+        else read_project_record(root, ".baton/memory/memory.json")
+        if inside(root, ".baton/memory/memory.json").is_file()
+        else None
+    )
+    registry = (
+        generated_registry(
+            root=root,
+            metadata=updated_metadata,
+            team=updated_team,
+            memory=memory_snapshot,
+        )
+        if memory_snapshot is not None
+        else None
+    )
+    if registry is not None:
+        updated_metadata["managedFiles"][".baton/thread-registry.md"][
+            "baselineSha256"
+        ] = sha256_bytes(registry.encode("utf-8"))
     codex_writes, updated_metadata, codex_actions = reconcile_codex_config(
         root=root,
         team=updated_team,
@@ -987,7 +1398,18 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
         "action": "fire",
         "transactionId": transaction_id,
         "consultant": {"id": consultant_id, "title": consultant["title"], "source": consultant["source"]},
-        "writes": [TEAM_NAME, ".baton/dashboard/index.html", METADATA_NAME, *codex_writes],
+        "writes": [
+            TEAM_NAME,
+            ".baton/dashboard/index.html",
+            *([".baton/thread-registry.md"] if registry is not None else []),
+            *(
+                [".baton/memory/memory.json", ".baton/memory/history.jsonl"]
+                if memory_update
+                else []
+            ),
+            METADATA_NAME,
+            *codex_writes,
+        ],
         "removes": removes,
         "reconciledMissingFiles": [config_path] if config_missing else [],
         "preservedFiles": [config_path] if record["preservedConfig"] else [],
@@ -998,6 +1420,19 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
         writes={
             TEAM_NAME: write_json_text(updated_team).encode("utf-8"),
             ".baton/dashboard/index.html": dashboard.encode("utf-8"),
+            **(
+                {".baton/thread-registry.md": registry.encode("utf-8")}
+                if registry is not None
+                else {}
+            ),
+            **(
+                {
+                    ".baton/memory/memory.json": memory_update["memoryAfter"],
+                    ".baton/memory/history.jsonl": memory_update["historyAfter"],
+                }
+                if memory_update
+                else {}
+            ),
             METADATA_NAME: write_json_text(updated_metadata).encode("utf-8"),
             **codex_writes,
         },
@@ -1012,8 +1447,13 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
         "preservedFiles": report["preservedFiles"],
         "reconciledMissingFiles": report["reconciledMissingFiles"],
         "manualActions": manual_actions,
+        "memoryRevision": (
+            memory_update["snapshot"]["revision"] if memory_update else None
+        ),
+        "personnelIds": memory_update["personnelIds"] if memory_update else [],
         "transactionId": transaction_id,
         "backupPath": str(transaction / "backup"),
+        "rollbackLocation": str(transaction / "backup"),
         "reportPath": str(transaction / "team-report.json"),
     }
 

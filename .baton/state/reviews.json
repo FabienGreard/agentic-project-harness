@@ -1,6 +1,43 @@
 {
   "schemaVersion": 1,
   "recordType": "reviews",
-  "reviews": [],
-  "consultantReviews": []
+  "reviews": [
+    {
+      "id": "BATON-002-integration-acceptance",
+      "ticket": "BATON-002",
+      "stage": "Acceptance",
+      "status": "Approved",
+      "path": ".baton/review-packets/BATON-002-operations-acceptance.md",
+      "reviewer": "Operations",
+      "recordedAt": "2026-07-16"
+    }
+  ],
+  "consultantReviews": [
+    {
+      "id": "BATON-002-product-designer-readiness",
+      "ticket": "BATON-002",
+      "consultantId": "product-designer",
+      "stage": "Readiness",
+      "status": "Approved",
+      "evidencePaths": [
+        ".baton/review-packets/BATON-002-product-designer-readiness.md"
+      ],
+      "reviewer": "Product Designer",
+      "recordedAt": "2026-07-15"
+    },
+    {
+      "id": "BATON-002-product-designer-acceptance",
+      "ticket": "BATON-002",
+      "consultantId": "product-designer",
+      "stage": "Acceptance",
+      "status": "Approved",
+      "evidencePaths": [
+        ".baton/implementation-reports/BATON-002.md",
+        ".baton/review-packets/BATON-002-product-designer-readiness.md",
+        ".baton/review-packets/BATON-002-acceptance-evidence.md"
+      ],
+      "reviewer": "Product Designer",
+      "recordedAt": "2026-07-16"
+    }
+  ]
 }

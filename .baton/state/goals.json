@@ -5,7 +5,7 @@
     {
       "id": "BATON-GOAL-001",
       "title": "Separate Baton product development from consumer control planes",
-      "status": "Review",
+      "status": "Done",
       "priority": "P1",
       "owner": "Management",
       "objective": "Rename the product to Baton and ship clean new-project and adoption payloads centered on an isolated .baton control plane.",
@@ -15,12 +15,14 @@
       "decisionPaths": [],
       "evidencePaths": [
         ".baton/implementation-reports/BATON-001.md"
-      ]
+      ],
+      "resultSummary": "The exact unpublished v0.6.0 candidate is complete and independently verified; publication remains behind the separate human Release gate.",
+      "completedAt": "2026-07-15"
     },
     {
       "id": "BATON-GOAL-002",
       "title": "Give every Baton project a named company that remembers and improves",
-      "status": "Needs Definition",
+      "status": "Done",
       "priority": "P3",
       "owner": "Management",
       "objective": "Create a provider-aware Management-first bootstrap, one project-local company memory, named reusable coworkers, evidence-backed reviews, and bounded role-specific recall.",
@@ -28,16 +30,19 @@
       "dependencies": [
         "BATON-GOAL-001"
       ],
-      "blockers": [
-        "Resolve the BATON-GOAL-001 v0.6 release boundary before promoting post-v0.6 implementation."
-      ],
-      "blockerOwner": "Management",
-      "resumeCondition": "Management resolves the explicit v0.6 Release decision and selects BATON-002 for readiness definition.",
+      "blockers": [],
       "narrativePath": ".baton/prds/BATON-002-bootstrap-memory.md",
-      "decisionPaths": [],
+      "decisionPaths": [
+        ".baton/decisions/BATON-002-architecture.md"
+      ],
       "evidencePaths": [
-        ".baton/prds/BATON-002-bootstrap-memory.md"
-      ]
+        ".baton/implementation-reports/BATON-002.md",
+        ".baton/prds/BATON-002-bootstrap-memory.md",
+        ".baton/review-packets/BATON-002-acceptance-evidence.md",
+        ".baton/review-packets/BATON-002-operations-acceptance.md"
+      ],
+      "resultSummary": "The unpublished Baton v0.7.0 candidate delivers Management-first bootstrap, project-local company memory, named reusable coworkers, bounded recall, and independently verified migration and rollback; publication remains behind the human Release gate.",
+      "completedAt": "2026-07-16"
     }
   ]
 }

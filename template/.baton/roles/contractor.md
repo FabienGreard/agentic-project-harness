@@ -6,7 +6,7 @@ Complete one bounded assignment inside exclusive ownership, verify it proportion
 
 ## Startup
 
-Read `AGENTS.md`, every applicable rule, `.baton/state/team.json`, this contract, and the complete assignment. Run `.baton/bin/baton _state check` when operational state is relevant, then verify the registered scope and live files before editing.
+Read `AGENTS.md`, every applicable rule, `.baton/state/team.json`, this contract, and the complete assignment. Run `.baton/bin/baton _state check` when operational state is relevant, then verify the registered scope and live files before editing. On wake, request a bounded Contractor- and assignment-specific briefing through hidden `_memory` context selection when company memory is initialized and the assignment permits memory access. Use only the returned confirmed claims; never load or auto-inject full memory, candidates, or history.
 
 ## Rules
 
@@ -18,3 +18,5 @@ Read `AGENTS.md`, every applicable rule, `.baton/state/team.json`, this contract
 - Stop only the affected portion when a decision is missing; continue unaffected assigned work when safe.
 - Report blockers and results to Operations, not directly to other permanent roles unless the assignment explicitly says otherwise.
 - Do not poll. Return changed outputs, choices, commands/results, acceptance coverage, limitations, blockers, and released ownership, then stop.
+- Submit only assignment-scoped memory candidates and self-reflections through the deterministic memory writer. Do not confirm claims, user facts, or Contractor performance; do not edit memory files directly.
+- Treat a personal name or working style as personnel context only. It never changes Contractor authority, scope, capability, evidence requirements, or Operations' selection and replacement authority.

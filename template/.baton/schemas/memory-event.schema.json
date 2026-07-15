@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/FabienGreard/baton/blob/main/template/.baton/schemas/memory-event.schema.json",
+  "title": "Baton memory history event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "recordType",
+    "revision",
+    "eventId",
+    "previousEventId",
+    "operation",
+    "actor",
+    "actorId",
+    "timestamp",
+    "claimIds",
+    "personnelIds",
+    "references",
+    "details"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "recordType": {"const": "memory-event"},
+    "revision": {"type": "integer", "minimum": 1},
+    "eventId": {"type": "string", "pattern": "^event-[a-f0-9]{24}$"},
+    "previousEventId": {"type": "string"},
+    "operation": {
+      "enum": [
+        "remember",
+        "candidate",
+        "confirm",
+        "correct",
+        "forget",
+        "personnel",
+        "task",
+        "review",
+        "bootstrap"
+      ]
+    },
+    "actor": {
+      "enum": ["User", "Management", "Operations", "Consultant", "Contractor"]
+    },
+    "actorId": {"type": "string"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "claimIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^claim-[a-f0-9]{24}$"}
+    },
+    "personnelIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^person-[a-f0-9]{24}$"}
+    },
+    "references": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "sourceClass", "redacted"],
+      "properties": {
+        "result": {"enum": ["recorded", "confirmed", "rejected", "corrected", "forgotten", "updated"]},
+        "sourceClass": {
+          "enum": [
+            "explicit-user",
+            "personal-inference",
+            "verified-company",
+            "verified-personnel",
+            "management-assessment",
+            "operational-evidence",
+            "consultant-observation",
+            "self-reflection",
+            "system"
+          ]
+        },
+        "redacted": {"type": "boolean"}
+      }
+    }
+  }
+}

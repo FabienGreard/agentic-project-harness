@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Source-only evaluator for the Baton v0.6.0 distribution candidate."""
+"""Source-only evaluator for the Baton v0.7.0 distribution candidate."""
 
 from __future__ import annotations
 
@@ -15,12 +15,16 @@ import tempfile
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 
-VERSION = "0.6.0"
+VERSION = "0.7.0"
 TEMPLATE_PREFIX = "template/.baton/"
 PROJECTIONS = {"shared", "starter", "adoption-only"}
 ADOPTION_ONLY_PATH = "template/.baton/integration/README.md"
-STARTER_PATH = "template/.baton/thread-registry.md"
+STARTER_PATHS = {
+    "template/.baton/AGENTS.md",
+    "template/.baton/thread-registry.md",
+}
 STARTER_PREFIXES = (
+    "template/.baton/memory/",
     "template/.baton/state/",
     "template/.baton/dashboard/",
     "template/.baton/docs/",
@@ -31,11 +35,13 @@ STARTER_PREFIXES = (
     "template/.baton/tickets/",
 )
 SKILLS = (
+    "bootstrap-baton",
     "brainstorm",
     "code-review",
     "fire-consultant",
     "hire-consultant",
     "improve-codebase-architecture",
+    "memory",
 )
 CACHE_SCAN_SCOPES = (
     ".baton",
@@ -126,7 +132,8 @@ def template_sources(root: Path) -> List[str]:
     require(not invalid, f"consumer source exists outside template/.baton: {invalid}")
     require(bool(template_paths), "consumer source template/.baton is empty")
     require(ADOPTION_ONLY_PATH in template_paths, f"adoption-only source is missing: {ADOPTION_ONLY_PATH}")
-    require(STARTER_PATH in template_paths, f"starter source is missing: {STARTER_PATH}")
+    missing_starter = sorted(STARTER_PATHS - set(template_paths))
+    require(not missing_starter, f"starter sources are missing: {missing_starter}")
     return sorted(template_paths)
 
 
@@ -134,7 +141,7 @@ def projection_for(source_path: str) -> str:
     require(source_path.startswith(TEMPLATE_PREFIX), f"consumer source is outside template/.baton: {source_path}")
     if source_path == ADOPTION_ONLY_PATH:
         return "adoption-only"
-    if source_path == STARTER_PATH or source_path.startswith(STARTER_PREFIXES):
+    if source_path in STARTER_PATHS or source_path.startswith(STARTER_PREFIXES):
         return "starter"
     return "shared"
 
@@ -258,7 +265,7 @@ def consumer_config() -> Dict[str, Any]:
 
 
 def check_version(root: Path) -> None:
-    require((root / "VERSION").read_text(encoding="utf-8") == VERSION + "\n", "VERSION is not exactly 0.6.0")
+    require((root / "VERSION").read_text(encoding="utf-8") == VERSION + "\n", f"VERSION is not exactly {VERSION}")
 
 
 def check_source_identity(root: Path) -> None:
@@ -324,7 +331,10 @@ def check_template_boundary(root: Path) -> None:
     require(all(path.startswith(TEMPLATE_PREFIX) for path in sources), "consumer source escaped template/.baton")
     require(not (root / "scripts/source-classification.json").exists(), "obsolete source-classification inventory remains")
     require(projection_for(ADOPTION_ONLY_PATH) == "adoption-only", "adoption-only projection is not explicit")
-    require(projection_for(STARTER_PATH) == "starter", "starter projection is not explicit")
+    require(
+        all(projection_for(path) == "starter" for path in STARTER_PATHS),
+        "starter projections are not explicit",
+    )
 
 
 def check_payload_projection(root: Path) -> None:
@@ -343,6 +353,29 @@ def check_payload_projection(root: Path) -> None:
     require(any(path.startswith(".baton/integration/starter/state/") for path in projected["adoption"]), "adoption payload does not quarantine starter state")
     require(".baton/state/project.json" in projected["new-project"], "new-project payload lacks canonical starter state")
     require(".baton/state/project.json" not in projected["adoption"], "adoption payload activates starter state")
+    require(".baton/AGENTS.md" in projected["new-project"], "new-project payload lacks its agent map")
+    require(".baton/AGENTS.md" not in projected["adoption"], "adoption payload activates the starter agent map")
+    require(
+        ".baton/integration/starter/AGENTS.md" in projected["adoption"],
+        "adoption payload does not quarantine the starter agent map",
+    )
+    require(
+        {path for path in projected["new-project"] if path.startswith(".baton/memory/")}
+        == {".baton/memory/history.jsonl", ".baton/memory/memory.json"},
+        "new-project payload does not contain the exact active starter memory",
+    )
+    require(
+        {path for path in projected["adoption"] if path.startswith(".baton/integration/starter/memory/")}
+        == {
+            ".baton/integration/starter/memory/history.jsonl",
+            ".baton/integration/starter/memory/memory.json",
+        },
+        "adoption payload does not contain the exact quarantined starter memory",
+    )
+    require(
+        not any(path.startswith(".baton/memory/") for path in projected["adoption"]),
+        "adoption payload activates starter memory",
+    )
     require(not any(path.startswith(".baton/") for path in sources), "root source .baton entered consumer projection")
 
 
@@ -356,6 +389,7 @@ def check_release_contract(root: Path) -> None:
         'PROJECTIONS = {"shared", "starter", "adoption-only"}',
         'MANIFEST_SCHEMA = "baton.release-bundle/v1"',
         'INSTALLER_SOURCE = "scripts/install.sh"',
+        '"memorySchemaVersion": args.memory_schema_version',
     )
     missing = [value for value in required if value not in source]
     require(not missing, f"release builder contract is incomplete: {missing}")
@@ -378,11 +412,19 @@ def check_installer_surface(root: Path) -> None:
 def check_runtime_surface(root: Path) -> None:
     cli = (root / "template/.baton/lib/baton_cli.py").read_text(encoding="utf-8")
     lifecycle = (root / "template/.baton/lib/baton_lifecycle.py").read_text(encoding="utf-8")
-    for command in ('add_parser("status"', 'add_parser("update"', 'add_parser("check"', 'add_parser("_activate"'):
+    for command in (
+        'add_parser("status"',
+        'add_parser("update"',
+        'add_parser("check"',
+        'add_parser("_memory"',
+        'add_parser("_activate"',
+    ):
         require(command in cli, f"installed Baton CLI lacks {command}")
     require('METADATA_PATH = ".baton/metadata.json"' in lifecycle, "lifecycle metadata is not namespaced")
     require('"schemaVersion": 3' in lifecycle, "lifecycle does not emit metadata schema 3")
     require('"projectVersion": None' in lifecycle, "lifecycle derives the project version")
+    require('"memorySchemaVersion": manifest["memorySchemaVersion"]' in lifecycle, "lifecycle metadata omits the memory schema version")
+    require("explicit sequential memory migration" in lifecycle, "memory schema changes do not fail closed")
     require("legacyCleanupCandidates" in lifecycle and "Needs Integration" in lifecycle, "migration preservation/quarantine contract is absent")
     require("def activate_adoption(" in lifecycle and 'activate.add_argument("--from"' in lifecycle, "reviewed adoption activation is absent")
     for relative in (
@@ -467,6 +509,107 @@ def check_source_state(root: Path) -> None:
     require(completed.returncode == 0, f"source state/team check failed: {completed.stdout}{completed.stderr}")
 
 
+def check_bootstrap_memory_integration(root: Path) -> None:
+    memory = (root / "template/.baton/lib/baton_memory.py").read_text(
+        encoding="utf-8"
+    )
+    state = (root / "template/.baton/lib/harness_state.py").read_text(
+        encoding="utf-8"
+    )
+    team = (root / "template/.baton/lib/harness_team.py").read_text(
+        encoding="utf-8"
+    )
+    lifecycle = (root / "template/.baton/lib/baton_lifecycle.py").read_text(
+        encoding="utf-8"
+    )
+    for token in (
+        "def prepare_under_lock(",
+        "def render_thread_registry(",
+        "def _generated_views(",
+        '"after-generated"',
+        '"claims": 10, "utf8Bytes": 1800, "estimatedTokens": 600',
+    ):
+        require(token in memory, f"memory engine lacks {token}")
+    require("def load_memory_projection(" in state, "state validation does not load memory")
+    require(
+        "Company memory" in state,
+        "dashboard has no privacy-filtered company memory view",
+    )
+    require(
+        'packet.parts[:2] != (".baton", "review-packets")' in state
+        and "under .baton/review-packets" in state
+        and 'packet.parts[:2] != ("docs", "review-packets")' not in state,
+        "approved human review packets still use the obsolete pre-Baton docs path",
+    )
+    for token in (
+        "recentOutcomes",
+        "performanceSummaries",
+        "sourceLabel",
+        "Evidence links",
+        "Self Reflection · Unverified",
+    ):
+        require(token in state, f"dashboard omits personnel evidence surface {token}")
+    require(
+        "bootstrap roster accepts active Management, Operations, and Consultant seats only"
+        in memory,
+        "direct bootstrap roster mutation does not enforce permanent active seats",
+    )
+    require(
+        "def _ordered_bootstrap_seats(" in memory
+        and '"reconcile-%s" % mode' in memory
+        and "Management task must be registered before other bootstrap seats" in memory,
+        "native bootstrap does not persist and enforce Management-first roster registration",
+    )
+    require(
+        'CONTEXT_ROLES = ROLES + ("Internal Audit",)' in memory
+        and "Internal Audit context requires an explicit authorized evaluation boundary" in memory
+        and 'result["authority"] = "read-only-evaluation"' in memory,
+        "Internal Audit lacks a bounded read-only memory context path",
+    )
+    require(
+        "def _initialization_metadata(" in memory
+        and '"projectOwnedFiles"' in memory,
+        "explicit memory initialization does not classify project-owned files",
+    )
+    require(
+        "def prepare_consultant_memory(" in team,
+        "Consultant lifecycle does not preserve personnel history",
+    )
+    require(
+        "generated_registry(" in team,
+        "team lifecycle does not reconcile the generated task registry",
+    )
+    require(
+        '".baton/thread-registry.md"' in lifecycle
+        and "render_thread_registry" in lifecycle,
+        "install or activation does not generate the task registry",
+    )
+    require(
+        (root / ".baton/memory/memory.json").read_bytes()
+        == (root / "template/.baton/memory/memory.json").read_bytes(),
+        "source memory starter drifts from the consumer contract",
+    )
+    require(
+        (root / ".baton/memory/history.jsonl").read_bytes() == b""
+        and (root / "template/.baton/memory/history.jsonl").read_bytes() == b"",
+        "starter memory history is not empty",
+    )
+    for role in (
+        "management",
+        "operations",
+        "consultant",
+        "contractor",
+        "internal-audit",
+    ):
+        contract = (root / f"template/.baton/roles/{role}.md").read_text(
+            encoding="utf-8"
+        )
+        require(
+            "_memory" in contract,
+            f"{role} role lacks bounded memory briefing policy",
+        )
+
+
 def check_no_publication(root: Path) -> None:
     paths = [
         root / "scripts/install.sh",
@@ -515,6 +658,7 @@ def check_test_suite(root: Path) -> None:
         "tests/test_release.py",
         "tests/test_lifecycle.py",
         "tests/test_state_team.py",
+        "tests/test_memory.py",
         "tests/test_interactive.py",
         "tests/test_evaluator.py",
         "tests/run_smokes.py",
@@ -557,7 +701,7 @@ def check_test_suite(root: Path) -> None:
 
 
 CHECKS: Sequence[Tuple[str, str, Callable[[Path], None]]] = (
-    ("BT-001", "Baton v0.6.0 version", check_version),
+    ("BT-001", "Baton v0.7.0 version", check_version),
     ("BT-002", "source repository identity", check_source_identity),
     ("BT-003", "isolated consumer source tree", check_consumer_layout),
     ("BT-004", "fail-closed template boundary", check_template_boundary),
@@ -573,6 +717,7 @@ CHECKS: Sequence[Tuple[str, str, Callable[[Path], None]]] = (
     ("BT-014", "no automatic publication", check_no_publication),
     ("BT-015", "Python compatibility and cache hygiene", check_python_and_cache_hygiene),
     ("BT-016", "focused Baton smoke inventory", check_test_suite),
+    ("BT-017", "bootstrap and company-memory integration", check_bootstrap_memory_integration),
 )
 
 

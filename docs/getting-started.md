@@ -1,6 +1,6 @@
 # Getting started with Baton
 
-This guide begins after a stable Baton installer has completed. Baton v0.6.0 is still an unpublished candidate in this source checkout; do not treat candidate files or a moving branch as an installable stable release.
+This guide begins after a stable Baton installer has completed. Baton v0.7.0 is still an unpublished candidate in this source checkout; do not treat candidate files or a moving branch as an installable stable release.
 
 ## 1. Inspect local truth
 
@@ -14,7 +14,7 @@ Read these fields before doing anything else:
 
 - `batonVersion` and immutable `source` provenance identify Baton itself.
 - `projectVersion` is independent project information and may be `null`.
-- `installationStatus` is either `Installed` or `Needs Integration` for a new v0.6 installation.
+- `installationStatus` is either `Installed` or `Needs Integration` for a current Baton installation.
 - `integrity`, `pendingIntegration`, `legacyCleanupCandidates`, and `lastTransactionId` identify work that still needs review.
 
 Do not substitute a root `VERSION`, package manifest, branch name, generated dashboard, or old `.agent-harness.json` for `.baton/metadata.json`.
@@ -26,7 +26,7 @@ An empty new project starts as `Installed`; skip to the next section.
 A non-empty project starts as `Needs Integration`. In that state:
 
 - `AGENTS.md` tells agents not to treat starter state as authoritative.
-- `.baton/integration/starter/` contains quarantined examples, not live project facts.
+- `.baton/integration/starter/` contains a browsable agent map, generated dashboard, and quarantined examples—not live project facts.
 - `.baton/integration/codex-config.toml` may contain a proposed config merge when the project already owned `.codex/config.toml`.
 - the external transaction directory contains `update-report.json`, `cleanup-prompt.txt`, and the rollback backup.
 
@@ -66,22 +66,25 @@ The durable split is:
 - `.baton/state/*.json` for canonical project, goal, ticket, ownership, review, and team records;
 - `.baton/docs/`, `.baton/decisions/`, `.baton/prds/`, and `.baton/implementation-reports/` for narrative intent and evidence;
 - `.baton/workflow.md`, `.baton/rules/`, and `.baton/roles/` for operating contracts; and
-- `.baton/dashboard/index.html` for the generated local view.
+- `.baton/memory/memory.json` for current company, user, and coworker memory plus `.baton/memory/history.jsonl` for value-minimized chronology;
+- `.baton/thread-registry.md` for the generated permanent-task registration view; and
+- `.baton/dashboard/index.html` for the generated local project and company view.
 
 Use validated state operations rather than hand-editing generated views. Team changes go through `$hire-consultant` and `$fire-consultant` so history, configs, and transaction evidence stay consistent.
 
-## 5. Open the first Management task
+## 5. Bootstrap Management and the permanent team
 
-Start a new Management task with a prompt like this:
+Invoke the explicit project skill:
 
 ```text
-Read AGENTS.md and every applicable Baton rule. Verify the live repository and
-.baton state. Define or confirm the project outcome, current goal, assurance
-defaults, active Consultants, and human-review stages without implementing the
-product yet. Record only approved facts through Baton's validated state path,
-leave one explicit owner/action/dependency/return trigger, and stop without
-polling when no meaningful Management action remains.
+$bootstrap-baton
 ```
+
+Bootstrap verifies installation and state before doing anything. Management asks your preferred name, creates or reconciles the configured permanent Codex tasks when the complete safe task surface is available, and otherwise gives you copy-ready prompts for each missing task. It is resumable and does not recreate completed identities or tasks.
+
+Management asks exactly one project-definition question per turn. Nothing becomes durable project intent until you confirm the final summary. The short company introduction ends after onboarding; normal operation uses direct status and authority language. Bootstrap never creates persistent goals, permanent Contractor tasks, or Internal Audit tasks.
+
+Use `$memory` whenever you want to remember, inspect, confirm, correct, forget, or retrieve project-local company memory. Candidates and inferred personal observations have no effect until confirmed. Automatic task briefings contain only role-relevant confirmed claims and remain within the fixed claim/token budget.
 
 Management owns outcomes, priority, scope, readiness, publication, and declared human-review gates. It does not dispatch Contractors.
 

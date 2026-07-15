@@ -2,7 +2,7 @@
 
 Baton uses one temporary stable-URL bootstrapper for initial installation, mature adoption, legacy migration, and update bootstrapping. The bootstrapper is never installed into the consumer. Once Baton is installed, the public project-local surface is `.baton/bin/baton status`, `update`, and `check`.
 
-> **Availability:** v0.6.0 is an unpublished candidate. The `FabienGreard/baton` stable URLs in this document become usable only after a separate human-authorized release. Do not install from this branch, a source archive, a prerelease, or an unverified fork.
+> **Availability:** v0.7.0 is an unpublished candidate. The `FabienGreard/baton` stable URLs in this document become usable only after a separate human-authorized release. Do not install from this branch, a source archive, a prerelease, or an unverified fork.
 
 ## Requirements
 
@@ -91,10 +91,10 @@ Custom accepts `inherit`, `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `
 The new-project archive contains Baton's shared runtime and starter project records. The installer:
 
 1. verifies the exact `new-project` manifest path list and checksums;
-2. configures project name, preset, team, reasoning, role files, state, and dashboard;
+2. configures project name, preset, team, reasoning, role files, state, starter company memory, dashboard, and generated permanent-task registry;
 3. installs everything owned by Baton under `.baton/`;
 4. integrates the marked `AGENTS.md` block, Codex config, and individual skill-discovery links; and
-5. records schema-v3 metadata with `installationStatus: "Installed"`.
+5. records schema-v3 metadata with independent state and memory schema versions plus `installationStatus: "Installed"`.
 
 The installed project receives no root `install.sh`, source `scripts/`, tests, evaluator, source docs, changelog, license, release files, or root version file from Baton. Those belong only to this source/product repository.
 
@@ -104,10 +104,12 @@ A non-empty repository is not a blank Baton project. The adoption archive theref
 
 - shared runtime lands at its normal `.baton/` path;
 - adoption-only guidance lands under `.baton/integration/`;
-- starter direction, state, dashboard inputs, decisions, PRDs, tickets, and report scaffolding stay quarantined at `.baton/integration/starter/`; and
+- the starter agent map, direction, state, memory, generated dashboard, decisions, PRDs, tickets, and report scaffolding stay quarantined at `.baton/integration/starter/`; and
 - metadata records `installationStatus: "Needs Integration"`.
 
 Quarantined starter state is never canonical merely because installation succeeded. The root Baton block points agents to `.baton/integration/README.md`, not to an invented project plan.
+
+The integration guide links to the complete quarantined map and dashboard. Bounded relative bridges make its rule, role, skill, template, workflow, and metadata links resolve to shared Baton runtime without activating starter state. Update keeps that generated quarantine current; activation skips the bridges and promotes only reviewed starter content.
 
 The external transaction report identifies its backup and cleanup prompt. Use that prompt to inspect the live repository and prepare complete, non-template mature-project records in a separate directory. A proposal needs six regular JSON files—`project`, `goals`, `tickets`, `ownership`, `reviews`, and `team`—either directly or below `state/`. It may also include reviewed `docs/overview.md` and `docs/direction.md`.
 
@@ -117,7 +119,9 @@ After human review, activate the proposal:
 .baton/bin/baton _activate --from /absolute/path/to/reviewed-proposal
 ```
 
-Activation is internal because it is a one-time adoption gate, not a routine lifecycle command. It validates metadata schema, proposal schemas, cross-record relationships, team preset and reasoning, current baselines, and every destination. Any existing activation target blocks rather than being replaced. A successful transaction writes active `.baton/state/`, dashboard, role configs, the active `AGENTS.md` block, and approved config integration, then records `Installed`. If the repository's `AGENTS.md` is a symlink or another unsafe non-regular entry, Baton preserves it and keeps the manual AGENTS merge action pending through activation; `Installed` does not mean agent discovery is complete until that merge is performed.
+Activation is internal because it is a one-time adoption gate, not a routine lifecycle command. It validates metadata schema, proposal schemas, cross-record relationships, team preset and reasoning, current baselines, and every destination. Any existing activation target blocks rather than being replaced. A successful transaction writes active `.baton/state/`, dashboard, generated permanent-task registry, role configs, the active `AGENTS.md` block, and approved config integration, then records `Installed`. If the repository's `AGENTS.md` is a symlink or another unsafe non-regular entry, Baton preserves it and keeps the manual AGENTS merge action pending through activation; `Installed` does not mean agent discovery is complete until that merge is performed.
+
+Activation also promotes the reviewed starter memory into active project-owned `.baton/memory/` files. It never imports mature project facts into memory automatically; `$bootstrap-baton` and `$memory` establish only confirmed company/user knowledge after activation.
 
 Activation does not delete `.baton/integration/starter/`, legacy files, cleanup candidates, reports, or backups.
 
@@ -143,6 +147,8 @@ Baton creates only these individual links when each path is free:
 .agents/skills/fire-consultant
 .agents/skills/hire-consultant
 .agents/skills/improve-codebase-architecture
+.agents/skills/bootstrap-baton
+.agents/skills/memory
 ```
 
 Each link targets the single source under `.baton/skills/`. Existing files, directories, or different symlinks are preserved and reported as manual actions. Baton does not install a root `.codex/skills` link or duplicate skill tree.
@@ -151,7 +157,7 @@ All other root paths—including `README.md`, `VERSION`, package manifests, lice
 
 ## v0.2-v0.5 legacy migration
 
-Legacy Agentic Project Harness installations do not have `.baton/bin/baton`. Once v0.6.0 is stable, run the new stable Baton installer directly in the legacy repository.
+Legacy Agentic Project Harness installations do not have `.baton/bin/baton`. Once a Baton stable release exists, run the stable Baton installer directly in the legacy repository.
 
 The migration uses mature Adoption mode even when old starter records exist. It preserves `.agent-harness.json` and every legacy project path, puts Baton starter state in quarantine, records the available migration evidence, and requires reviewed activation. It does not infer canonical state from legacy Markdown or automatically retire old files.
 
@@ -178,14 +184,14 @@ All three support `--json`; `update` also supports `--yes`.
 
 `status` is read-only. It reports:
 
-- `batonVersion`, optional `projectVersion`, and state schema version;
+- `batonVersion`, optional `projectVersion`, and independent state/memory schema versions;
 - installation status and immutable stable provenance;
 - modified or missing managed paths and the marked `AGENTS.md` block status;
 - pending integration, legacy migration evidence, human-approved cleanup candidates, and last transaction.
 
 `update` downloads the same latest stable installer. It refuses prereleases, moving branches, forks outside the approved repository set, automatic downgrades, unsupported origins, incomplete provenance, checksum mismatch, modified managed/generated paths, destination collisions, unsafe symlinks, and ambiguous state. A same-version update must match the exact recorded release commit and manifest digest.
 
-`check` validates canonical state and team records. It does not prove product behavior or grant publication authority.
+`check` validates canonical state, team, memory, history, and their generated views. It does not prove product behavior or grant publication authority.
 
 ## Version and provenance
 
@@ -194,12 +200,13 @@ Schema-v3 `.baton/metadata.json` is the installation record:
 ```json
 {
   "schemaVersion": 3,
-  "batonVersion": "0.6.0",
+  "batonVersion": "0.7.0",
+  "memorySchemaVersion": 1,
   "projectVersion": null,
   "installationStatus": "Installed",
   "source": {
     "channel": "stable",
-    "tag": "v0.6.0",
+    "tag": "v0.7.0",
     "commit": "<full immutable commit>",
     "manifestSha256": "<sha256>"
   }
@@ -213,6 +220,8 @@ Do not hand-edit provenance, managed baselines, transaction IDs, or ownership cl
 ## Transactions, rollback, and cleanup
 
 Installation, activation, update, state writes, and team changes share one external per-project process lock. Mutations write reports and backups below the user's state directory, outside the worktree. On a write or validation failure, Baton restores touched paths from that transaction and reports any recovery limitation.
+
+Memory writes use the same lock and external transaction boundary. Active `.baton/memory/` files are project-owned: an update never replaces them from the release payload. An absent memory from an older installed Baton version is initialized explicitly by bootstrap; a future memory schema change requires a sequential validated migration with its own before-image and rollback evidence.
 
 Adoption and migration reports preserve exact cleanup evidence:
 
