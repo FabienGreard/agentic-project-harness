@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eu
 
-OFFICIAL_REPO="FabienGreard/agentic-project-harness"
+OFFICIAL_REPO="FabienGreard/baton"
 COMMAND="smart"
 ASSUME_YES=0
 AS_JSON=0
@@ -12,19 +12,19 @@ STYLE_MUTED=""
 STYLE_ACCENT=""
 STYLE_WARNING=""
 TEMP_DIR=""
+TARGET_OVERRIDE=""
 
 usage() {
   cat <<'EOF'
-Agentic Project Harness stable installer and updater for Codex
+Baton stable installer and updater for Codex
 
 Usage:
-  ./install.sh                 Install, adopt, or offer the next safe action
-  ./install.sh status          Inspect local version and managed-file integrity
-  ./install.sh update          Plan or apply the latest stable release
+  ./install.sh                 Install, adopt, or update from the stable channel
 
 Options:
   --json                       Emit structured JSON where applicable
   --yes                        Confirm safe planned writes without prompting
+  --target PATH                Install or update PATH instead of the current folder
   --help                       Show this help
 
 The installer uses official stable GitHub release assets only. --yes never
@@ -50,7 +50,7 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 case "${1:-}" in
-  status|update)
+  update)
     COMMAND="$1"
     shift
     ;;
@@ -60,6 +60,11 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --json) AS_JSON=1 ;;
     --yes) ASSUME_YES=1 ;;
+    --target)
+      shift
+      [ "$#" -gt 0 ] || die "--target requires a path"
+      TARGET_OVERRIDE="$1"
+      ;;
     --help|-h) usage; exit 0 ;;
     --) shift; break ;;
     *) die "unknown option or command: $1" ;;
@@ -70,30 +75,11 @@ done
 
 command -v python3 >/dev/null 2>&1 || die "python3 is required"
 
-SCRIPT_SOURCE=${BASH_SOURCE[0]:-}
-SCRIPT_DIR=""
-if [ -n "$SCRIPT_SOURCE" ] && [ -f "$SCRIPT_SOURCE" ]; then
-  SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$SCRIPT_SOURCE")" 2>/dev/null && pwd -P)
-fi
 CURRENT_ROOT=$(pwd -P)
-LOCAL_ENGINE=""
-if [ -f "$CURRENT_ROOT/tools/harness_lifecycle.py" ]; then
-  LOCAL_ENGINE="$CURRENT_ROOT/tools/harness_lifecycle.py"
-elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/tools/harness_lifecycle.py" ]; then
-  LOCAL_ENGINE="$SCRIPT_DIR/tools/harness_lifecycle.py"
-fi
-
-run_status() {
-  status_engine=${1:-$LOCAL_ENGINE}
-  [ -n "$status_engine" ] || die "this project has no lifecycle engine"
-  set -- python3 "$status_engine" status --project-root "$CURRENT_ROOT"
-  [ "$AS_JSON" -eq 0 ] || set -- "$@" --json
-  "$@"
-}
 
 confirm_update() {
   [ "$ASSUME_YES" -eq 0 ] || return 0
-  [ -r /dev/tty ] && [ -w /dev/tty ] || die "an existing harness was detected; rerun with update --yes or use a terminal"
+  [ -r /dev/tty ] && [ -w /dev/tty ] || die "an existing Baton installation was detected; rerun with --yes or use a terminal"
   printf '\nUpdate to the latest stable release? [y/N] ' >/dev/tty
   IFS= read -r answer </dev/tty || die "interactive input ended unexpectedly"
   case "$answer" in
@@ -101,20 +87,6 @@ confirm_update() {
     *) printf 'No changes made.\n'; exit 0 ;;
   esac
 }
-
-HAS_METADATA=0
-[ ! -f "$CURRENT_ROOT/.agent-harness.json" ] || HAS_METADATA=1
-
-if [ "$COMMAND" = "status" ] && [ -n "$LOCAL_ENGINE" ]; then
-  run_status
-  exit $?
-fi
-
-if [ "$HAS_METADATA" -eq 1 ] && [ "$COMMAND" = "smart" ] && [ -n "$LOCAL_ENGINE" ]; then
-  [ "$AS_JSON" -eq 1 ] || run_status
-  confirm_update
-  COMMAND="update"
-fi
 
 menu_select() {
   menu_prompt="$1"
@@ -295,9 +267,14 @@ prompt_reasoning() {
 }
 
 PROJECT_TYPE="software-product"
-PROJECT_NAME=$(basename "$CURRENT_ROOT")
+TARGET="${TARGET_OVERRIDE:-$CURRENT_ROOT}"
+PROJECT_NAME=$(python3 - "$TARGET" <<'PY'
+from pathlib import Path
+import sys
+print(Path(sys.argv[1]).expanduser().absolute().name)
+PY
+)
 [ -n "$PROJECT_NAME" ] || PROJECT_NAME="My Project"
-TARGET="$CURRENT_ROOT"
 REASONING_PRESET="medium"
 MANAGEMENT_REASONING="high"
 OPERATIONS_REASONING="high"
@@ -306,7 +283,13 @@ CONTRACTOR_REASONING="medium"
 AUDIT_REASONING="xhigh"
 CONSULTANTS_JSON="[]"
 
-if [ "$COMMAND" = "smart" ] && [ "$ASSUME_YES" -eq 0 ]; then
+EARLY_METADATA=0
+[ ! -f "$TARGET/.baton/metadata.json" ] || EARLY_METADATA=1
+[ ! -f "$TARGET/.agent-harness.json" ] || EARLY_METADATA=1
+if [ "$EARLY_METADATA" -eq 1 ]; then
+  COMMAND="update"
+  confirm_update
+elif [ "$COMMAND" = "smart" ] && [ "$ASSUME_YES" -eq 0 ]; then
   [ -t 1 ] && [ -r /dev/tty ] && [ -w /dev/tty ] || die "interactive installation needs a terminal; use --yes for folder-aware defaults"
   exec 3<>/dev/tty
   if [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != "dumb" ]; then
@@ -315,7 +298,7 @@ if [ "$COMMAND" = "smart" ] && [ "$ASSUME_YES" -eq 0 ]; then
     STYLE_ACCENT=$'\033[38;5;81m'; STYLE_WARNING=$'\033[38;5;214m'
   fi
   printf '\n%s╭──────────────────────────────────────────────╮%s\n' "$STYLE_ACCENT" "$STYLE_RESET" >&3
-  printf '%s│%s  %sAGENTIC PROJECT HARNESS%s                     %s│%s\n' "$STYLE_ACCENT" "$STYLE_RESET" "$STYLE_BOLD" "$STYLE_RESET" "$STYLE_ACCENT" "$STYLE_RESET" >&3
+  printf '%s│%s  %sBATON%s                                      %s│%s\n' "$STYLE_ACCENT" "$STYLE_RESET" "$STYLE_BOLD" "$STYLE_RESET" "$STYLE_ACCENT" "$STYLE_RESET" >&3
   printf '%s│%s  Stable install, adoption, and safe updates  %s│%s\n' "$STYLE_ACCENT" "$STYLE_RESET" "$STYLE_ACCENT" "$STYLE_RESET" >&3
   printf '%s╰──────────────────────────────────────────────╯%s\n' "$STYLE_ACCENT" "$STYLE_RESET" >&3
 
@@ -329,7 +312,7 @@ if [ "$COMMAND" = "smart" ] && [ "$ASSUME_YES" -eq 0 ]; then
     2) PROJECT_TYPE=business-operations ;; 3) PROJECT_TYPE=research ;;
   esac
   PROJECT_NAME=$(prompt_text "Project name" "$PROJECT_NAME")
-  TARGET=$(prompt_text "Where should the harness be installed?" ".")
+  TARGET=$(prompt_text "Where should Baton be installed?" ".")
   preset_choice=$(menu_select "How much reasoning should the team use?" 1 \
     "Low — medium leadership/Consultants, low Contractors, high Internal Audit" \
     "Medium — high leadership/Consultants, medium Contractors, xhigh Internal Audit (recommended)" \
@@ -367,50 +350,58 @@ PY
 REASONING_JSON=$(printf '{"management":"%s","operations":"%s","consultants":"%s","contractors":"%s","internalAudit":"%s"}' \
   "$MANAGEMENT_REASONING" "$OPERATIONS_REASONING" "$CONSULTANT_REASONING" "$CONTRACTOR_REASONING" "$AUDIT_REASONING")
 
-SOURCE_DIR=""
+PAYLOAD_ROOT=""
 MANIFEST_PATH=""
 MANIFEST_SHA=""
+PAYLOAD=""
 
 download_bundle() {
   command -v tar >/dev/null 2>&1 || die "tar is required"
-  command -v curl >/dev/null 2>&1 || [ -n "${APH_RELEASE_DIR:-}" ] || die "curl is required for stable installation and updates"
-  TEMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/agentic-project-harness.XXXXXX")
+  command -v curl >/dev/null 2>&1 || [ -n "${BATON_RELEASE_DIR:-}" ] || die "curl is required for stable installation and updates"
+  TEMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/baton.XXXXXX")
   bundle="$TEMP_DIR/bundle"
   mkdir -p "$bundle"
-  for asset in install.sh agentic-project-harness-template.tar.gz harness-manifest.json SHA256SUMS; do
-    if [ -n "${APH_RELEASE_DIR:-}" ]; then
-      cp "$APH_RELEASE_DIR/$asset" "$bundle/$asset"
+  for asset in install.sh baton-new-project.tar.gz baton-adoption.tar.gz baton-manifest.json SHA256SUMS; do
+    if [ -n "${BATON_RELEASE_DIR:-}" ]; then
+      cp "$BATON_RELEASE_DIR/$asset" "$bundle/$asset"
     else
-      [ "$AS_JSON" -eq 1 ] || printf 'Downloading latest stable Agentic Project Harness...\n' >&2
+      [ "$AS_JSON" -eq 1 ] || printf 'Downloading latest stable Baton...\n' >&2
       curl -fsSL "https://github.com/$OFFICIAL_REPO/releases/latest/download/$asset" -o "$bundle/$asset"
     fi
   done
-  SOURCE_DIR="$TEMP_DIR/source"
-  mkdir -p "$SOURCE_DIR"
-  MANIFEST_SHA=$(python3 - "$bundle" "$SOURCE_DIR" <<'PY'
+  PAYLOAD_ROOT="$TEMP_DIR/payload"
+  mkdir -p "$PAYLOAD_ROOT"
+  MANIFEST_SHA=$(python3 - "$bundle" "$PAYLOAD_ROOT" "$PAYLOAD" <<'PY'
 import hashlib, json, os, sys, tarfile
 from pathlib import Path, PurePosixPath
 
-bundle, target = map(Path, sys.argv[1:])
+bundle, target = map(Path, sys.argv[1:3])
+payload = sys.argv[3]
 expected = {}
 for line in (bundle / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
     parts = line.split("  ")
     if len(parts) != 2 or parts[1] in expected:
         raise SystemExit("invalid SHA256SUMS")
     expected[parts[1]] = parts[0]
-required = {"install.sh", "agentic-project-harness-template.tar.gz", "harness-manifest.json"}
+required = {"install.sh", "baton-new-project.tar.gz", "baton-adoption.tar.gz", "baton-manifest.json"}
 if set(expected) != required:
     raise SystemExit("SHA256SUMS does not match the stable bundle contract")
 for name, digest in expected.items():
     actual = hashlib.sha256((bundle / name).read_bytes()).hexdigest()
     if actual != digest:
         raise SystemExit(f"checksum mismatch: {name}")
-manifest = json.loads((bundle / "harness-manifest.json").read_text(encoding="utf-8"))
-if manifest.get("schema") != "agentic-project-harness.release-bundle/v1" or manifest.get("channel") != "stable":
+manifest = json.loads((bundle / "baton-manifest.json").read_text(encoding="utf-8"))
+if manifest.get("schema") != "baton.release-bundle/v1" or manifest.get("channel") != "stable":
     raise SystemExit("release manifest is not stable")
-if manifest.get("stable_tag") != "v" + str(manifest.get("version")):
+if manifest.get("stableTag") != "v" + str(manifest.get("version")):
     raise SystemExit("release tag and version do not match")
-archive = tarfile.open(bundle / "agentic-project-harness-template.tar.gz", "r:gz")
+record = manifest.get("payloads", {}).get(payload)
+if not isinstance(record, dict):
+    raise SystemExit("release manifest does not contain the selected payload")
+archive_name = record.get("artifact")
+if archive_name not in {"baton-new-project.tar.gz", "baton-adoption.tar.gz"}:
+    raise SystemExit("selected payload artifact is invalid")
+archive = tarfile.open(bundle / archive_name, "r:gz")
 with archive:
     members = archive.getmembers()
     names = set()
@@ -446,24 +437,36 @@ with archive:
             destination.symlink_to(member.linkname)
         else:
             raise SystemExit(f"unsupported archive entry: {member.name}")
-print(hashlib.sha256((bundle / "harness-manifest.json").read_bytes()).hexdigest())
+print(hashlib.sha256((bundle / "baton-manifest.json").read_bytes()).hexdigest())
 PY
   ) || die "stable release bundle verification failed"
-  MANIFEST_PATH="$bundle/harness-manifest.json"
+  MANIFEST_PATH="$bundle/baton-manifest.json"
 }
 
-if [ "$COMMAND" = "smart" ] && [ "$HAS_METADATA" -eq 0 ] && [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/AGENTS.md" ] && [ -f "$SCRIPT_DIR/tools/harness_lifecycle.py" ]; then
-  SOURCE_DIR="$SCRIPT_DIR"
+HAS_METADATA=0
+[ ! -f "$TARGET/.baton/metadata.json" ] || HAS_METADATA=1
+HAS_LEGACY=0
+[ ! -f "$TARGET/.agent-harness.json" ] || HAS_LEGACY=1
+if [ "$COMMAND" = "update" ] && [ "$HAS_METADATA" -eq 0 ] && [ "$HAS_LEGACY" -eq 0 ]; then
+  die "update requires an existing Baton or supported legacy installation"
+fi
+if [ "$HAS_METADATA" -eq 1 ] || [ "$HAS_LEGACY" -eq 1 ]; then
+  COMMAND="update"
+  PAYLOAD="adoption"
+elif [ -d "$TARGET" ] && [ -n "$(ls -A "$TARGET" 2>/dev/null)" ]; then
+  PAYLOAD="adoption"
 else
-  download_bundle
+  PAYLOAD="new-project"
 fi
 
-ENGINE="$SOURCE_DIR/tools/harness_lifecycle.py"
+download_bundle
+
+ENGINE="$PAYLOAD_ROOT/.baton/lib/baton_lifecycle.py"
 [ -f "$ENGINE" ] || die "verified source is missing the lifecycle engine"
-TEAM_ENGINE="$SOURCE_DIR/tools/harness_team.py"
+TEAM_ENGINE="$PAYLOAD_ROOT/.baton/lib/harness_team.py"
 [ -f "$TEAM_ENGINE" ] || die "verified source is missing the team engine"
 
-if [ "$COMMAND" = "smart" ] && [ "$HAS_METADATA" -eq 0 ]; then
+if [ "$COMMAND" = "smart" ] && [ "$HAS_METADATA" -eq 0 ] && [ "$HAS_LEGACY" -eq 0 ]; then
   if [ "$ASSUME_YES" -eq 1 ]; then
     CONSULTANTS_JSON=$(python3 "$TEAM_ENGINE" catalog --preset "$PROJECT_TYPE" --field defaults --json)
   else
@@ -499,22 +502,15 @@ PY
   fi
 fi
 
-if [ "$COMMAND" = "status" ]; then
-  run_status "$ENGINE"
-  exit $?
+if [ "$HAS_METADATA" -eq 1 ]; then
+  set -- python3 "$ENGINE" update --project-root "$TARGET" --payload-root "$PAYLOAD_ROOT" \
+    --payload adoption --manifest "$MANIFEST_PATH" --manifest-sha256 "$MANIFEST_SHA"
+else
+  set -- python3 "$ENGINE" install --project-root "$TARGET" --payload-root "$PAYLOAD_ROOT" \
+    --payload "$PAYLOAD" --manifest "$MANIFEST_PATH" --manifest-sha256 "$MANIFEST_SHA" \
+    --project-name "$PROJECT_NAME" --project-type "$PROJECT_TYPE" \
+    --reasoning-preset "$REASONING_PRESET" --reasoning-json "$REASONING_JSON" \
+    --consultants-json "$CONSULTANTS_JSON"
 fi
-
-if [ "$HAS_METADATA" -eq 1 ] && [ "$COMMAND" = "smart" ]; then
-  [ "$AS_JSON" -eq 1 ] || run_status "$ENGINE"
-  confirm_update
-  COMMAND="update"
-fi
-
-set -- python3 "$ENGINE" "$COMMAND" --project-root "$TARGET" --source-root "$SOURCE_DIR" \
-  --project-name "$PROJECT_NAME" --project-type "$PROJECT_TYPE" \
-  --reasoning-preset "$REASONING_PRESET" --reasoning-json "$REASONING_JSON" \
-  --consultants-json "$CONSULTANTS_JSON"
-[ -z "$MANIFEST_PATH" ] || set -- "$@" --manifest "$MANIFEST_PATH" --manifest-sha256 "$MANIFEST_SHA"
-[ "$ASSUME_YES" -eq 0 ] || set -- "$@" --yes
 [ "$AS_JSON" -eq 0 ] || set -- "$@" --json
 "$@"

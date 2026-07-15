@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "discovery": ".agents/skills/<name> -> .baton/skills/<name>",
+  "skills": [
+    "brainstorm",
+    "improve-codebase-architecture",
+    "code-review",
+    "hire-consultant",
+    "fire-consultant"
+  ],
+  "invocation": "explicit"
+}

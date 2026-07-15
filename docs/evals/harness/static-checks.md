@@ -1,51 +1,33 @@
-# Static check contract
+# Static distribution check contract
 
-Stable check identifiers for `tools/harness_eval.py` and future extensions.
+`python3 tools/harness_eval.py --strict` is the read-only source evaluator for the Baton v0.6.0 distribution boundary. It emits stable check IDs with concrete evidence and exits nonzero when any check fails.
 
-## Repository
+## Product and payload boundary
 
-- `ST-001`: required harness files exist.
-- `ST-002`: repository-local Markdown targets resolve.
-- `ST-003`: JSON state and schema files parse.
-- `ST-004`: no merge-conflict markers or trailing-whitespace errors exist in governed text files.
-- `ST-005`: all fixed and active-Consultant Codex role configurations are valid and the parsed project config exactly matches on-request/Auto-review, workspace-write, sandbox-network, four-thread, and depth-one defaults.
-- `ST-040`: `AGENTS.md` is a navigational map, all built-in and project-specific rules are mapped, required built-ins exist, local links resolve, and every `.agents/rules/*.md` file shares the common section template.
-- `ST-041`: the five project skills, skill metadata/support notice, and relative `.codex/skills -> ../.agents/skills` discovery symlink exist without a duplicate copy.
-- `ST-042`: substantive Management and Operations integration-review/final-audit contracts are present while Consultant acceptance, Internal Audit, and Contractor execution remain separate and Operations remains the dispatch center.
-- `ST-043`: metadata schema/version/state values, the shared external mutation lock, and the minimal install/status/update public lifecycle agree.
-- `ST-044`: the runtime executes the committed JSON schemas before repository-semantic checks, and canonical records exactly match the generated dashboard snapshot.
-- `ST-045`: LLM-readable state and deterministic tools remain subordinate to human authority for consequential decisions.
-- `ST-046`: permanent leadership roles are top-level, event-driven, run-to-idle tasks with explicit owner/action/return-trigger handoffs and no polling.
-- `ST-047`: the exact four-preset catalog, common names, professional personas, recommended Consultants, typed readiness/acceptance gates, authority exclusions, and skill-only hire/fire operations agree; user documentation does not expose the internal mutation command.
-- `ST-048`: project assurance defaults, resolved per-ticket rigor, staged human-review gates, override reasons, dashboard rendering, and state/update smoke coverage agree.
-- `ST-049`: risk-based finding confidence, severity, blocking thresholds, bounded review passes, and H-012/H-013 scenario coverage agree across rules, review skill, rubric, and evaluator prompt.
+- `BT-001`: `VERSION` is exactly the candidate Baton version.
+- `BT-002`: active source identity, repository URL, product naming, and normal non-template repository contract agree.
+- `BT-003`: reusable consumer source exists only under `packages/consumer/.baton/`; source-repository state cannot enter a payload.
+- `BT-004`: every Git-visible candidate path has exactly one valid source classification and no classification drifts from the enforced layout.
+- `BT-005`: new-project and adoption projections are exact, distinct where required, and contain only safe `.baton/` paths.
+- `BT-012`: consumer integration is limited to `.baton/`, the marked `AGENTS.md` block, individual skill-discovery links, and project-scoped Codex configuration; forbidden root project identity or source-repository files cannot be adopted.
 
-## Tickets and state
+## Stable release and lifecycle
 
-- `ST-016`: goal IDs are unique and the current-goal pointer names a non-completed goal.
-- `ST-017`: goal dependency IDs exist and no goal depends on itself.
-- `ST-018`: every executable ticket links to a known goal.
-- `ST-019`: completed goals have result summaries, completion dates, and repository evidence.
-- `ST-010`: ticket IDs are unique and any optional narrative paths exist.
-- `ST-011`: dependency IDs exist and no ticket depends on itself.
-- `ST-012`: active-work tickets exist and use active-compatible status.
-- `ST-013`: each active ownership work step maps to the compatible public ticket status; active work may not remain Ready.
-- `ST-014`: Ready dependencies are Done.
-- `ST-015`: Done tickets have implementation-report evidence.
+- `BT-006`: the release builder, manifest, checksums, and exact five-asset contract are present and fail closed.
+- `BT-007`: the single installer/updater exposes the approved folder-aware, preset/custom, stable-only, local-fixture, target, JSON, and noninteractive surface.
+- `BT-008`: the installed public CLI is exactly `status`, `update`, and `check`; activation/state/team mutations remain internal lifecycle operations.
+- `BT-014`: candidate documentation and machinery preserve the explicit no-auto-publication boundary.
 
-## Ownership and baton
+## Codex, discovery, and project state
 
-- `ST-020`: active scopes do not overlap between owners.
-- `ST-021`: baton owner, action, and return trigger are non-empty.
-- `ST-022`: active work names an owner, scope, status, and return destination.
-- `ST-023`: generated evaluation artifacts are ignored.
+- `BT-009`: the source repository's parsed Codex configuration has exact on-request/Auto-review, workspace-write, network, four-thread, depth-one semantics and valid source roles.
+- `BT-010`: installed Codex configuration and generated fixed/active role registrations use the same exact semantic contract.
+- `BT-011`: the five Baton skills have one source under `.baton/skills/` and are discovered through individual `.agents/skills/<name>` links, without `.codex/skills` or duplicated copies.
+- `BT-013`: Baton's own canonical project, goals, tickets, ownership, reviews, team, dashboard, and current baton validate transactionally.
 
-## Privacy and template hygiene
+## Compatibility and verification
 
-- `ST-030`: no obvious committed secret files are present.
-- `ST-031`: strict/project mode rejects unresolved `<configure>` and `<optional>` registry placeholders.
-- `ST-032`: template mode is explicit until customization is complete.
-- `ST-033`: canonical project provider and lifecycle metadata consistently identify Codex and accepted source provenance.
-- `ST-034`: installed per-role reasoning files match lifecycle metadata.
+- `BT-015`: supported Python code compiles on the current interpreter, Python 3.9 remains syntax-compatible when available, and Git-visible/bounded source paths contain no cache artifacts without traversing ignored vendor trees.
+- `BT-016`: the focused deterministic suite and local/remote smoke entrypoints required by the release procedure are present.
 
-The checker is read-only, emits check IDs with evidence, and exits nonzero on failure.
+Scenario IDs under `scenarios/` are a separate behavioral-evaluation surface. They do not replace these deterministic source/distribution gates, and permanent roles never grade their own candidate.

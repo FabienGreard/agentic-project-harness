@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "recordType": "project",
+  "project": {
+    "name": "New project",
+    "outcome": "",
+    "currentGoal": "",
+    "agentProvider": "codex",
+    "phase": "Needs Definition",
+    "templateMode": true,
+    "lastVerified": "",
+    "assuranceDefaults": {
+      "testRigor": "Standard",
+      "humanReviewStages": []
+    }
+  },
+  "baton": {
+    "owner": "Management",
+    "action": "Define the first Ready goal and ticket",
+    "returnTrigger": "A bounded Ready ticket is recorded"
+  }
+}

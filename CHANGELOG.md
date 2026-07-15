@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [0.6.0] - Unreleased candidate
+
+### Changed
+
+- Renamed the product to Baton and converted the repository from a consumer template into a normal source/product repository.
+- Isolated all consumer runtime, state, governance, roles, schemas, dashboards, and reports under `.baton/`, with only thin `AGENTS.md`, Codex config, and per-skill discovery integrations outside it.
+- Split stable distribution into exact checksum-bound new-project and mature-adoption payloads generated only from `packages/consumer/`.
+- Added schema-v3 Baton provenance, project-version separation, mature-state quarantine, legacy cleanup candidates, additive v0.2-v0.5 migration, external transactions, and rollback.
+- Replaced installed root lifecycle tooling with the small `.baton/bin/baton` status, update, and check surface.
+- Added explicit reviewed mature-state activation, immutable per-file GitHub evidence, checksum-rich transaction reports, and automatic Codex agent-registry reconciliation when Consultants are hired or fired.
+- Made permanent-task messages the sole wake mechanism and prohibited persistent goals as role identity or lifecycle control, including legacy auto-resume handling.
+
 ## [0.5.0] - 2026-07-14
 
 ### Added
@@ -62,7 +74,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Game-development and business-operations adaptation examples.
 - GitHub contribution and community-health files.
 
-[Unreleased]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/FabienGreard/baton/compare/v0.5.0...HEAD
 [0.5.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.3.0...v0.5.0
 [0.3.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.1.0...v0.2.0

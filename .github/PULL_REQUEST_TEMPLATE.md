@@ -4,7 +4,7 @@ What general harness problem does this solve?
 
 ## Change
 
-What rules, roles, templates, checks, scenarios, or examples changed?
+What Baton runtime, rules, roles, payloads, checks, scenarios, or examples changed?
 
 ## Evidence
 
@@ -15,7 +15,7 @@ What rules, roles, templates, checks, scenarios, or examples changed?
 
 ## Compatibility
 
-What must existing template users change, if anything?
+What must existing Baton installations change, if anything?
 
 ## Scope
 

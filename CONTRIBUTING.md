@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping improve Agentic Project Harness.
+Thank you for helping improve Baton.
 
 ## Good contributions
 
@@ -21,7 +21,8 @@ Avoid weakening a safety or human-review gate merely to make a scenario pass. Pr
 5. Run:
 
    ```sh
-   python3 tools/harness_eval.py
+   python3 tools/harness_eval.py --strict
+   python3 tests/run_smokes.py
    ```
 
 6. Open a pull request using the repository template.
@@ -31,7 +32,7 @@ Avoid weakening a safety or human-review gate merely to make a scenario pass. Pr
 - Explain the problem and why it is generalizable.
 - Name the rules, scenarios, and examples affected.
 - Include verification evidence.
-- Identify compatibility or migration implications for existing template users.
+- Identify compatibility or migration implications for existing Baton installations.
 - Keep unrelated cleanup outside the pull request.
 
 By participating, you agree to follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

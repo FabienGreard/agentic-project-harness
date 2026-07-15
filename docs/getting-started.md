@@ -1,37 +1,102 @@
-# Getting started
+# Getting started with Baton
 
-## 1. Verify the installation
+This guide begins after a stable Baton installer has completed. Baton v0.6.0 is still an unpublished candidate in this source checkout; do not treat candidate files or a moving branch as an installable stable release.
+
+## 1. Inspect local truth
+
+From the project root, run:
 
 ```sh
-./install.sh status --json
-python3 tools/harness_team.py check --json
-python3 tools/harness_state.py check --json
+.baton/bin/baton status --json
 ```
 
-Confirm the installed version/provenance, selected preset, professional Management and Operations personas, and active Consultants. Resolve any Adoption cleanup prompt before implementation.
+Read these fields before doing anything else:
 
-## 2. Open the first Management task
+- `batonVersion` and immutable `source` provenance identify Baton itself.
+- `projectVersion` is independent project information and may be `null`.
+- `installationStatus` is either `Installed` or `Needs Integration` for a new v0.6 installation.
+- `integrity`, `pendingIntegration`, `legacyCleanupCandidates`, and `lastTransactionId` identify work that still needs review.
 
-Copy the complete **First project prompt** from the generated repository `README.md`. Management owns project outcomes, priority, scope, readiness, publication, and human-review gates. Its professional persona is recorded in `docs/state/team.json`.
+Do not substitute a root `VERSION`, package manifest, branch name, generated dashboard, or old `.agent-harness.json` for `.baton/metadata.json`.
 
-During project definition, confirm the default assurance policy: generated projects start with `Standard` test rigor and no universal human review stage. Every ticket records its resolved rigor and any human review required at `Readiness`, `Acceptance`, or `Release`; user-authorized overrides record why they differ from the project default.
+## 2. Finish mature adoption when required
 
-## 3. Establish direction and the company
+An empty new project starts as `Installed`; skip to the next section.
 
-Management verifies live repository truth, records approved direction, and confirms whether the starting Consultants match the project’s recurring acceptance domains. Use `$hire-consultant` and `$fire-consultant` for team changes; never hand-edit team state or generated configs.
+A non-empty project starts as `Needs Integration`. In that state:
 
-## 4. Create bounded work
+- `AGENTS.md` tells agents not to treat starter state as authoritative.
+- `.baton/integration/starter/` contains quarantined examples, not live project facts.
+- `.baton/integration/codex-config.toml` may contain a proposed config merge when the project already owned `.codex/config.toml`.
+- the external transaction directory contains `update-report.json`, `cleanup-prompt.txt`, and the rollback backup.
 
-Record the durable outcome in `docs/direction.md`, observable goals in `docs/state/goals.json`, decisions under `docs/decisions/`, requirements under `docs/prds/`, bounded tickets in `docs/state/tickets.json`, and results under `docs/implementation-reports/`. Every executable ticket links to a goal.
+Follow the generated cleanup prompt. Inspect the mature repository and prepare non-template reviewed state in a separate temporary directory. It must contain complete schema-valid `project.json`, `goals.json`, `tickets.json`, `ownership.json`, `reviews.json`, and `team.json` files, either directly or under `state/`. Optional reviewed `docs/overview.md` and `docs/direction.md` may accompany them.
 
-## 5. Synchronize state
+Do not mechanically parse legacy Markdown, invent missing intent, edit the quarantined starter into place, or delete a legacy file.
 
-Prepare a schema-valid operation and run `python3 tools/harness_state.py apply`. Then run state/team checks and the evaluator. Open `docs/index.html` for the generated timeline, goal details, ticket search, and company directory.
+After a human confirms that the proposal is complete, activate it:
 
-## 6. Hand Ready work to Operations
+```sh
+.baton/bin/baton _activate --from /absolute/path/to/reviewed-proposal
+```
 
-Operations owns Contractor dispatch, exclusive ownership, integration, verification, and completion evidence. Management and Consultants never steer Contractors directly. Applicable Consultant acceptance, human gates, and publication authority remain separate.
+The `_activate` command is intentionally internal. It validates metadata schema, team preset and reasoning, all six canonical records, cross-record constraints, managed baselines, and destination collisions before making a transaction. `--yes` may confirm an already reviewed activation in automation; it never authorizes cleanup or deletion.
+
+Activation changes the installation to `Installed`, generates the active dashboard and role configs, updates only Baton's managed `AGENTS.md` block and approved config integration, and records an external backup. Quarantined and legacy evidence remains until a separate human cleanup decision.
+
+## 3. Validate the active control plane
+
+Run both public checks:
+
+```sh
+.baton/bin/baton status --json
+.baton/bin/baton check --json
+```
+
+`status` must report `Installed` with no modified or missing managed files and an intact `AGENTS.md` block. `check` validates canonical state and team records. Open `.baton/dashboard/index.html` only after those commands pass; it is a generated view, not authority.
+
+If either command fails, stop the affected scope and inspect the exact report, pending action, or modified path. Do not repair provenance or managed baselines by hand.
+
+## 4. Read the repository map
+
+Read root `AGENTS.md`, then every applicable link from `.baton/AGENTS.md`. Repository records and the live checkout are authoritative.
+
+The durable split is:
+
+- `.baton/state/*.json` for canonical project, goal, ticket, ownership, review, and team records;
+- `.baton/docs/`, `.baton/decisions/`, `.baton/prds/`, and `.baton/implementation-reports/` for narrative intent and evidence;
+- `.baton/workflow.md`, `.baton/rules/`, and `.baton/roles/` for operating contracts; and
+- `.baton/dashboard/index.html` for the generated local view.
+
+Use validated state operations rather than hand-editing generated views. Team changes go through `$hire-consultant` and `$fire-consultant` so history, configs, and transaction evidence stay consistent.
+
+## 5. Open the first Management task
+
+Start a new Management task with a prompt like this:
+
+```text
+Read AGENTS.md and every applicable Baton rule. Verify the live repository and
+.baton state. Define or confirm the project outcome, current goal, assurance
+defaults, active Consultants, and human-review stages without implementing the
+product yet. Record only approved facts through Baton's validated state path,
+leave one explicit owner/action/dependency/return trigger, and stop without
+polling when no meaningful Management action remains.
+```
+
+Management owns outcomes, priority, scope, readiness, publication, and declared human-review gates. It does not dispatch Contractors.
+
+## 6. Promote only bounded Ready work
+
+Every executable ticket must have an objective, context, scope, non-goals, acceptance, dependencies, affected systems, risks, owner, verification, expected evidence, resolved assurance, and applicable review gates. Only `Ready` work enters execution.
+
+Management approves outcome readiness. Operations confirms execution readiness, registers exclusive ownership, dispatches Contractors, integrates returns, and verifies completion evidence. Consultants define and accept only their approved recurring domains. Human `Release` approval remains separate from technical completion.
 
 ## 7. Run to delegated idle
 
-Management, Operations, and active Consultants are permanent top-level tasks. Each active run drains safe actionable work, records the next owner/action/return trigger, sends one handoff, and pauses without polling when no meaningful action remains.
+Management, Operations, and active Consultants are permanent top-level tasks. Each wake drains safe actionable work, synchronizes the repository control plane, records the next owner/action/return trigger, sends one handoff, and stops without polling.
+
+A new message to the exact permanent task is the sole wake mechanism. Do not create, resume, recreate, or attach persistent goals for role lifecycle, even if the Codex surface exposes complete goal controls; current repository policy supersedes older onboarding prompts that requested one. A legacy automatic continuation without a new task message performs no work and should be reported for user or administrative removal.
+
+Contractors and Internal Audit are disposable. Contractors return exact changed paths, commands/results, limitations, blockers, and ownership release to Operations. Internal Audit independently evaluates Baton behavior and never mutates project work.
+
+For lifecycle details, continue with [Installation](installation.md). For ownership-safe changes, see [Customization](customization.md).

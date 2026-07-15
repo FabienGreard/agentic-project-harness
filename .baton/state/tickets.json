@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "recordType": "tickets",
+  "tickets": [
+    {
+      "id": "BATON-001",
+      "title": "Build the isolated Baton distribution and migration architecture",
+      "status": "In Progress",
+      "priority": "P1",
+      "owner": "Operations",
+      "goal": "BATON-GOAL-001",
+      "dependencies": [],
+      "objective": "Convert Baton into the Baton source product and produce fail-closed new-project and mature-adoption payloads whose complete control plane lives under .baton.",
+      "scope": [
+        "Rename active product identity, commands, metadata, documentation, and generated consumer content to Baton while preserving historical release evidence.",
+        "Give the Baton source repository its own root .baton control plane that is always source-only and never enters consumer payloads.",
+        "Create a separate consumer source tree and generate exact new-project and adoption payload manifests from it.",
+        "Move consumer metadata, runtime, state, dashboard, governance, roles, schemas, presets, decisions, PRDs, tickets, reviews, and reports under .baton.",
+        "Limit consumer files outside .baton to a managed AGENTS.md block, project Codex configuration, and repository skill-discovery links.",
+        "Replace root installed lifecycle tools with .baton/bin/baton and namespaced implementation modules.",
+        "Implement safe v0.2 through v0.5 migration, mature-state quarantine, project-version separation, ignored/vendor-safe validation, backups, rollback, and human-approved cleanup candidates.",
+        "Convert the GitHub repository from template mode to a normal repository without publishing a new release."
+      ],
+      "nonGoals": [
+        "Publish, tag, or release the candidate.",
+        "Rename or mutate consuming project identity, licensing, community, source, test, example, release, or documentation files.",
+        "Automatically parse mature Markdown records into authoritative state without explicit validated integration.",
+        "Automatically delete legacy v0.2 through v0.5 installed files or transaction backups."
+      ],
+      "affectedSystems": [
+        "Product and repository identity",
+        "Release payload builder and manifests",
+        "Fresh installation and mature adoption",
+        "Status, update, migration, backup, and rollback",
+        "Codex AGENTS, custom-agent, configuration, and skill discovery",
+        "Baton operational state and generated dashboard",
+        "Source evaluator and consumer validator",
+        "Documentation, examples, and smoke fixtures",
+        "GitHub repository template setting"
+      ],
+      "acceptanceCriteria": [
+        "The active product is named Baton and the source repository is not configured as a GitHub template.",
+        "The source repository's root .baton contains its own live project state and is classified source-only.",
+        "Consumer .baton content is generated from a separate source tree and cannot include the source repository's root .baton.",
+        "Every tracked source file has one explicit source-only, template-only, adoption-runtime, or shared classification and release construction rejects unclassified files.",
+        "New-project and existing-project payload manifests are separate, exact, checksum-bound, and validated.",
+        "Existing-project adoption never adds or replaces root project identity, legal/community, GitHub, docs, examples, tests, tools, release, evaluator, or installer files.",
+        "Consumer status and update run through .baton/bin/baton and no root install.sh is installed.",
+        "Outside .baton, Baton touches only an idempotent AGENTS.md block, .codex/config.toml integration, and individual .agents/skills links, preserving every collision.",
+        "Baton version comes only from Baton metadata and immutable provenance; a project's VERSION or other version source remains optional and project-owned.",
+        "Mature adoption quarantines starter state until a complete schema-valid migration is explicitly approved and activated.",
+        "Baton source evaluation remains source-only; the consumer validator inspects only Baton-owned or explicitly linked Git-visible non-ignored paths.",
+        "Updates from supported v0.2 through v0.5 installs preserve all legacy files, produce exact cleanup candidates and diffs, and require human approval before deletion.",
+        "Rollback restores every touched project path and reports external backup and transaction locations.",
+        "A representative mature-repository adoption fixture preserves VERSION, LICENSE, .github, tests, tools, docs, existing governance, and unrelated dirty work while producing no ignored-vendor false failures.",
+        "No release, tag, or publication occurs before a later explicit human instruction."
+      ],
+      "requiredVerification": [
+        "Static source classification and dual-manifest validation",
+        "Fresh new-project install smoke",
+        "Mature non-empty adoption smoke with forbidden root paths",
+        "v0.2, v0.3, v0.4, and v0.5 migration smokes",
+        "Status, update, collision, rollback, symlink, unreadable-target, and concurrent-lock smokes",
+        "Codex AGENTS, custom-agent, config, and skill-discovery checks",
+        "Ignored root and nested vendor traversal regression smoke",
+        "Canonical-state quarantine, migration, dashboard, team, assurance, and lifecycle smokes",
+        "Python 3.9 and current Python compatibility runs",
+        "Fresh-folder smoke outside the source repository",
+        "Independent two-axis review and disposable Internal Audit"
+      ],
+      "expectedEvidence": [
+        "Exact classified source-file inventory with zero unclassified paths",
+        "Exact new-project and adoption payload path lists and checksums",
+        "Before-and-after migration manifests proving no automatic deletion",
+        "Representative mature-repository snapshots proving forbidden paths and existing files are unchanged",
+        "Passing deterministic and interactive smoke output on supported Python versions",
+        "Implementation report with limitations, rollback evidence, and remaining release decision",
+        "Independent review findings and Internal Audit verdict"
+      ],
+      "risks": [
+        "A high-fan-out rename can leave compatibility aliases or documentation inconsistent.",
+        "Separating source and consumer layouts can break immutable update-baseline reconstruction.",
+        "AGENTS.md and Codex config integration can corrupt user formatting or duplicate managed blocks if not idempotent.",
+        "Quarantined mature state can accidentally become authoritative before explicit activation.",
+        "Legacy cleanup automation can delete project-owned files unless retirement is changed to human-approved candidates.",
+        "The source repository's own .baton state can leak into payloads unless fail-closed classification is complete."
+      ],
+      "requiredConsultantIds": [],
+      "assurance": {
+        "testRigor": "Thorough",
+        "humanReviewStages": [
+          "Release"
+        ],
+        "overrideReason": ""
+      },
+      "blockers": [],
+      "openDecisions": []
+    }
+  ]
+}

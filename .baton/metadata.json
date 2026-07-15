@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 3,
+  "batonVersion": "0.6.0",
+  "stateSchemaVersion": 1,
+  "provider": "codex",
+  "installationStatus": "Source Repository",
+  "projectName": "Baton",
+  "projectVersion": null,
+  "projectType": "software-product",
+  "reasoningPreset": "medium",
+  "reasoning": {
+    "management": "high",
+    "operations": "high",
+    "consultants": "high",
+    "contractors": "medium",
+    "internalAudit": "xhigh"
+  },
+  "source": {
+    "repository": "FabienGreard/baton",
+    "channel": "local-development",
+    "tag": null,
+    "commit": null,
+    "manifestSha256": null
+  },
+  "managedFiles": {},
+  "managedBlocks": {},
+  "projectOwnedFiles": [],
+  "legacyCleanupCandidates": [],
+  "pendingIntegration": [],
+  "lastTransactionId": null
+}
