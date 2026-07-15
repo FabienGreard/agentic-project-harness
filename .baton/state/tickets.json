@@ -108,6 +108,95 @@
       },
       "blockers": [],
       "openDecisions": []
+    },
+    {
+      "id": "BATON-002",
+      "title": "Build Management-first bootstrap and project-local company memory",
+      "status": "Backlog",
+      "priority": "P3",
+      "owner": "Management",
+      "goal": "BATON-GOAL-002",
+      "dependencies": [
+        "BATON-001"
+      ],
+      "objective": "Implement the approved bootstrap, named-workforce, review, project-local memory, privacy, and bounded-context experience without turning Baton into a game or a second project-management authority.",
+      "scope": [
+        "Add Management-first provider-aware bootstrap with task registration, interruption recovery, and copy-prompt fallback.",
+        "Add stable named personnel identities, bounded professional working styles, employment history, reviews, reuse, firing, rehiring, and user-approved permanent-seat replacement.",
+        "Add one project-local memory root with schema-versioned memory.json, history.jsonl, confirmation, forgetting, privacy, migrations, and transactional rollback.",
+        "Add one memory skill and role-specific on-demand context selection capped at approximately 10 claims or 600 automatic memory tokens.",
+        "Integrate installer, adoption, update, dashboard, evaluator, tests, and documentation."
+      ],
+      "nonGoals": [
+        "Create a game, employee leaderboard, forced rotation, novelty quota, or weaker-worker selection.",
+        "Create global memory, imports, cross-project synchronization, raw transcript storage, or automatic Git-history rewriting.",
+        "Duplicate project decisions, tickets, approvals, PRDs, or implementation evidence in memory.",
+        "Begin implementation before normal readiness and post-v0.6 release-boundary resolution."
+      ],
+      "affectedSystems": [
+        "Consumer schemas, memory, personnel, and migrations",
+        "Bootstrap and memory skills",
+        "Team, task registry, roles, and lifecycle",
+        "Installer, adoption, activation, update, backups, and rollback",
+        "Context selection and dashboard",
+        "Static evaluator, deterministic tests, smokes, and documentation"
+      ],
+      "acceptanceCriteria": [
+        "Bootstrap creates Management first, registers real permanent tasks idempotently, supports unavailable task tools, and gates delivery on required wake paths.",
+        "Every coworker has a stable editable name, bounded professional working style, reusable history, and evidence-backed contextual performance.",
+        "One project-local memory stores confirmed company, user, and personnel knowledge with no global import or synchronization.",
+        "Personal inference requires confirmation; verified company and coworker events may be automatic; secrets and sensitive data are rejected by default.",
+        "Forgetting removes current values, redacts local memory history, and warns about Git retention without rewriting Git history.",
+        "One memory skill provides the complete user-facing interface while deterministic tooling validates authority, schema, transactions, and rollback.",
+        "Automatic memory briefings are role-specific and remain within the agreed claim/token cap.",
+        "Permanent-seat replacement requires explicit user approval and no forced coworker rotation or exploration quota exists.",
+        "The feature remains generic and preserves fresh-install, mature-adoption, update, collision, rollback, and release safety."
+      ],
+      "requiredVerification": [
+        "Memory, personnel, history-event, authority, migration, and cross-record schema tests",
+        "Bootstrap forward tests with task tools available, unavailable, interrupted, and already complete",
+        "Identity, duplicate prevention, review, reuse, firing, replacement, and rehire fixtures",
+        "Candidate confirmation, secret rejection, forgetting, history redaction, and Git-warning fixtures",
+        "Exact role-specific context-budget tests",
+        "Local, piped, interactive, fresh, mature-adoption, update, rollback, Python, and remote release smokes",
+        "Independent two-axis review, Product Designer gates, and disposable Internal Audit"
+      ],
+      "expectedEvidence": [
+        "Approved technical design and Product Designer readiness packet",
+        "Schema-valid migration and rollback fixtures",
+        "Task-registry and provider-capability traces",
+        "Exact context packets for Management, Operations, Consultants, and Contractors",
+        "Evidence-backed personnel selection and replacement histories",
+        "Implementation report with full deterministic and runtime proof"
+      ],
+      "risks": [
+        "Excess memory context can reduce agent performance.",
+        "Unconfirmed personal inference can become a harmful assumption.",
+        "Performance history can become self-reinforcing without visible evidence and user correction.",
+        "Personality can become gimmicky or reduce quality if it exceeds bounded professional style.",
+        "Task creation can duplicate permanent roles without real identity and idempotency.",
+        "Privacy expectations can conflict with JSONL and Git retention.",
+        "Schema or migration failure can damage durable company history."
+      ],
+      "requiredConsultantIds": [
+        "product-designer"
+      ],
+      "assurance": {
+        "testRigor": "Thorough",
+        "humanReviewStages": [
+          "Release"
+        ],
+        "overrideReason": ""
+      },
+      "blockers": [
+        "Queued behind Management resolution of the BATON-GOAL-001 v0.6 release boundary."
+      ],
+      "openDecisions": [
+        "Exact schema fields, compaction behavior, and migration versioning.",
+        "Exact Codex task capability contract and supported fallback surfaces.",
+        "Target post-v0.6 stable version."
+      ],
+      "narrativePath": ".baton/prds/BATON-002-bootstrap-memory.md"
     }
   ]
 }

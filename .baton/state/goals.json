@@ -16,6 +16,28 @@
       "evidencePaths": [
         ".baton/implementation-reports/BATON-001.md"
       ]
+    },
+    {
+      "id": "BATON-GOAL-002",
+      "title": "Give every Baton project a named company that remembers and improves",
+      "status": "Needs Definition",
+      "priority": "P3",
+      "owner": "Management",
+      "objective": "Create a provider-aware Management-first bootstrap, one project-local company memory, named reusable coworkers, evidence-backed reviews, and bounded role-specific recall.",
+      "context": "Installation currently leaves task creation and project onboarding manual, while permanent and disposable coworkers lack shared durable identity, user-approved memory, and evidence-backed reuse history.",
+      "dependencies": [
+        "BATON-GOAL-001"
+      ],
+      "blockers": [
+        "Resolve the BATON-GOAL-001 v0.6 release boundary before promoting post-v0.6 implementation."
+      ],
+      "blockerOwner": "Management",
+      "resumeCondition": "Management resolves the explicit v0.6 Release decision and selects BATON-002 for readiness definition.",
+      "narrativePath": ".baton/prds/BATON-002-bootstrap-memory.md",
+      "decisionPaths": [],
+      "evidencePaths": [
+        ".baton/prds/BATON-002-bootstrap-memory.md"
+      ]
     }
   ]
 }
