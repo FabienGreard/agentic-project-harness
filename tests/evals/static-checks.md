@@ -6,7 +6,7 @@
 
 - `BT-001`: `VERSION` is exactly the candidate Baton version.
 - `BT-002`: active source identity, repository URL, product naming, and normal non-template repository contract agree.
-- `BT-003`: reusable consumer source exists only under `template/.baton/`; source utilities are consolidated under `scripts/`; obsolete `packages/`, `examples/`, `tools/`, root installer source, and split release-policy paths are absent; source-repository state cannot enter a payload.
+- `BT-003`: reusable consumer source exists only under `template/.baton/`; source utilities and classification are consolidated under `scripts/`; obsolete `packages/`, `examples/`, `tools/`, `release/`, root installer source, evaluator docs nesting, and split release-policy paths are absent; source-repository state cannot enter a payload.
 - `BT-004`: every Git-visible candidate path has exactly one valid source classification and no classification drifts from the enforced layout.
 - `BT-005`: new-project and adoption projections are exact, distinct where required, and contain only safe `.baton/` paths.
 - `BT-012`: consumer integration is limited to `.baton/`, the marked `AGENTS.md` block, individual skill-discovery links, and project-scoped Codex configuration; forbidden root project identity or source-repository files cannot be adopted.
@@ -28,6 +28,6 @@
 ## Compatibility and verification
 
 - `BT-015`: supported Python code compiles on the current interpreter, Python 3.9 remains syntax-compatible when available, and Git-visible/bounded source paths contain no cache artifacts without traversing ignored vendor trees.
-- `BT-016`: the focused deterministic suite and local/remote smoke entrypoints required by the release procedure are present.
+- `BT-016`: public `docs/` contains only the five product guides, while the focused deterministic suite, evaluator specifications under `tests/evals/`, and local/remote smoke entrypoints are present.
 
 Scenario IDs under `scenarios/` are a separate behavioral-evaluation surface. They do not replace these deterministic source/distribution gates, and permanent roles never grade their own candidate.

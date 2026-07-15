@@ -16,7 +16,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 
 VERSION = "0.6.0"
-CLASSIFICATION_PATH = "release/source-classification.json"
+CLASSIFICATION_PATH = "scripts/source-classification.json"
 CLASSIFICATION_SCHEMA = "baton.source-classification/v1"
 SOURCE_CLASSES = {"source-only", "template-only", "adoption-runtime", "shared"}
 SKILLS = (
@@ -29,7 +29,6 @@ SKILLS = (
 CACHE_SCAN_SCOPES = (
     ".baton",
     "template/.baton",
-    "release",
     "scripts",
     "tests",
 )
@@ -282,7 +281,9 @@ def check_consumer_layout(root: Path) -> None:
         "packages",
         "examples",
         "tools",
+        "release",
         "install.sh",
+        "docs/evals",
         "docs/release-policy.md",
     )
     present = [
@@ -295,6 +296,7 @@ def check_consumer_layout(root: Path) -> None:
         "scripts/install.sh",
         "scripts/harness_eval.py",
         "scripts/release_bundle.py",
+        "scripts/source-classification.json",
     )
     missing_utilities = [relative for relative in source_utilities if not (root / relative).is_file()]
     require(not missing_utilities, f"consolidated source utilities are incomplete: {missing_utilities}")
@@ -355,7 +357,7 @@ def check_release_contract(root: Path) -> None:
         'NEW_PROJECT_ARCHIVE = "baton-new-project.tar.gz"',
         'ADOPTION_ARCHIVE = "baton-adoption.tar.gz"',
         'MANIFEST_NAME = "baton-manifest.json"',
-        'CLASSIFICATION_NAME = "release/source-classification.json"',
+        'CLASSIFICATION_NAME = "scripts/source-classification.json"',
         'MANIFEST_SCHEMA = "baton.release-bundle/v1"',
         'INSTALLER_SOURCE = "scripts/install.sh"',
     )
@@ -520,9 +522,29 @@ def check_test_suite(root: Path) -> None:
         "tests/run_smokes.py",
         "tests/install_smoke.sh",
         "tests/install_remote_smoke.sh",
+        "tests/evals/README.md",
+        "tests/evals/operator-prompt.md",
+        "tests/evals/judge-prompt.md",
+        "tests/evals/rubric.md",
+        "tests/evals/report-schema.json",
+        "tests/evals/report-template.md",
+        "tests/evals/static-checks.md",
     }
     missing = sorted(path for path in expected if not (root / path).is_file())
     require(not missing, f"focused Baton smoke suite is incomplete: {missing}")
+    public_docs = sorted(
+        path.relative_to(root).as_posix()
+        for path in (root / "docs").rglob("*")
+        if path.is_file() or path.is_symlink()
+    )
+    expected_docs = [
+        "docs/architecture.md",
+        "docs/customization.md",
+        "docs/getting-started.md",
+        "docs/installation.md",
+        "docs/releasing.md",
+    ]
+    require(public_docs == expected_docs, f"docs is not exclusively public product documentation: {public_docs}")
     obsolete = {
         "tests/harness_lifecycle_smoke.py",
         "tests/harness_state_smoke.py",

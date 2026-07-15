@@ -147,15 +147,15 @@ def make_candidate(base: Path, version: str, *, marker: str = "") -> Path:
             + f"\nStarter release marker: {marker}\n",
             encoding="utf-8",
         )
-    classification = source / "release/source-classification.json"
-    classification.parent.mkdir(parents=True)
+    classification = source / "scripts/source-classification.json"
+    classification.parent.mkdir(parents=True, exist_ok=True)
     classification.write_text("{}\n", encoding="utf-8")
     run(["git", "init", "-q", "-b", "main"], cwd=source)
     run(["git", "config", "user.email", "baton-smoke@example.test"], cwd=source)
     run(["git", "config", "user.name", "Baton Smoke"], cwd=source)
     run(["git", "add", "."], cwd=source)
     run([sys.executable, RELEASE_TOOL, "classify", "--source", source, "--write"])
-    run(["git", "add", "release/source-classification.json"], cwd=source)
+    run(["git", "add", "scripts/source-classification.json"], cwd=source)
     run(["git", "commit", "-qm", f"fixture {version}"], cwd=source)
     return source
 

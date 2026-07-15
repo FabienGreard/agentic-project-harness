@@ -5,7 +5,7 @@
     {
       "id": "BATON-GOAL-001",
       "title": "Separate Baton product development from consumer control planes",
-      "status": "Review",
+      "status": "Active",
       "priority": "P1",
       "owner": "Management",
       "objective": "Rename the product to Baton and ship clean new-project and adoption payloads centered on an isolated .baton control plane.",

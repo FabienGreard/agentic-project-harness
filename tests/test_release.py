@@ -56,7 +56,7 @@ class ReleaseDistributionTests(unittest.TestCase):
 
     def test_every_source_path_has_the_exact_release_class(self) -> None:
         document = json.loads(
-            (self.source / "release/source-classification.json").read_text(encoding="utf-8")
+            (self.source / "scripts/source-classification.json").read_text(encoding="utf-8")
         )
         tracked = set(
             item
@@ -71,6 +71,11 @@ class ReleaseDistributionTests(unittest.TestCase):
         )
         self.assertEqual(document["files"][".baton/AGENTS.md"], "source-only")
         self.assertEqual(document["files"]["scripts/install.sh"], "source-only")
+        self.assertEqual(
+            document["files"]["scripts/source-classification.json"],
+            "source-only",
+        )
+        self.assertNotIn("release/source-classification.json", document["files"])
         self.assertEqual(document["files"]["template/.baton/guide.md"], "shared")
         self.assertEqual(
             document["files"]["template/.baton/state/project.json"],
@@ -84,7 +89,7 @@ class ReleaseDistributionTests(unittest.TestCase):
     def test_manifest_lists_exact_new_project_and_adoption_payloads(self) -> None:
         release_manifest = manifest(self.bundle)
         classifications = json.loads(
-            (self.source / "release/source-classification.json").read_text(encoding="utf-8")
+            (self.source / "scripts/source-classification.json").read_text(encoding="utf-8")
         )["files"]
         self.assertEqual(set(release_manifest["payloads"]), {"new-project", "adoption"})
         for payload in ("new-project", "adoption"):
@@ -177,7 +182,7 @@ class ReleaseDistributionTests(unittest.TestCase):
         self.assertEqual(
             release_manifest["sourceClassificationSha256"],
             hashlib.sha256(
-                (self.source / "release/source-classification.json").read_bytes()
+                (self.source / "scripts/source-classification.json").read_bytes()
             ).hexdigest(),
         )
 

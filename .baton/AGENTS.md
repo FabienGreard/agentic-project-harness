@@ -55,4 +55,4 @@ This file is a navigation map only. Normative behavior lives under `rules/`. Pro
 | Distribution architecture | [../docs/architecture.md](../docs/architecture.md) |
 | Installation and migration | [../docs/installation.md](../docs/installation.md) |
 | Stable release process | [../docs/releasing.md](../docs/releasing.md) |
-| Source-only evaluator | [../docs/evals/harness/README.md](../docs/evals/harness/README.md) |
+| Source-only evaluator | [../tests/evals/README.md](../tests/evals/README.md) |

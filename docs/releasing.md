@@ -78,7 +78,7 @@ Review the exact source diff and exclude unrelated work. Release construction re
 
 ## 2. Regenerate and review source classification
 
-Every tracked path must appear once in `release/source-classification.json` as `source-only`, `template-only`, `adoption-runtime`, or `shared`.
+Every tracked path must appear once in `scripts/source-classification.json` as `source-only`, `template-only`, `adoption-runtime`, or `shared`.
 
 When tracked files change, regenerate from the staged candidate path set, review the result, and stage the classification again:
 

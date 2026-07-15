@@ -24,10 +24,9 @@ source repository
 ├── .baton/                         Baton's own live, source-only control plane
 ├── template/.baton/                only source for consumer .baton content
 ├── docs/                            public product documentation
-├── scripts/                         installer source, evaluator, and release builder
-├── tests/                           source and distribution verification
-├── VERSION                          Baton source candidate version
-└── release/source-classification.json
+├── scripts/                         installer, evaluator, release builder, classification
+├── tests/                           deterministic tests and evaluator specifications
+└── VERSION                          Baton source candidate version
 
 installed consumer
 ├── .baton/                          runtime, metadata, state, rules, roles, skills
@@ -40,7 +39,7 @@ The installed consumer has no Baton root `install.sh`, source `scripts/`, tests,
 
 ## Source classification
 
-`release/source-classification.json` is a tracked, exact inventory of every Git-tracked source path. The release builder compares it with `git ls-files` and rejects missing, stale, unsupported, or policy-inconsistent records.
+`scripts/source-classification.json` sits beside the release builder and is a tracked, exact inventory of every Git-tracked source path. The builder compares it with `git ls-files` and rejects missing, stale, unsupported, or policy-inconsistent records. Evaluator prompts, rubrics, report contracts, and scenarios live under `tests/evals/`; `docs/` contains only public product and contributor guidance.
 
 | Class | Meaning | New-project payload | Adoption payload |
 | --- | --- | --- | --- |
