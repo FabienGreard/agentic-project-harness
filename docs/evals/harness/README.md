@@ -4,7 +4,7 @@ Evaluate observable orchestration behavior rather than prompt wording.
 
 ## Modes
 
-- **Static distribution contract:** `python3 tools/harness_eval.py --strict` checks the Baton source/product boundary, exact consumer projections, stable release surface, installed lifecycle, Codex semantics, state, compatibility, and verification inventory without mutation.
+- **Static distribution contract:** `python3 scripts/harness_eval.py --strict` checks the Baton source/product boundary, exact consumer projections, stable release surface, installed lifecycle, Codex semantics, state, compatibility, and verification inventory without mutation.
 - **Deterministic acceptance:** `python3 tests/run_smokes.py` exercises release construction, local/piped/interactive installation, mature adoption, activation, migrations, updates, rollback, target safety, locking, state/team behavior, and evaluator regressions.
 - **Scenario smoke:** run each canonical input once after material harness changes.
 - **Scenario release:** run each scenario at least three independent times before accepting a major redesign.

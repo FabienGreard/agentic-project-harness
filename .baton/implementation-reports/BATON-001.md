@@ -8,7 +8,7 @@ Goal ID: BATON-GOAL-001
 
 ## Outcome
 
-Baton is now a normal source/product repository rather than a GitHub project template. Reusable consumer content has one canonical source under `packages/consumer/.baton/`; the source repository operates from its own source-only `.baton/` control plane. The release builder projects exact new-project and mature-adoption payloads without copying project identity, licensing, community, source, tests, tools, evaluator, or release infrastructure into consuming repositories.
+Baton is now a normal source/product repository rather than a GitHub project template. Reusable consumer content has one canonical source under `template/.baton/`; the source repository operates from its own source-only `.baton/` control plane. The release builder projects exact new-project and mature-adoption payloads without copying project identity, licensing, community, source, scripts, tests, evaluator, or release infrastructure into consuming repositories.
 
 The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its first implementation commit is `0353fc33061b7ce1e4fc74fbcec84a763b1a3917`. Review fixes and source-state reconciliation follow that commit. The final unpublished candidate SHA is supplied in the external release handoff because a commit cannot embed its own immutable SHA.
 
@@ -16,7 +16,7 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 
 - Renamed active product identity to Baton and changed the public GitHub repository to `FabienGreard/baton` with template mode disabled.
 - Added source-only Baton project state under root `.baton/` and individual source skill-discovery links under `.agents/skills/`.
-- Added canonical consumer source under `packages/consumer/.baton/`, with no second drifting copy.
+- Added canonical consumer source under `template/.baton/`, with no second drifting copy.
 - Added exact source classification and separate new-project/adoption payload projection.
 - Unified stable installation and update through one release `install.sh`; installed lifecycle commands live at `.baton/bin/baton`.
 - Added schema-v3 Baton provenance, separate nullable `projectVersion`, immutable source commit/manifest evidence, managed baselines, external transactions, rollback, cleanup candidates, and direct GitHub source/compare links.
@@ -35,7 +35,7 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 
 ## Acceptance coverage
 
-- Current source classification: 178 files—102 source-only, 62 shared, 13 template-only, and 1 adoption-runtime, with zero unclassified paths.
+- Current source classification: 173 files—97 source-only, 62 shared, 13 template-only, and 1 adoption-runtime, with zero unclassified paths.
 - Rehearsal payloads: 75 new-project paths and 76 adoption paths, all under `.baton/`.
 - Fresh direct and stdin-piped installs produced only `.git`, `.baton`, `.agents`, `.codex`, and the marked `AGENTS.md` at repository root.
 - Mature adoption, activation, legacy preservation, state-preserving updates, starter advancement, collision behavior, rollback, unsafe targets, and concurrent locking are covered by deterministic fixtures.
@@ -45,14 +45,14 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 
 ## Verification performed
 
-- `PYTHONDONTWRITEBYTECODE=1 python3 tools/harness_eval.py --strict --json` — PASS, 16/16.
+- `PYTHONDONTWRITEBYTECODE=1 python3 scripts/harness_eval.py --strict --json` — PASS, 16/16.
 - `PYTHONDONTWRITEBYTECODE=1 python3 tests/run_smokes.py` — PASS, 36/36.
 - `PYTHONDONTWRITEBYTECODE=1 python3.9 tests/run_smokes.py` — PASS, 36/36.
 - `PYTHONDONTWRITEBYTECODE=1 .baton/bin/baton check --json` — PASS.
-- `bash -n install.sh tests/install_smoke.sh tests/install_remote_smoke.sh` — PASS.
+- `bash -n scripts/install.sh tests/install_smoke.sh tests/install_remote_smoke.sh` — PASS.
 - `git diff --check` — PASS.
-- `python3 tools/release_bundle.py classify --source .` — PASS with zero drift at the reviewed code boundary.
-- `python3 tools/release_bundle.py build ...` and `validate` against clean commit `0353fc3` — PASS; exactly five assets generated.
+- `python3 scripts/release_bundle.py classify --source .` — PASS with zero drift at the reviewed code boundary.
+- `python3 scripts/release_bundle.py build ...` and `validate` — the previous architecture candidate passed; the reorganized exact candidate rebuild remains required after its source commit.
 - Direct and stdin-piped fresh installs from the local release directory, followed by `status` and `check` — PASS. `/tmp` was correctly rejected on macOS because it traverses a symlink; canonical `/private/tmp` passed.
 
 Resolved test rigor: Thorough.
@@ -67,7 +67,8 @@ None. `requiredConsultantIds` is empty; Internal Audit remains independent and o
 
 - Standards/architecture follow-up: **APPROVE** at `30d14ae`; SA-01 through SA-05 were closed. Its one non-blocking P2 documentation clarification for unsafe `AGENTS.md` activation was incorporated.
 - Specification/evidence follow-up: **REVISE** at `30d14ae` for one remaining P1: the v0.2/v0.3 fixtures incorrectly supplied an installed commit that authentic remote metadata did not contain. Commit `039acf1` now uses authentic null revisions, labels separately verified official version anchors, and reruns the migration and full dual-runtime matrices. The single permitted follow-up review loop ended there.
-- Disposable independent Internal Audit at clean `039acf1`: **PASS**, 12/12 scenarios, 100/100 mean, no hard gates, and no P0-P3 findings. It independently reran strict evaluation, both Python matrices, exact bundle build/validation, and direct, piped, and mature-adoption asset smokes.
+- Disposable independent Internal Audit at clean `039acf1`: **PASS** for the previous architecture boundary, 12/12 scenarios, 100/100 mean, no hard gates, and no P0-P3 findings. It does not cover the reorganized candidate and must be rerun against its exact source commit.
+- Staged layout revision review: standards/architecture reported SA-01 (P3 dangling obsolete-path detection); specification/evidence reported SE-001 (P1 exact-candidate verification pending), SE-002 (P2 stale inventory/commands), and SE-003 (P3 stale release-guide paths). SA-01, SE-002, and SE-003 are corrected in the candidate; SE-001 remains the explicit pre-completion verification boundary.
 
 ## Human review
 
@@ -88,4 +89,4 @@ Human Release approval remains pending. Candidate preparation, a local commit, a
 
 ## Ownership returned
 
-Operations returns the fully verified unpublished candidate, closed review findings, exact local asset evidence, limitations, and release boundary to Management. Publication remains human-gated.
+Operations will return the fully verified unpublished candidate only after the reorganized clean commit passes exact bundle construction, asset smokes, and disposable Internal Audit. Publication remains human-gated.

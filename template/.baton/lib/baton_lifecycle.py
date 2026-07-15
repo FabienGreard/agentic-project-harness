@@ -222,7 +222,7 @@ def github_evidence(
     result: dict[str, Any] = {
         "release": f"{base}/releases/tag/{manifest['stableTag']}",
         "manifest": f"{base}/releases/download/{manifest['stableTag']}/baton-manifest.json",
-        "sourceTree": f"{base}/tree/{commit}/packages/consumer",
+        "sourceTree": f"{base}/tree/{commit}/template",
         "sourceFiles": {
             relative: f"{base}/blob/{commit}/{record['sourcePath']}"
             for relative, record in sorted(payload_records.items())
@@ -1474,7 +1474,7 @@ def activate_adoption(
                         "sourceEvidence": {
                             "release": f"https://github.com/{metadata['source']['repository']}/releases/tag/{metadata['source']['tag']}",
                             "manifest": f"https://github.com/{metadata['source']['repository']}/releases/download/{metadata['source']['tag']}/baton-manifest.json",
-                            "sourceTree": f"https://github.com/{metadata['source']['repository']}/tree/{metadata['source']['commit']}/packages/consumer",
+                            "sourceTree": f"https://github.com/{metadata['source']['repository']}/tree/{metadata['source']['commit']}/template",
                         },
                     }
                 )

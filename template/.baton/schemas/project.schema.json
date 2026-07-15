@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/FabienGreard/baton/blob/main/packages/consumer/.baton/schemas/project.schema.json",
+  "$id": "https://github.com/FabienGreard/baton/blob/main/template/.baton/schemas/project.schema.json",
   "title": "Baton canonical project record",
   "type": "object",
   "additionalProperties": false,

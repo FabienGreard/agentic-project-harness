@@ -23,6 +23,7 @@ NEW_PROJECT_ARCHIVE = "baton-new-project.tar.gz"
 ADOPTION_ARCHIVE = "baton-adoption.tar.gz"
 CHECKSUMS_NAME = "SHA256SUMS"
 INSTALLER_NAME = "install.sh"
+INSTALLER_SOURCE = "scripts/install.sh"
 CLASSIFICATION_NAME = "release/source-classification.json"
 MANIFEST_SCHEMA = "baton.release-bundle/v1"
 CLASSIFICATION_SCHEMA = "baton.source-classification/v1"
@@ -137,10 +138,10 @@ def source_entry(source: Path, relative: str) -> dict[str, Any]:
 
 
 def inferred_class(relative: str) -> str:
-    if relative == "packages/consumer/.baton/integration/README.md":
+    if relative == "template/.baton/integration/README.md":
         return "adoption-runtime"
-    if relative.startswith("packages/consumer/.baton/"):
-        payload_relative = relative.removeprefix("packages/consumer/")
+    if relative.startswith("template/.baton/"):
+        payload_relative = relative.removeprefix("template/")
         template_prefixes = (
             ".baton/state/",
             ".baton/dashboard/",
@@ -205,7 +206,7 @@ def classify(args: argparse.Namespace) -> None:
 
 
 def payload_path(source_path: str, classification: str, payload: str) -> str | None:
-    prefix = "packages/consumer/"
+    prefix = "template/"
     if not source_path.startswith(prefix) or classification == "source-only":
         return None
     relative = source_path.removeprefix(prefix)
@@ -346,7 +347,7 @@ def build(args: argparse.Namespace) -> None:
     adoption_entries = payload_entries(source, classifications, "adoption")
     new_archive = archive_bytes(new_entries)
     adoption_archive = archive_bytes(adoption_entries)
-    installer = source_entry(source, INSTALLER_NAME)
+    installer = source_entry(source, INSTALLER_SOURCE)
     classification_bytes = (source / CLASSIFICATION_NAME).read_bytes()
     manifest = {
         "schema": MANIFEST_SCHEMA,

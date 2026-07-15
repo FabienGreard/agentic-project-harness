@@ -21,7 +21,7 @@ Avoid weakening a safety or human-review gate merely to make a scenario pass. Pr
 5. Run:
 
    ```sh
-   python3 tools/harness_eval.py --strict
+   python3 scripts/harness_eval.py --strict
    python3 tests/run_smokes.py
    ```
 

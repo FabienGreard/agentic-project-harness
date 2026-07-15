@@ -4,6 +4,62 @@ Baton releases are stable-only and human-authorized. This procedure separates ca
 
 > **BATON-001 stop boundary:** v0.6.0 is currently an unpublished candidate. The authorized source-repository rename to `FabienGreard/baton` and conversion out of GitHub template mode are complete. Complete local preparation and verification, then return the exact evidence to Management. Those repository setting changes do not authorize a push, merge, tag, release, asset upload, or change to `releases/latest`.
 
+## Release policy
+
+Baton releases are stable-only, human-authorized, immutable, and reproducible. Technical completion does not authorize a tag, push, GitHub release, latest-release redirect, or any other publication action.
+
+### Current boundary and human authority
+
+Version `0.6.0` in this checkout is an unpublished candidate. BATON-001 explicitly excludes publication. Until a separate human Release decision approves an exact commit and stable version, [Agentic Project Harness v0.5.0](https://github.com/FabienGreard/agentic-project-harness/releases/tag/v0.5.0) remains the latest published stable release and the future `FabienGreard/baton` install URL must not be presented as live.
+
+Management owns release readiness and presents the exact candidate, evidence, limitations, and independent review. Operations may integrate and verify but does not publish merely because checks pass. Contractors, Consultants, and Internal Audit cannot authorize publication. General permission to continue, tolerate drift, merge, or prepare artifacts is not release authorization.
+
+### Stable and immutable channel
+
+- Publish one stable semantic version and matching `v<version>` tag from one exact full commit.
+- Never use a branch archive, draft, prerelease, development checkout, mutable fork, or local candidate as an install or update origin.
+- Never publish a prerelease to test the stable updater; use local release-directory fixtures and source smokes.
+- Never replace a published asset in place. Correct a candidate before release or issue a new version afterward.
+- Allow `releases/latest` to point to a new version only after all assets exist and immutable remote smoke passes.
+
+### Source and payload integrity
+
+Every tracked source file has exactly one committed class: `source-only`, `template-only`, `adoption-runtime`, or `shared`. Missing, stale, or policy-inconsistent classification blocks the build.
+
+The release builder starts from a clean committed source tree and produces exactly five uploaded assets:
+
+- `install.sh`, published from `scripts/install.sh`;
+- `baton-new-project.tar.gz`;
+- `baton-adoption.tar.gz`;
+- `baton-manifest.json`; and
+- `SHA256SUMS`.
+
+Both archives contain only `.baton/` entries generated from `template/`. This repository's root `.baton/`, product identity, docs, scripts, tests, evaluator, legal/community files, version history, and release machinery remain source-only.
+
+The manifest binds the version/tag, official repository, full candidate commit, source-classification digest, state schema, supported origins, exact payload path lists, source paths, file classes, kinds, and checksums. `SHA256SUMS` binds the installer, both archives, and manifest.
+
+### Upgrade history
+
+Only reviewed stable releases may appear as automatic upgrade origins, using a full commit SHA and, where the release-manifest contract exists, its exact SHA-256. Preserve prior changelog sections, tags, release pages, commits, and checksums. Do not rewrite Agentic Project Harness history as though it had always been Baton or invent a v0.4.0 stable release; v0.4 remains a migration fixture.
+
+### Consumer safety, cleanup, and rollback
+
+A release blocks unless verification proves empty-project installation, mature adoption preservation, quarantined starter state, collision-safe root integration, separate Baton/project versions, supported legacy migration without deletion, fail-closed unsafe or ambiguous states, and ignored/vendor-safe validation.
+
+Retired and legacy paths are cleanup candidates, never automatic deletions. Reports retain exact paths and checksums, backup and transaction locations, stable evidence, immutable comparisons, and direct target-file links. Only a human may approve archival or deletion after validation; `--yes`, activation, update success, an LLM recommendation, or release approval does not authorize deletion. Rollback must restore every touched path or report exact recovery failures, and external transaction evidence remains available after success or failure.
+
+### Publication acceptance
+
+Publication is accepted only when:
+
+1. the exact clean committed candidate passes the full verification matrix;
+2. source classification and both payload manifests validate with zero drift;
+3. two-axis review and independent disposable Internal Audit have no blocking finding;
+4. Management presents exact evidence and the human Release review approves the candidate;
+5. the matching tag and GitHub release contain all five checksum-matched assets;
+6. immutable-commit remote installation, adoption, and update smoke passes; and
+7. the public tag, release, assets, checksums, and latest-stable redirect are verified.
+
 ## 1. Pin the candidate contract
 
 Before release-grade verification, confirm:
@@ -12,7 +68,7 @@ Before release-grade verification, confirm:
 - active product text says Baton while historical Agentic Project Harness evidence remains historically accurate;
 - `CHANGELOG.md` has an unreleased v0.6.0 candidate section and all prior sections/links remain intact;
 - root `.baton/` is Baton's source-repository control plane and cannot enter a consumer payload;
-- consumer source exists only under `packages/consumer/.baton/`;
+- consumer source exists only under `template/.baton/`;
 - both payloads contain only `.baton/` paths;
 - the stable-URL `install.sh` remains a release bootstrap asset and is not installed in consumers;
 - the public installed CLI is exactly `status`, `update`, and `check`; and
@@ -27,14 +83,14 @@ Every tracked path must appear once in `release/source-classification.json` as `
 When tracked files change, regenerate from the staged candidate path set, review the result, and stage the classification again:
 
 ```sh
-python3 tools/release_bundle.py classify --source . --write
-python3 tools/release_bundle.py classify --source .
+python3 scripts/release_bundle.py classify --source . --write
+python3 scripts/release_bundle.py classify --source .
 ```
 
 The second command must report zero drift. Verify especially that:
 
-- root `.baton/`, `README.md`, `VERSION`, `CHANGELOG.md`, docs, examples, tests, tools, evaluator, legal/community files, and release infrastructure are `source-only`;
-- `packages/consumer/.baton/integration/README.md` is `adoption-runtime`;
+- root `.baton/`, `README.md`, `VERSION`, `CHANGELOG.md`, docs, `scripts/`, tests, evaluator, legal/community files, and release infrastructure are `source-only`;
+- `template/.baton/integration/README.md` is `adoption-runtime`;
 - starter state/narrative/report scaffolding is `template-only`; and
 - shared runtime, rules, roles, schemas, skills, agents, and lifecycle code are `shared`.
 
@@ -46,7 +102,7 @@ Run the current repository commands recorded by BATON-001. At minimum, the accep
 
 ```sh
 .baton/bin/baton check --json
-python3 tools/harness_eval.py --strict
+python3 scripts/harness_eval.py --strict
 python3 tests/run_smokes.py
 bash tests/install_smoke.sh
 bash -n tests/install_remote_smoke.sh
@@ -104,14 +160,14 @@ A candidate commit is still not a release. Stop before push/merge/tag/publicatio
 Build outside the source worktree from the clean candidate:
 
 ```sh
-python3 tools/release_bundle.py build \
+python3 scripts/release_bundle.py build \
   --source . \
   --output /tmp/baton-v0.6.0 \
   --tag v0.6.0 \
   --repository FabienGreard/baton \
   --state-schema-version 1
 
-python3 tools/release_bundle.py validate --bundle /tmp/baton-v0.6.0
+python3 scripts/release_bundle.py validate --bundle /tmp/baton-v0.6.0
 ```
 
 The output directory must contain exactly:
@@ -203,7 +259,7 @@ Then verify:
 
 ```text
 https://github.com/FabienGreard/baton/compare/<origin-full-sha>...<target-full-sha>
-https://github.com/FabienGreard/baton/blob/<target-full-sha>/packages/consumer/<source-path>
+https://github.com/FabienGreard/baton/blob/<target-full-sha>/template/<source-path>
 ```
 
 A failed immutable remote smoke blocks release acceptance. It never authorizes replacing release assets or weakening provenance checks.
@@ -212,4 +268,4 @@ A failed immutable remote smoke blocks release acceptance. It never authorizes r
 
 Record the final tag, candidate commit, release URL, five asset checksums, remote smoke output, latest-redirect verification, limitations, and any exact human cleanup boundary. Reconcile source state and release records only after public verification succeeds.
 
-See [Release policy](release-policy.md) for authority and immutability requirements.
+The policy and procedure above are one release contract; neither technical completion nor local verification authorizes publication.

@@ -12,7 +12,7 @@ import unittest
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "scripts"))
 
 import harness_eval  # noqa: E402
 
@@ -22,6 +22,16 @@ class EvaluatorContractTests(unittest.TestCase):
         arguments = harness_eval.parser().parse_args(["--strict"])
         self.assertTrue(arguments.strict)
 
+    def test_layout_guard_rejects_dangling_obsolete_path(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="baton-evaluator-layout-") as raw:
+            fixture = Path(raw).resolve()
+            (fixture / "install.sh").symlink_to("missing-installer")
+            with self.assertRaisesRegex(
+                harness_eval.EvaluationFailure,
+                "obsolete source-layout paths remain: .*install.sh",
+            ):
+                harness_eval.check_consumer_layout(fixture)
+
     def test_cache_check_uses_git_visibility_and_never_scans_vendor_roots(self) -> None:
         with tempfile.TemporaryDirectory(prefix="baton-evaluator-cache-") as raw:
             fixture = Path(raw).resolve()
@@ -29,7 +39,7 @@ class EvaluatorContractTests(unittest.TestCase):
                 "__pycache__/\n*.pyc\nnode_modules/\nvendor/\n",
                 encoding="utf-8",
             )
-            checked = fixture / "tools/checked.py"
+            checked = fixture / "scripts/checked.py"
             checked.parent.mkdir()
             checked.write_text("VALUE = 1\n", encoding="utf-8")
             vendor_cache = fixture / "vendor/dependency/__pycache__"
@@ -41,18 +51,18 @@ class EvaluatorContractTests(unittest.TestCase):
             harness_eval.run(fixture, ["git", "init", "-q", "-b", "main"])
             added = harness_eval.run(
                 fixture,
-                ["git", "add", ".gitignore", "tools/checked.py"],
+                ["git", "add", ".gitignore", "scripts/checked.py"],
             )
             self.assertEqual(added.returncode, 0, added.stderr)
 
             harness_eval.check_python_and_cache_hygiene(fixture)
 
-            source_cache = fixture / "tools/__pycache__"
+            source_cache = fixture / "scripts/__pycache__"
             source_cache.mkdir(parents=True)
             (source_cache / "harness_eval.cpython-39.pyc").write_bytes(b"source cache")
             with self.assertRaisesRegex(
                 harness_eval.EvaluationFailure,
-                "tools/__pycache__",
+                "scripts/__pycache__",
             ):
                 harness_eval.check_python_and_cache_hygiene(fixture)
             shutil.rmtree(source_cache)

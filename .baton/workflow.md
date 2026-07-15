@@ -1,1 +1,1 @@
-../packages/consumer/.baton/workflow.md
+../template/.baton/workflow.md

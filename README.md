@@ -25,14 +25,14 @@ The selected preset adds professional context without changing those authorities
 
 ## A source repository, not a project template
 
-This repository contains Baton's product source, tests, documentation, evaluator, installer, and release tooling. Its root [`.baton/`](.baton/) is Baton's own live project control plane and is always source-only.
+This repository contains Baton's product source, tests, documentation, evaluator, installer, and release tooling. Its root [`.baton/`](.baton/) is Baton's own live project control plane and is always source-only. Source lifecycle utilities are consolidated under [`scripts/`](scripts/); the release builder publishes `scripts/install.sh` as the top-level `install.sh` release asset.
 
-Consumer content has a separate source at [`packages/consumer/.baton/`](packages/consumer/.baton/). The release builder classifies every tracked source file and produces two exact, checksum-bound payloads:
+Consumer content has a separate source at [`template/.baton/`](template/.baton/). The release builder classifies every tracked source file and produces two exact, checksum-bound payloads:
 
 - `baton-new-project.tar.gz` activates starter state in an empty project.
 - `baton-adoption.tar.gz` installs runtime into a mature repository while quarantining starter state under `.baton/integration/starter/`.
 
-Both archives contain only `.baton/` paths. A consumer never receives this repository's root `README.md`, `VERSION`, `CHANGELOG.md`, license/community files, `docs/`, `examples/`, `tests/`, `tools/`, evaluator, release machinery, or root `install.sh`. See [Architecture](docs/architecture.md) for the complete boundary.
+Both archives contain only `.baton/` paths. A consumer never receives this repository's root `README.md`, `VERSION`, `CHANGELOG.md`, license/community files, `docs/`, `scripts/`, `tests/`, evaluator, release machinery, or an installed root `install.sh`. See [Architecture](docs/architecture.md) for the complete boundary.
 
 ## Install or adopt
 
@@ -111,7 +111,7 @@ Adoption and migration preserve legacy files and transaction backups. Their gene
 
 ```text
 https://github.com/FabienGreard/baton/compare/<origin-full-sha>...<target-full-sha>
-https://github.com/FabienGreard/baton/blob/<target-full-sha>/packages/consumer/<source-path>
+https://github.com/FabienGreard/baton/blob/<target-full-sha>/template/<source-path>
 ```
 
 An LLM may inspect that evidence and prepare a cleanup recommendation. Only a human may approve archival or deletion, and neither `--yes` nor successful activation grants that authority.
@@ -163,8 +163,7 @@ Management, Operations, and active Consultants are permanent event-driven tasks.
 - [Installation, adoption, and updates](docs/installation.md)
 - [Customization](docs/customization.md)
 - [Architecture](docs/architecture.md)
-- [Release policy](docs/release-policy.md)
-- [Stable release procedure](docs/releasing.md)
+- [Release policy and stable procedure](docs/releasing.md)
 - [Historical changes](CHANGELOG.md)
 
 ## License

@@ -96,7 +96,7 @@ The new-project archive contains Baton's shared runtime and starter project reco
 4. integrates the marked `AGENTS.md` block, Codex config, and individual skill-discovery links; and
 5. records schema-v3 metadata with `installationStatus: "Installed"`.
 
-The installed project receives no root `install.sh`, `tools/`, `tests/`, evaluator, source docs, examples, changelog, license, release files, or root version file from Baton. Those belong only to this source/product repository.
+The installed project receives no root `install.sh`, source `scripts/`, tests, evaluator, source docs, changelog, license, release files, or root version file from Baton. Those belong only to this source/product repository.
 
 ## Mature Adoption mode
 
@@ -228,7 +228,7 @@ Examples of the required direct evidence shape are:
 
 ```text
 https://github.com/FabienGreard/baton/compare/<origin-full-sha>...<target-full-sha>
-https://github.com/FabienGreard/baton/blob/<target-full-sha>/packages/consumer/.baton/rules/repository-safety.md
+https://github.com/FabienGreard/baton/blob/<target-full-sha>/template/.baton/rules/repository-safety.md
 ```
 
 An LLM may use the cleanup prompt to integrate project intent or prepare a list of archival/deletion candidates. A human must separately approve every destructive action. Never delete transaction backups automatically.

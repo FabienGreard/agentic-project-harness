@@ -22,11 +22,10 @@ The source and consumer trees are deliberately different:
 ```text
 source repository
 ├── .baton/                         Baton's own live, source-only control plane
-├── packages/consumer/.baton/       only source for consumer .baton content
+├── template/.baton/                only source for consumer .baton content
 ├── docs/                            public product documentation
-├── tools/                           source evaluator and release builder
+├── scripts/                         installer source, evaluator, and release builder
 ├── tests/                           source and distribution verification
-├── install.sh                       separate stable release asset source
 ├── VERSION                          Baton source candidate version
 └── release/source-classification.json
 
@@ -37,7 +36,7 @@ installed consumer
 └── .agents/skills/<name>            individual links created only when free
 ```
 
-The installed consumer has no Baton root `install.sh`, `tools/`, `tests/`, evaluator, source docs, examples, changelog, license/community files, release machinery, or root version file.
+The installed consumer has no Baton root `install.sh`, source `scripts/`, tests, evaluator, source docs, changelog, license/community files, release machinery, or root version file.
 
 ## Source classification
 
@@ -50,9 +49,9 @@ The installed consumer has no Baton root `install.sh`, `tools/`, `tests/`, evalu
 | `template-only` | Starter project direction, records, dashboard inputs, decisions, PRDs, tickets, and report scaffolding | Active `.baton/<path>` | Quarantined `.baton/integration/starter/<path>` |
 | `adoption-runtime` | Guidance needed only while integrating a mature project | Excluded | `.baton/integration/<path>` |
 
-Classification is inferred from the approved source layout and then committed as an explicit contract. It is not an allow-everything glob. Consumer payload construction accepts source only from `packages/consumer/`, strips that prefix, and rejects any archive entry outside `.baton/`.
+Classification is inferred from the approved source layout and then committed as an explicit contract. It is not an allow-everything glob. Consumer payload construction accepts source only from `template/`, strips that prefix, and rejects any archive entry outside `.baton/`.
 
-The source repository's root `.baton/` can therefore never enter a payload: it is outside `packages/consumer/` and classified source-only.
+The source repository's root `.baton/` can therefore never enter a payload: it is outside `template/` and classified source-only.
 
 ## Deterministic dual payloads
 
@@ -70,7 +69,7 @@ Archives are deterministic: sorted entries, normalized ownership, zero timestamp
 
 ## One stable lifecycle
 
-The release `install.sh` is a temporary stable-URL bootstrap asset, not an installed project file. It downloads all five assets from the official latest stable release, verifies the entire bundle contract, selects one payload, extracts it to temporary storage, and invokes the verified lifecycle engine. It is never copied into the consumer root or `.baton/` tree.
+The source for the release installer lives at `scripts/install.sh`. The release builder publishes it as the top-level `install.sh` asset. That asset is a temporary stable-URL bootstrapper, not an installed project file: it downloads all five assets from the official latest stable release, verifies the entire bundle contract, selects one payload, extracts it to temporary storage, and invokes the verified lifecycle engine. It is never copied into the consumer root or `.baton/` tree.
 
 After installation, `.baton/bin/baton` is the only public maintenance command:
 
@@ -156,7 +155,7 @@ Cleanup is a separate human boundary. The report and generated prompt retain:
 - transaction report and backup locations;
 - the stable release URL;
 - a direct immutable comparison such as `https://github.com/FabienGreard/baton/compare/<origin-full-sha>...<target-full-sha>`; and
-- direct target sources such as `https://github.com/FabienGreard/baton/blob/<target-full-sha>/packages/consumer/.baton/<path>`.
+- direct target sources such as `https://github.com/FabienGreard/baton/blob/<target-full-sha>/template/.baton/<path>`.
 
 An LLM may analyze and propose cleanup from that evidence. Humans retain authority over deletion, external commitments, security/compliance decisions, and publication. `--yes`, activation, update success, or a generated prompt never transfers that authority.
 
@@ -169,4 +168,4 @@ The source repository has two different validation boundaries:
 
 Release acceptance combines classification validation, exact dual-manifest validation, empty-project and mature-adoption smokes, legacy migration, collision/rollback/lock/path-safety coverage, Python compatibility, two-axis review, and independent disposable Internal Audit.
 
-See [Release policy](release-policy.md) and [Releasing](releasing.md) for the stable publication boundary.
+See [Releasing](releasing.md) for the stable publication policy and procedure.

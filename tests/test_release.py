@@ -70,13 +70,14 @@ class ReleaseDistributionTests(unittest.TestCase):
             {path: inferred_class(path) for path in sorted(tracked)},
         )
         self.assertEqual(document["files"][".baton/AGENTS.md"], "source-only")
-        self.assertEqual(document["files"]["packages/consumer/.baton/guide.md"], "shared")
+        self.assertEqual(document["files"]["scripts/install.sh"], "source-only")
+        self.assertEqual(document["files"]["template/.baton/guide.md"], "shared")
         self.assertEqual(
-            document["files"]["packages/consumer/.baton/state/project.json"],
+            document["files"]["template/.baton/state/project.json"],
             "template-only",
         )
         self.assertEqual(
-            document["files"]["packages/consumer/.baton/integration/README.md"],
+            document["files"]["template/.baton/integration/README.md"],
             "adoption-runtime",
         )
 

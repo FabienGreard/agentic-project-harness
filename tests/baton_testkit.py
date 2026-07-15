@@ -16,7 +16,7 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RELEASE_TOOL = ROOT / "tools/release_bundle.py"
+RELEASE_TOOL = ROOT / "scripts/release_bundle.py"
 ARTIFACTS = {
     "install.sh",
     "baton-new-project.tar.gz",
@@ -81,10 +81,10 @@ def git_commit(source: Path) -> str:
 
 
 def inferred_class(relative: str) -> str:
-    if relative == "packages/consumer/.baton/integration/README.md":
+    if relative == "template/.baton/integration/README.md":
         return "adoption-runtime"
-    if relative.startswith("packages/consumer/.baton/"):
-        payload_relative = relative.removeprefix("packages/consumer/")
+    if relative.startswith("template/.baton/"):
+        payload_relative = relative.removeprefix("template/")
         template_prefixes = (
             ".baton/state/",
             ".baton/dashboard/",
@@ -102,9 +102,9 @@ def inferred_class(relative: str) -> str:
 
 
 def projected_path(source_path: str, classification: str, payload: str) -> Optional[str]:
-    if not source_path.startswith("packages/consumer/") or classification == "source-only":
+    if not source_path.startswith("template/") or classification == "source-only":
         return None
-    relative = source_path.removeprefix("packages/consumer/")
+    relative = source_path.removeprefix("template/")
     if payload == "new-project":
         return None if classification == "adoption-runtime" else relative
     if classification in {"shared", "adoption-runtime"}:
@@ -115,7 +115,8 @@ def projected_path(source_path: str, classification: str, payload: str) -> Optio
 def make_candidate(base: Path, version: str, *, marker: str = "") -> Path:
     source = base / f"source-{version.replace('.', '-')}"
     source.mkdir(parents=True)
-    shutil.copy2(ROOT / "install.sh", source / "install.sh")
+    (source / "scripts").mkdir()
+    shutil.copy2(ROOT / "scripts/install.sh", source / "scripts/install.sh")
     (source / "VERSION").write_text(version + "\n", encoding="utf-8")
     (source / "README.md").write_text("# Baton source fixture\n", encoding="utf-8")
     (source / "LICENSE").write_text("fixture license\n", encoding="utf-8")
@@ -126,21 +127,21 @@ def make_candidate(base: Path, version: str, *, marker: str = "") -> Path:
         ".baton/metadata.json",
         "docs/source-only.md",
         "tests/source-only.txt",
-        "tools/source-only.txt",
+        "scripts/source-only.txt",
     ):
         path = source / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"source-only fixture: {relative}\n", encoding="utf-8")
     shutil.copytree(
-        ROOT / "packages/consumer",
-        source / "packages/consumer",
+        ROOT / "template",
+        source / "template",
         symlinks=True,
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
     )
     if marker:
-        guide = source / "packages/consumer/.baton/guide.md"
+        guide = source / "template/.baton/guide.md"
         guide.write_text(guide.read_text(encoding="utf-8") + f"\nRelease marker: {marker}\n", encoding="utf-8")
-        starter_overview = source / "packages/consumer/.baton/docs/overview.md"
+        starter_overview = source / "template/.baton/docs/overview.md"
         starter_overview.write_text(
             starter_overview.read_text(encoding="utf-8")
             + f"\nStarter release marker: {marker}\n",

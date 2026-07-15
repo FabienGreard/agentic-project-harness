@@ -28,10 +28,10 @@ SKILLS = (
 )
 CACHE_SCAN_SCOPES = (
     ".baton",
-    "packages/consumer/.baton",
+    "template/.baton",
     "release",
+    "scripts",
     "tests",
-    "tools",
 )
 BASE_CONFIG: Dict[str, Any] = {
     "approval_policy": "on-request",
@@ -111,10 +111,10 @@ def cache_artifacts(root: Path) -> List[str]:
 
 
 def inferred_class(relative: str) -> str:
-    if relative == "packages/consumer/.baton/integration/README.md":
+    if relative == "template/.baton/integration/README.md":
         return "adoption-runtime"
-    if relative.startswith("packages/consumer/.baton/"):
-        payload_relative = relative.removeprefix("packages/consumer/")
+    if relative.startswith("template/.baton/"):
+        payload_relative = relative.removeprefix("template/")
         template_prefixes = (
             ".baton/state/",
             ".baton/dashboard/",
@@ -142,7 +142,7 @@ def load_classification(root: Path) -> Dict[str, str]:
 
 
 def payload_path(source_path: str, classification: str, payload: str) -> Optional[str]:
-    prefix = "packages/consumer/"
+    prefix = "template/"
     if not source_path.startswith(prefix) or classification == "source-only":
         return None
     relative = source_path.removeprefix(prefix)
@@ -278,8 +278,28 @@ def check_source_identity(root: Path) -> None:
 
 
 def check_consumer_layout(root: Path) -> None:
-    consumer = root / "packages/consumer"
-    require(consumer.is_dir(), "packages/consumer is missing")
+    obsolete = (
+        "packages",
+        "examples",
+        "tools",
+        "install.sh",
+        "docs/release-policy.md",
+    )
+    present = [
+        relative
+        for relative in obsolete
+        if (root / relative).exists() or (root / relative).is_symlink()
+    ]
+    require(not present, f"obsolete source-layout paths remain: {present}")
+    source_utilities = (
+        "scripts/install.sh",
+        "scripts/harness_eval.py",
+        "scripts/release_bundle.py",
+    )
+    missing_utilities = [relative for relative in source_utilities if not (root / relative).is_file()]
+    require(not missing_utilities, f"consolidated source utilities are incomplete: {missing_utilities}")
+    consumer = root / "template"
+    require(consumer.is_dir(), "template is missing")
     paths = [path.relative_to(consumer).as_posix() for path in consumer.rglob("*") if not path.is_dir() or path.is_symlink()]
     bad = sorted(path for path in paths if not path.startswith(".baton/"))
     require(not bad, f"consumer source has files outside .baton: {bad}")
@@ -330,13 +350,14 @@ def check_payload_projection(root: Path) -> None:
 
 
 def check_release_contract(root: Path) -> None:
-    source = (root / "tools/release_bundle.py").read_text(encoding="utf-8")
+    source = (root / "scripts/release_bundle.py").read_text(encoding="utf-8")
     required = (
         'NEW_PROJECT_ARCHIVE = "baton-new-project.tar.gz"',
         'ADOPTION_ARCHIVE = "baton-adoption.tar.gz"',
         'MANIFEST_NAME = "baton-manifest.json"',
         'CLASSIFICATION_NAME = "release/source-classification.json"',
         'MANIFEST_SCHEMA = "baton.release-bundle/v1"',
+        'INSTALLER_SOURCE = "scripts/install.sh"',
     )
     missing = [value for value in required if value not in source]
     require(not missing, f"release builder contract is incomplete: {missing}")
@@ -347,7 +368,7 @@ def check_release_contract(root: Path) -> None:
 
 
 def check_installer_surface(root: Path) -> None:
-    source = (root / "install.sh").read_text(encoding="utf-8")
+    source = (root / "scripts/install.sh").read_text(encoding="utf-8")
     for value in ("BATON_RELEASE_DIR", "baton-new-project.tar.gz", "baton-adoption.tar.gz", ".baton/lib/baton_lifecycle.py", ".baton/metadata.json"):
         require(value in source, f"installer is missing {value}")
     require("APH_RELEASE_DIR" not in source, "installer retains the obsolete APH release override")
@@ -355,8 +376,8 @@ def check_installer_surface(root: Path) -> None:
 
 
 def check_runtime_surface(root: Path) -> None:
-    cli = (root / "packages/consumer/.baton/lib/baton_cli.py").read_text(encoding="utf-8")
-    lifecycle = (root / "packages/consumer/.baton/lib/baton_lifecycle.py").read_text(encoding="utf-8")
+    cli = (root / "template/.baton/lib/baton_cli.py").read_text(encoding="utf-8")
+    lifecycle = (root / "template/.baton/lib/baton_lifecycle.py").read_text(encoding="utf-8")
     for command in ('add_parser("status"', 'add_parser("update"', 'add_parser("check"', 'add_parser("_activate"'):
         require(command in cli, f"installed Baton CLI lacks {command}")
     require('METADATA_PATH = ".baton/metadata.json"' in lifecycle, "lifecycle metadata is not namespaced")
@@ -365,11 +386,11 @@ def check_runtime_surface(root: Path) -> None:
     require("legacyCleanupCandidates" in lifecycle and "Needs Integration" in lifecycle, "migration preservation/quarantine contract is absent")
     require("def activate_adoption(" in lifecycle and 'activate.add_argument("--from"' in lifecycle, "reviewed adoption activation is absent")
     for relative in (
-        "packages/consumer/.baton/bin/baton",
-        "packages/consumer/.baton/lib/baton_cli.py",
-        "packages/consumer/.baton/lib/baton_lifecycle.py",
-        "packages/consumer/.baton/lib/harness_state.py",
-        "packages/consumer/.baton/lib/harness_team.py",
+        "template/.baton/bin/baton",
+        "template/.baton/lib/baton_cli.py",
+        "template/.baton/lib/baton_lifecycle.py",
+        "template/.baton/lib/harness_state.py",
+        "template/.baton/lib/harness_team.py",
     ):
         require("dont_write_bytecode = True" in (root / relative).read_text(encoding="utf-8"), f"{relative} does not disable bytecode")
 
@@ -380,7 +401,7 @@ def check_source_config(root: Path) -> None:
 
 
 def generated_runtime_contract(root: Path) -> Dict[str, Any]:
-    library = root / "packages/consumer/.baton/lib"
+    library = root / "template/.baton/lib"
     script = (
         "import json,sys; sys.dont_write_bytecode=True; "
         f"sys.path.insert(0, {str(library)!r}); "
@@ -419,7 +440,7 @@ def check_discovery(root: Path) -> None:
 
 
 def check_integration_allowlist(root: Path) -> None:
-    library = root / "packages/consumer/.baton/lib"
+    library = root / "template/.baton/lib"
     script = f"""
 import json,sys,tempfile
 from pathlib import Path
@@ -448,10 +469,10 @@ def check_source_state(root: Path) -> None:
 
 def check_no_publication(root: Path) -> None:
     paths = [
-        root / "install.sh",
-        root / "tools/release_bundle.py",
-        root / "packages/consumer/.baton/lib/baton_cli.py",
-        root / "packages/consumer/.baton/lib/baton_lifecycle.py",
+        root / "scripts/install.sh",
+        root / "scripts/release_bundle.py",
+        root / "template/.baton/lib/baton_cli.py",
+        root / "template/.baton/lib/baton_lifecycle.py",
     ]
     forbidden = ("git push", "git tag", "gh release", "gh pr", "create-release", "upload-release-asset")
     hits: List[str] = []

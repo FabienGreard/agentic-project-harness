@@ -1,12 +1,12 @@
 # Static distribution check contract
 
-`python3 tools/harness_eval.py --strict` is the read-only source evaluator for the Baton v0.6.0 distribution boundary. It emits stable check IDs with concrete evidence and exits nonzero when any check fails.
+`python3 scripts/harness_eval.py --strict` is the read-only source evaluator for the Baton v0.6.0 distribution boundary. It emits stable check IDs with concrete evidence and exits nonzero when any check fails.
 
 ## Product and payload boundary
 
 - `BT-001`: `VERSION` is exactly the candidate Baton version.
 - `BT-002`: active source identity, repository URL, product naming, and normal non-template repository contract agree.
-- `BT-003`: reusable consumer source exists only under `packages/consumer/.baton/`; source-repository state cannot enter a payload.
+- `BT-003`: reusable consumer source exists only under `template/.baton/`; source utilities are consolidated under `scripts/`; obsolete `packages/`, `examples/`, `tools/`, root installer source, and split release-policy paths are absent; source-repository state cannot enter a payload.
 - `BT-004`: every Git-visible candidate path has exactly one valid source classification and no classification drifts from the enforced layout.
 - `BT-005`: new-project and adoption projections are exact, distinct where required, and contain only safe `.baton/` paths.
 - `BT-012`: consumer integration is limited to `.baton/`, the marked `AGENTS.md` block, individual skill-discovery links, and project-scoped Codex configuration; forbidden root project identity or source-repository files cannot be adopted.

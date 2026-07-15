@@ -2,7 +2,7 @@
 
 ## Adapted skill material
 
-The `brainstorm`, `improve-codebase-architecture`, and `code-review` skills in `packages/consumer/.baton/skills/` adapt material from [Matt Pocock's skills repository](https://github.com/mattpocock/skills), including `grill-with-docs`, `improve-codebase-architecture`, `codebase-design`, and `code-review`. The same notice ships inside the consumer package at `.baton/THIRD_PARTY_NOTICES.md`.
+The `brainstorm`, `improve-codebase-architecture`, and `code-review` skills in `template/.baton/skills/` adapt material from [Matt Pocock's skills repository](https://github.com/mattpocock/skills), including `grill-with-docs`, `improve-codebase-architecture`, `codebase-design`, and `code-review`. The same notice ships inside the consumer package at `.baton/THIRD_PARTY_NOTICES.md`.
 
 Copyright (c) 2026 Matt Pocock
 

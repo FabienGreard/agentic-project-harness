@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 - Renamed the product to Baton and converted the repository from a consumer template into a normal source/product repository.
 - Isolated all consumer runtime, state, governance, roles, schemas, dashboards, and reports under `.baton/`, with only thin `AGENTS.md`, Codex config, and per-skill discovery integrations outside it.
-- Split stable distribution into exact checksum-bound new-project and mature-adoption payloads generated only from `packages/consumer/`.
+- Split stable distribution into exact checksum-bound new-project and mature-adoption payloads generated only from `template/`.
 - Added schema-v3 Baton provenance, project-version separation, mature-state quarantine, legacy cleanup candidates, additive v0.2-v0.5 migration, external transactions, and rollback.
 - Replaced installed root lifecycle tooling with the small `.baton/bin/baton` status, update, and check surface.
 - Added explicit reviewed mature-state activation, immutable per-file GitHub evidence, checksum-rich transaction reports, and automatic Codex agent-registry reconciliation when Consultants are hired or fired.
