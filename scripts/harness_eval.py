@@ -16,9 +16,20 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 
 VERSION = "0.6.0"
-CLASSIFICATION_PATH = "scripts/source-classification.json"
-CLASSIFICATION_SCHEMA = "baton.source-classification/v1"
-SOURCE_CLASSES = {"source-only", "template-only", "adoption-runtime", "shared"}
+TEMPLATE_PREFIX = "template/.baton/"
+PROJECTIONS = {"shared", "starter", "adoption-only"}
+ADOPTION_ONLY_PATH = "template/.baton/integration/README.md"
+STARTER_PATH = "template/.baton/thread-registry.md"
+STARTER_PREFIXES = (
+    "template/.baton/state/",
+    "template/.baton/dashboard/",
+    "template/.baton/docs/",
+    "template/.baton/decisions/",
+    "template/.baton/implementation-reports/",
+    "template/.baton/prds/",
+    "template/.baton/review-packets/",
+    "template/.baton/tickets/",
+)
 SKILLS = (
     "brainstorm",
     "code-review",
@@ -109,47 +120,34 @@ def cache_artifacts(root: Path) -> List[str]:
     return sorted(artifacts)
 
 
-def inferred_class(relative: str) -> str:
-    if relative == "template/.baton/integration/README.md":
-        return "adoption-runtime"
-    if relative.startswith("template/.baton/"):
-        payload_relative = relative.removeprefix("template/")
-        template_prefixes = (
-            ".baton/state/",
-            ".baton/dashboard/",
-            ".baton/docs/",
-            ".baton/decisions/",
-            ".baton/implementation-reports/",
-            ".baton/prds/",
-            ".baton/review-packets/",
-            ".baton/tickets/",
-        )
-        if payload_relative == ".baton/thread-registry.md" or payload_relative.startswith(template_prefixes):
-            return "template-only"
-        return "shared"
-    return "source-only"
+def template_sources(root: Path) -> List[str]:
+    template_paths = [path for path in candidate_paths(root) if path.startswith("template/")]
+    invalid = sorted(path for path in template_paths if not path.startswith(TEMPLATE_PREFIX))
+    require(not invalid, f"consumer source exists outside template/.baton: {invalid}")
+    require(bool(template_paths), "consumer source template/.baton is empty")
+    require(ADOPTION_ONLY_PATH in template_paths, f"adoption-only source is missing: {ADOPTION_ONLY_PATH}")
+    require(STARTER_PATH in template_paths, f"starter source is missing: {STARTER_PATH}")
+    return sorted(template_paths)
 
 
-def load_classification(root: Path) -> Dict[str, str]:
-    document = read_json(root / CLASSIFICATION_PATH)
-    require(set(document) == {"schema", "files"}, "source classification keys are not exact")
-    require(document["schema"] == CLASSIFICATION_SCHEMA, "source classification schema is not Baton v1")
-    files = document["files"]
-    require(isinstance(files, dict), "source classification files must be an object")
-    require(all(isinstance(key, str) and isinstance(value, str) for key, value in files.items()), "source classification entries must be strings")
-    return dict(files)
+def projection_for(source_path: str) -> str:
+    require(source_path.startswith(TEMPLATE_PREFIX), f"consumer source is outside template/.baton: {source_path}")
+    if source_path == ADOPTION_ONLY_PATH:
+        return "adoption-only"
+    if source_path == STARTER_PATH or source_path.startswith(STARTER_PREFIXES):
+        return "starter"
+    return "shared"
 
 
-def payload_path(source_path: str, classification: str, payload: str) -> Optional[str]:
-    prefix = "template/"
-    if not source_path.startswith(prefix) or classification == "source-only":
-        return None
-    relative = source_path.removeprefix(prefix)
+def payload_path(source_path: str, projection: str, payload: str) -> Optional[str]:
+    require(projection in PROJECTIONS, f"unsupported payload projection for {source_path}: {projection!r}")
+    require(source_path.startswith(TEMPLATE_PREFIX), f"consumer source is outside template/.baton: {source_path}")
+    relative = source_path.removeprefix("template/")
     if payload == "new-project":
-        return None if classification == "adoption-runtime" else relative
-    if classification in {"shared", "adoption-runtime"}:
+        return None if projection == "adoption-only" else relative
+    if projection in {"shared", "adoption-only"}:
         return relative
-    if classification == "template-only":
+    if projection == "starter":
         return ".baton/integration/starter/" + relative.removeprefix(".baton/")
     return None
 
@@ -285,6 +283,7 @@ def check_consumer_layout(root: Path) -> None:
         "install.sh",
         "docs/evals",
         "docs/release-policy.md",
+        "scripts/source-classification.json",
     )
     present = [
         relative
@@ -296,7 +295,6 @@ def check_consumer_layout(root: Path) -> None:
         "scripts/install.sh",
         "scripts/harness_eval.py",
         "scripts/release_bundle.py",
-        "scripts/source-classification.json",
     )
     missing_utilities = [relative for relative in source_utilities if not (root / relative).is_file()]
     require(not missing_utilities, f"consolidated source utilities are incomplete: {missing_utilities}")
@@ -321,22 +319,20 @@ def check_consumer_layout(root: Path) -> None:
     require(".baton/metadata.json" not in paths, "consumer source contains release-specific metadata")
 
 
-def check_classification(root: Path) -> None:
-    records = load_classification(root)
-    visible = candidate_paths(root)
-    require(set(records) == set(visible), f"classification drift; missing={sorted(set(visible) - set(records))}, stale={sorted(set(records) - set(visible))}")
-    invalid = sorted(path for path, value in records.items() if value not in SOURCE_CLASSES)
-    require(not invalid, f"unsupported classifications: {invalid}")
-    mismatches = sorted((path, inferred_class(path), value) for path, value in records.items() if value != inferred_class(path))
-    require(not mismatches, f"classification policy mismatches: {mismatches}")
+def check_template_boundary(root: Path) -> None:
+    sources = template_sources(root)
+    require(all(path.startswith(TEMPLATE_PREFIX) for path in sources), "consumer source escaped template/.baton")
+    require(not (root / "scripts/source-classification.json").exists(), "obsolete source-classification inventory remains")
+    require(projection_for(ADOPTION_ONLY_PATH) == "adoption-only", "adoption-only projection is not explicit")
+    require(projection_for(STARTER_PATH) == "starter", "starter projection is not explicit")
 
 
 def check_payload_projection(root: Path) -> None:
-    records = load_classification(root)
+    sources = template_sources(root)
     projected: Dict[str, List[str]] = {"new-project": [], "adoption": []}
     for payload in projected:
-        for source_path, classification in records.items():
-            destination = payload_path(source_path, classification, payload)
+        for source_path in sources:
+            destination = payload_path(source_path, projection_for(source_path), payload)
             if destination is not None:
                 projected[payload].append(destination)
         require(projected[payload], f"{payload} payload is empty")
@@ -347,8 +343,7 @@ def check_payload_projection(root: Path) -> None:
     require(any(path.startswith(".baton/integration/starter/state/") for path in projected["adoption"]), "adoption payload does not quarantine starter state")
     require(".baton/state/project.json" in projected["new-project"], "new-project payload lacks canonical starter state")
     require(".baton/state/project.json" not in projected["adoption"], "adoption payload activates starter state")
-    leaked_source = sorted(path for path in records if path.startswith(".baton/") and records[path] != "source-only")
-    require(not leaked_source, f"root source .baton is not source-only: {leaked_source}")
+    require(not any(path.startswith(".baton/") for path in sources), "root source .baton entered consumer projection")
 
 
 def check_release_contract(root: Path) -> None:
@@ -357,12 +352,15 @@ def check_release_contract(root: Path) -> None:
         'NEW_PROJECT_ARCHIVE = "baton-new-project.tar.gz"',
         'ADOPTION_ARCHIVE = "baton-adoption.tar.gz"',
         'MANIFEST_NAME = "baton-manifest.json"',
-        'CLASSIFICATION_NAME = "scripts/source-classification.json"',
+        'TEMPLATE_PREFIX = "template/.baton/"',
+        'PROJECTIONS = {"shared", "starter", "adoption-only"}',
         'MANIFEST_SCHEMA = "baton.release-bundle/v1"',
         'INSTALLER_SOURCE = "scripts/install.sh"',
     )
     missing = [value for value in required if value not in source]
     require(not missing, f"release builder contract is incomplete: {missing}")
+    require("sourceClassificationSha256" not in source, "release manifest retains source-classification metadata")
+    require('add_parser("classify"' not in source, "release builder retains the classification command")
     require(
         "upgrade origins must use TAG=FULL_COMMIT,MANIFEST_SHA256" in source,
         "release builder does not require immutable origin commit and manifest digests",
@@ -562,7 +560,7 @@ CHECKS: Sequence[Tuple[str, str, Callable[[Path], None]]] = (
     ("BT-001", "Baton v0.6.0 version", check_version),
     ("BT-002", "source repository identity", check_source_identity),
     ("BT-003", "isolated consumer source tree", check_consumer_layout),
-    ("BT-004", "exact source classifications", check_classification),
+    ("BT-004", "fail-closed template boundary", check_template_boundary),
     ("BT-005", "dual payload projection", check_payload_projection),
     ("BT-006", "release artifact contract", check_release_contract),
     ("BT-007", "stable installer surface", check_installer_surface),

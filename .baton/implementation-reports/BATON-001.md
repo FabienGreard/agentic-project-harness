@@ -1,6 +1,6 @@
 # BATON-001 — Implementation report
 
-Completed/returned: 2026-07-15
+Completed/returned: 2026-07-15 (reopened for payload-projection simplification; return pending)
 
 Reviewed by: Operations
 
@@ -17,17 +17,17 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 - Renamed active product identity to Baton and changed the public GitHub repository to `FabienGreard/baton` with template mode disabled.
 - Added source-only Baton project state under root `.baton/` and individual source skill-discovery links under `.agents/skills/`.
 - Added canonical consumer source under `template/.baton/`, with no second drifting copy.
-- Kept `docs/` exclusively for the five public product/contributor guides, moved source-only evaluator specifications to `tests/evals/`, and colocated the exact source-classification inventory with its release tooling at `scripts/source-classification.json`; the retired root `release/` directory is absent.
-- Added exact source classification and separate new-project/adoption payload projection.
+- Kept `docs/` exclusively for the five public product/contributor guides, moved source-only evaluator specifications to `tests/evals/`, and removed the retired root `release/` directory.
+- Replaced the redundant repository-wide source-classification inventory with a strict `template/.baton/` payload root, shared defaults, explicit starter/adoption-only projections, and exact generated manifests.
 - Unified stable installation and update through one release `install.sh`; installed lifecycle commands live at `.baton/bin/baton`.
 - Added schema-v3 Baton provenance, separate nullable `projectVersion`, immutable source commit/manifest evidence, managed baselines, external transactions, rollback, cleanup candidates, and direct GitHub source/compare links.
 - Added mature-repository `Needs Integration` quarantine and explicit validated `_activate --from PATH` promotion.
 - Added exact project-scoped Codex semantics, four-thread/depth-one limits, role presets, individual skills, Consultant hire/fire reconciliation, and no-persistent-goal lifecycle policy.
-- Replaced legacy template smokes with a 37-test deterministic release/install/adoption/update/state/team/evaluator matrix.
+- Replaced legacy template smokes with a 40-test deterministic release/install/adoption/update/state/team/evaluator matrix.
 
 ## Important choices
 
-- Root project identity and legal/community files are always source-only; adoption payloads contain only `.baton/` paths.
+- Root project identity and legal/community files are structurally outside the only eligible payload root; adoption payloads contain only `.baton/` paths.
 - New-project scaffolding becomes `.baton/integration/starter/` during mature adoption and is never authoritative until explicit activation.
 - Baton v0.6.0 is the first schema-v3 release and has no automatic schema-v3 upgrade origins. Legacy v0.2-v0.4 schemas have no per-file baselines, so Baton preserves every non-metadata path and records available evidence instead of guessing cleanup candidates. Authentic remote v0.2/v0.3 fixtures retain their missing installed revision and separately label verified official stable tag/commit anchors. v0.5 only surfaces unchanged checksum-verified managed/generated paths; project-owned, modified, missing, or invalid entries remain preserved.
 - Future v0.6+ updates require both the exact origin commit and manifest SHA-256.
@@ -36,8 +36,8 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 
 ## Acceptance coverage
 
-- Current source classification: 173 files—97 source-only, 62 shared, 13 template-only, and 1 adoption-runtime, with zero unclassified paths.
-- Source-layout assertions require exactly the five public guides under `docs/`, the evaluator contract under `tests/evals/`, the classification under `scripts/`, and absence of root `release/` and `docs/evals/`.
+- Current projection: 75 new-project paths and 76 adoption paths derived only from tracked `template/.baton/`; all other source-repository paths are ineligible without a duplicate inventory.
+- Source-layout assertions require exactly the five public guides under `docs/`, the evaluator contract under `tests/evals/`, absence of root `release/`, `docs/evals/`, and `scripts/source-classification.json`, and rejection of consumer source outside `template/.baton/`.
 - Rehearsal payloads: 75 new-project paths and 76 adoption paths, all under `.baton/`.
 - Fresh direct and stdin-piped installs produced only `.git`, `.baton`, `.agents`, `.codex`, and the marked `AGENTS.md` at repository root.
 - Mature adoption, activation, legacy preservation, state-preserving updates, starter advancement, collision behavior, rollback, unsafe targets, and concurrent locking are covered by deterministic fixtures.
@@ -53,8 +53,8 @@ The architecture begins at `9ecef4486784d1412d590ee9b9a1e42c2fc73402` and its fi
 - `PYTHONDONTWRITEBYTECODE=1 .baton/bin/baton check --json` — PASS.
 - `bash -n scripts/install.sh tests/install_smoke.sh tests/install_remote_smoke.sh` — PASS.
 - `git diff --check` — PASS.
-- `python3 scripts/release_bundle.py classify --source .` — PASS with zero drift at the reviewed code boundary.
-- Reopened source-layout revision: strict evaluation 16/16; focused release/evaluator tests 12/12; full current-Python and Python 3.9 matrices 37/37 each; local install smoke 37/37; source Markdown links, Baton state, shell syntax, and staged diff checks PASS.
+- Strict template-boundary projection — PASS; the obsolete classification command and manifest digest are absent.
+- Reopened source-layout revision: strict evaluation 16/16; full current-Python and Python 3.9 matrices 40/40 each; source Markdown links, Baton state, shell syntax, and staged diff checks PASS. The exact clean-commit bundle, install/adoption, and independent-audit evidence is recorded after the implementation commit below.
 - `python3 scripts/release_bundle.py build ...` and `validate` against clean implementation commit `206705bf653b713c0af8fcee6c5b4217f50aae30` — PASS; exactly five assets, 75 new-project paths, and 76 adoption paths.
 - Exact implementation-commit assets: `install.sh` `e256ddd5c92dc924b4de6274c77090c465a553ff16e3a1e1e215535f384937d0`; new-project archive `f1bef229bb79987a1cc2c771f59acd13cd85725b25c41a53e3f2ed1100d1a177`; adoption archive `8be073c5b5e008d4e82151753a7c063093dbd9abc3ed406e9133c79f70a1c36e`; manifest `9300a650d61cded2811a1957d62b486a7803a038307fbfe9b939bee5e2ca3de4`; checksum file `9234c49a9aaa559c96b2ce64c37c6e811958772d48579f72c4b7da670ab88dd2`.
 - Direct and stdin-piped fresh installs plus mature adoption from those exact assets — PASS. Fresh status was `Installed`, mature status was `Needs Integration`, 53 installed local Markdown links resolved, mature identity files were unchanged, and new installations created `.baton/metadata.json` without creating `.agent-harness.json`.
@@ -78,6 +78,7 @@ None. `requiredConsultantIds` is empty; Internal Audit remains independent and o
 - Disposable Internal Audit `IA-20260715-206705b-STATIC-01` at clean implementation commit `206705bf653b713c0af8fcee6c5b4217f50aae30`: **PASS**, 97/100, no hard gates. It independently reran strict evaluation 16/16 and the current-Python matrix 37/37, validated the exact five assets and 75/76 projections, confirmed the new source topology and legacy migration behavior, and reported only IA-001 (P2 state/report completion mismatch) and IA-002 (P3 stale 36-test count). This evidence-only reconciliation closes both findings. The audit did not rerun scenario smoke or Python 3.9; Operations independently reran Python 3.9 at 37/37.
 - Reopened source-layout standards/architecture review at staged boundary `64089d1e5b794affeebbd0747fca29f2f8b79b5c4e34af7b9df9584abecaa120`: **APPROVE**. SA-001 (P2) correctly identified the temporary mismatch between the reopened canonical state and this previously completed report; this revision and the final transactional return reconcile it.
 - Reopened source-layout specification/evidence review: **REVISE** only for SE-001 (P1), requiring exact-commit Internal Audit before return; the reviewer otherwise confirmed the intended layout and evidence. Disposable Internal Audit `IA-20260715-dab40c1-STATIC-01` at exact clean implementation commit `dab40c1a8b5599ef4943cbc54ea65fa117e8445d`: **PASS**, 100/100, no hard gates and no P0-P3 findings. It independently reran strict evaluation 16/16, classification, Baton state, focused tests 12/12, exact bundle build/validation, installed-link checks, and targeted layout/reference checks. This closes SE-001.
+- Payload-projection simplification review: specification/evidence **APPROVE**; standards/architecture initially **REVISE** for SA-001 (P1), because the release validator and installed lifecycle trusted a checksum-consistent manifest's `sourcePath` and `projection` claims. The accepted correction independently recomputes the source-to-projection-to-destination invariant in both surfaces. The one bounded follow-up review at staged diff `17463332802970c28997076ffe5cde4d65ac4743ebc9a80f2b5be2b9873e2e65` returned **APPROVE** with no P0-P3 findings: re-signed false-provenance fixtures fail closed, focused tamper tests pass 2/2, affected release/lifecycle tests pass 29/29, and the full dual-runtime matrix passes 40/40.
 
 ## Human review
 
@@ -97,4 +98,4 @@ Human Release approval remains pending. Candidate preparation, a local commit, a
 
 ## Ownership returned
 
-Operations returns the fully verified unpublished candidate, closed review findings, exact local asset evidence, limitations, and release boundary to Management. The final evidence-only commit and its rebuilt asset checksums are supplied in the external handoff because a commit cannot embed its own SHA. Publication remains human-gated.
+BATON-001 is currently reopened under Operations for the approved payload-projection simplification. Operations will return the fully verified unpublished candidate, closed review findings, exact local asset evidence, limitations, and release boundary to Management after final clean-commit verification. Publication remains human-gated.

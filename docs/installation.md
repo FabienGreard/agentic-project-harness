@@ -104,7 +104,7 @@ A non-empty repository is not a blank Baton project. The adoption archive theref
 
 - shared runtime lands at its normal `.baton/` path;
 - adoption-only guidance lands under `.baton/integration/`;
-- template-only direction, state, dashboard inputs, decisions, PRDs, tickets, and report scaffolding stay quarantined at `.baton/integration/starter/`; and
+- starter direction, state, dashboard inputs, decisions, PRDs, tickets, and report scaffolding stay quarantined at `.baton/integration/starter/`; and
 - metadata records `installationStatus: "Needs Integration"`.
 
 Quarantined starter state is never canonical merely because installation succeeded. The root Baton block points agents to `.baton/integration/README.md`, not to an invented project plan.

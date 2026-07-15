@@ -112,8 +112,8 @@ Activation does not authorize cleanup. Keep starter material, legacy records, tr
 
 Contributors changing Baton itself work in this normal source/product repository. The root `.baton/` belongs to Baton's own project and must never become consumer content. Consumer runtime changes originate under `template/.baton/`.
 
-Every tracked source file must be classified as exactly one of `source-only`, `template-only`, `adoption-runtime`, or `shared` in `scripts/source-classification.json`. Regenerate and review that inventory when adding, moving, or deleting tracked files. Release construction fails on missing, stale, or policy-inconsistent classifications.
+Consumer runtime changes belong under `template/.baton/`. Files there are shared by default; starter state and the adoption-only integration guide follow the explicit path conventions documented in [Architecture](architecture.md). The release builder rejects any consumer source elsewhere under `template/` and records the exact projected files in the generated manifest.
 
-Do not place consumer source at repository root to make packaging easier. `scripts/`, tests, docs, release files, and the source evaluator are source-only and must not appear in either consumer archive. The release builder publishes `scripts/install.sh` as the separate top-level installer asset without installing it into projects.
+Do not place consumer source at repository root to make packaging easier. `scripts/`, tests, docs, release files, and the source evaluator are outside the only eligible payload root and cannot appear in either consumer archive. The release builder publishes `scripts/install.sh` as the separate top-level installer asset without installing it into projects.
 
-See [Architecture](architecture.md) for class-to-payload mapping and [Releasing](releasing.md) for candidate verification.
+See [Architecture](architecture.md) for projection-to-payload mapping and [Releasing](releasing.md) for candidate verification.

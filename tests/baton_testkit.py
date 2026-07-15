@@ -80,9 +80,9 @@ def git_commit(source: Path) -> str:
     return run(["git", "rev-parse", "HEAD"], cwd=source).stdout.strip()
 
 
-def inferred_class(relative: str) -> str:
+def inferred_projection(relative: str) -> str:
     if relative == "template/.baton/integration/README.md":
-        return "adoption-runtime"
+        return "adoption-only"
     if relative.startswith("template/.baton/"):
         payload_relative = relative.removeprefix("template/")
         template_prefixes = (
@@ -96,18 +96,18 @@ def inferred_class(relative: str) -> str:
             ".baton/tickets/",
         )
         if payload_relative == ".baton/thread-registry.md" or payload_relative.startswith(template_prefixes):
-            return "template-only"
+            return "starter"
         return "shared"
-    return "source-only"
+    raise ValueError(f"consumer source is outside template/.baton: {relative}")
 
 
-def projected_path(source_path: str, classification: str, payload: str) -> Optional[str]:
-    if not source_path.startswith("template/") or classification == "source-only":
-        return None
+def projected_path(source_path: str, projection: str, payload: str) -> Optional[str]:
+    if not source_path.startswith("template/.baton/"):
+        raise ValueError(f"consumer source is outside template/.baton: {source_path}")
     relative = source_path.removeprefix("template/")
     if payload == "new-project":
-        return None if classification == "adoption-runtime" else relative
-    if classification in {"shared", "adoption-runtime"}:
+        return None if projection == "adoption-only" else relative
+    if projection in {"shared", "adoption-only"}:
         return relative
     return ".baton/integration/starter/" + relative.removeprefix(".baton/")
 
@@ -147,15 +147,10 @@ def make_candidate(base: Path, version: str, *, marker: str = "") -> Path:
             + f"\nStarter release marker: {marker}\n",
             encoding="utf-8",
         )
-    classification = source / "scripts/source-classification.json"
-    classification.parent.mkdir(parents=True, exist_ok=True)
-    classification.write_text("{}\n", encoding="utf-8")
     run(["git", "init", "-q", "-b", "main"], cwd=source)
     run(["git", "config", "user.email", "baton-smoke@example.test"], cwd=source)
     run(["git", "config", "user.name", "Baton Smoke"], cwd=source)
     run(["git", "add", "."], cwd=source)
-    run([sys.executable, RELEASE_TOOL, "classify", "--source", source, "--write"])
-    run(["git", "add", "scripts/source-classification.json"], cwd=source)
     run(["git", "commit", "-qm", f"fixture {version}"], cwd=source)
     return source
 
@@ -191,6 +186,20 @@ def build_bundle(
 
 def manifest(bundle: Path) -> Dict[str, Any]:
     return json.loads((bundle / "baton-manifest.json").read_text(encoding="utf-8"))
+
+
+def resign_manifest(bundle: Path, document: Dict[str, Any]) -> None:
+    data = (json.dumps(document, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    (bundle / "baton-manifest.json").write_bytes(data)
+    checksums = {}
+    for line in (bundle / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
+        digest, name = line.split("  ", 1)
+        checksums[name] = digest
+    checksums["baton-manifest.json"] = hashlib.sha256(data).hexdigest()
+    (bundle / "SHA256SUMS").write_text(
+        "".join(f"{checksums[name]}  {name}\n" for name in sorted(checksums)),
+        encoding="utf-8",
+    )
 
 
 def archive_names(bundle: Path, payload: str) -> List[str]:

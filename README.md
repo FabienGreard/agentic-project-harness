@@ -68,7 +68,7 @@ The same verified installer chooses the safe mode from the target:
 | --- | --- |
 | Empty directory | Installs the new-project payload, initializes Git on `main` without a commit, and records `Installed`. |
 | Non-empty directory | Uses additive Adoption mode, preserves project files, quarantines starter records, and records `Needs Integration`. |
-| Baton metadata present | Offers or runs a stable update through the adoption-runtime payload. |
+| Baton metadata present | Offers or runs a stable update through the adoption payload. |
 | Supported v0.2-v0.5 legacy metadata present | Migrates through Adoption mode and preserves every legacy path; only checksum-verified unchanged managed paths become human-approved cleanup candidates. |
 | Unrecognized `.baton/`, unsafe path, ambiguous provenance, or managed-file drift | Fails closed without guessing ownership. |
 

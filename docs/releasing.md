@@ -24,7 +24,7 @@ Management owns release readiness and presents the exact candidate, evidence, li
 
 ### Source and payload integrity
 
-Every tracked source file has exactly one committed class: `source-only`, `template-only`, `adoption-runtime`, or `shared`. Missing, stale, or policy-inconsistent classification blocks the build.
+Consumer payload construction is rooted exclusively at Git-tracked `template/.baton/`. Source-repository files outside that boundary are never eligible, any other path under `template/` blocks the build, shared content is the default, and only starter/adoption-only path conventions vary by installation mode.
 
 The release builder starts from a clean committed source tree and produces exactly five uploaded assets:
 
@@ -34,9 +34,9 @@ The release builder starts from a clean committed source tree and produces exact
 - `baton-manifest.json`; and
 - `SHA256SUMS`.
 
-Both archives contain only `.baton/` entries generated from `template/`. This repository's root `.baton/`, product identity, docs, scripts, tests, evaluator, legal/community files, version history, and release machinery remain source-only.
+Both archives contain only `.baton/` entries generated from `template/.baton/`. This repository's root `.baton/`, product identity, docs, scripts, tests, evaluator, legal/community files, version history, and release machinery are structurally outside the payload root.
 
-The manifest binds the version/tag, official repository, full candidate commit, source-classification digest, state schema, supported origins, exact payload path lists, source paths, file classes, kinds, and checksums. `SHA256SUMS` binds the installer, both archives, and manifest.
+The manifest binds the version/tag, official repository, full candidate commit, state schema, supported origins, exact payload path lists, source paths, projections, kinds, and checksums. `SHA256SUMS` binds the installer, both archives, and manifest.
 
 ### Upgrade history
 
@@ -53,7 +53,7 @@ Retired and legacy paths are cleanup candidates, never automatic deletions. Repo
 Publication is accepted only when:
 
 1. the exact clean committed candidate passes the full verification matrix;
-2. source classification and both payload manifests validate with zero drift;
+2. the strict template boundary and both payload manifests validate with zero drift;
 3. two-axis review and independent disposable Internal Audit have no blocking finding;
 4. Management presents exact evidence and the human Release review approves the candidate;
 5. the matching tag and GitHub release contain all five checksum-matched assets;
@@ -76,25 +76,17 @@ Before release-grade verification, confirm:
 
 Review the exact source diff and exclude unrelated work. Release construction requires a clean committed source tree, but preparing docs or running pre-commit checks is not publication.
 
-## 2. Regenerate and review source classification
+## 2. Review the template projection
 
-Every tracked path must appear once in `scripts/source-classification.json` as `source-only`, `template-only`, `adoption-runtime`, or `shared`.
+There is no source-classification file to maintain. Verify instead that:
 
-When tracked files change, regenerate from the staged candidate path set, review the result, and stage the classification again:
+- every Git-tracked path under `template/` starts with `template/.baton/`;
+- `template/.baton/integration/README.md` is the explicit adoption-only source;
+- starter state, dashboard inputs, direction, decisions, PRDs, tickets, and report scaffolding follow the documented starter path conventions;
+- all remaining `template/.baton/` content is shared by default; and
+- source-repository paths outside `template/.baton/` never appear in either generated manifest.
 
-```sh
-python3 scripts/release_bundle.py classify --source . --write
-python3 scripts/release_bundle.py classify --source .
-```
-
-The second command must report zero drift. Verify especially that:
-
-- root `.baton/`, `README.md`, `VERSION`, `CHANGELOG.md`, docs, `scripts/`, tests, evaluator, legal/community files, and release infrastructure are `source-only`;
-- `template/.baton/integration/README.md` is `adoption-runtime`;
-- starter state/narrative/report scaffolding is `template-only`; and
-- shared runtime, rules, roles, schemas, skills, agents, and lifecycle code are `shared`.
-
-Do not hand-classify a root source file into a payload. The builder enforces the approved source-layout policy.
+`python3 scripts/harness_eval.py --strict` validates this boundary before commit. The clean-commit bundle build then emits the exact signed path inventory for both payloads; review those generated records rather than maintaining a duplicate repository-wide list.
 
 ## 3. Run the Thorough candidate matrix
 
@@ -148,7 +140,7 @@ Before any future release build, re-verify these anchors against local tags and 
 Release bundles are tied to `HEAD^{commit}` and reject a dirty source worktree. Once Operations has integrated every scoped return and the user authorizes candidate commit work:
 
 1. stage only the intended candidate;
-2. rerun classification against the staged path set;
+2. rerun the strict template-boundary and projection checks against the staged path set;
 3. commit with the approved conventional commit message;
 4. record the full candidate SHA; and
 5. rerun the complete release-grade verification from that exact clean commit.
@@ -184,7 +176,6 @@ Inspect `baton-manifest.json` and retain:
 
 - full source commit and official repository;
 - version/tag/channel and state schema;
-- source-classification digest;
 - every supported origin and required manifest digest;
 - exact sorted file list for both payloads; and
 - installer, archive, manifest, and per-file checksums.
@@ -214,7 +205,7 @@ The release packet must identify:
 - candidate version and full commit;
 - exact changed-file boundary;
 - five asset paths and SHA-256 values;
-- source classification count by class;
+- exact shared, starter, and adoption-only projection counts for both payloads;
 - exact path count/checksum for each payload;
 - full commands and results for the Thorough matrix;
 - migration before/after manifests and cleanup candidates;

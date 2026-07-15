@@ -6,7 +6,7 @@ Baton v0.6.0 separates product development from installed project control planes
 
 ```mermaid
 flowchart LR
-    S["Baton source repository"] --> C["Fail-closed source classification"]
+    S["Baton source repository"] --> C["Strict template/.baton boundary"]
     C --> N["New-project .baton payload"]
     C --> A["Adoption .baton payload"]
     N --> E["Empty project: active starter state"]
@@ -24,7 +24,7 @@ source repository
 ├── .baton/                         Baton's own live, source-only control plane
 ├── template/.baton/                only source for consumer .baton content
 ├── docs/                            public product documentation
-├── scripts/                         installer, evaluator, release builder, classification
+├── scripts/                         installer, evaluator, and release builder
 ├── tests/                           deterministic tests and evaluator specifications
 └── VERSION                          Baton source candidate version
 
@@ -37,20 +37,21 @@ installed consumer
 
 The installed consumer has no Baton root `install.sh`, source `scripts/`, tests, evaluator, source docs, changelog, license/community files, release machinery, or root version file.
 
-## Source classification
+## Template projection
 
-`scripts/source-classification.json` sits beside the release builder and is a tracked, exact inventory of every Git-tracked source path. The builder compares it with `git ls-files` and rejects missing, stale, unsupported, or policy-inconsistent records. Evaluator prompts, rubrics, report contracts, and scenarios live under `tests/evals/`; `docs/` contains only public product and contributor guidance.
+There is no repository-wide source-file inventory. The release builder reads only Git-tracked paths under `template/.baton/`; any other path under `template/` is rejected, and everything elsewhere in the source repository is structurally ineligible for a consumer archive. Evaluator prompts, rubrics, report contracts, and scenarios live under `tests/evals/`; `docs/` contains only public product and contributor guidance.
 
-| Class | Meaning | New-project payload | Adoption payload |
+Most template content is `shared`. Only the two behaviors that differ between installation modes are derived from explicit path conventions:
+
+| Projection | Meaning | New-project payload | Adoption payload |
 | --- | --- | --- | --- |
-| `source-only` | Product source, this repository's own `.baton/`, docs, tests, tooling, legal/community and release files | Excluded | Excluded |
 | `shared` | Consumer runtime needed in both modes | `.baton/<path>` | `.baton/<path>` |
-| `template-only` | Starter project direction, records, dashboard inputs, decisions, PRDs, tickets, and report scaffolding | Active `.baton/<path>` | Quarantined `.baton/integration/starter/<path>` |
-| `adoption-runtime` | Guidance needed only while integrating a mature project | Excluded | `.baton/integration/<path>` |
+| `starter` | Starter project direction, records, dashboard inputs, decisions, PRDs, tickets, and report scaffolding | Active `.baton/<path>` | Quarantined `.baton/integration/starter/<path>` |
+| `adoption-only` | Guidance needed only while integrating a mature project | Excluded | `.baton/integration/<path>` |
 
-Classification is inferred from the approved source layout and then committed as an explicit contract. It is not an allow-everything glob. Consumer payload construction accepts source only from `template/`, strips that prefix, and rejects any archive entry outside `.baton/`.
+The generated manifest is the exact auditable payload inventory. Consumer payload construction strips only the `template/` prefix and rejects duplicate, unsafe, unsigned, or non-`.baton/` archive entries.
 
-The source repository's root `.baton/` can therefore never enter a payload: it is outside `template/` and classified source-only.
+The source repository's root `.baton/` can therefore never enter a payload because it is outside the only eligible source root.
 
 ## Deterministic dual payloads
 
@@ -62,7 +63,7 @@ The release builder creates:
 - `install.sh`; and
 - `SHA256SUMS`.
 
-`baton-manifest.json` records the stable version/tag, official repository, full source commit, state schema version, supported upgrade origins, source-classification digest, and an exact sorted file record for each payload. Every file record includes destination path, source path, class, entry kind, and SHA-256 digest.
+`baton-manifest.json` records the stable version/tag, official repository, full source commit, state schema version, supported upgrade origins, and an exact sorted file record for each payload. Every file record includes destination path, source path, projection, entry kind, and SHA-256 digest.
 
 Archives are deterministic: sorted entries, normalized ownership, zero timestamps, constrained modes, safe relative paths, and safe relative symlinks. Validation rejects duplicate paths, hard links, devices, FIFOs, unsafe symlink traversal, unsigned/missing entries, wrong checksums, and forbidden root files.
 
@@ -107,7 +108,7 @@ An empty target can safely receive starter project state. Baton configures proje
 
 ### Mature adoption
 
-A non-empty target already has identity and history. Baton installs shared runtime but relocates every template-only path into `.baton/integration/starter/`, generates an integration prompt, and records `Needs Integration`.
+A non-empty target already has identity and history. Baton installs shared runtime but relocates every starter path into `.baton/integration/starter/`, generates an integration prompt, and records `Needs Integration`.
 
 The quarantine prevents generic starter direction, goals, tickets, ownership, reviews, or team records from becoming authority. A mature proposal must be non-template state built from live repository facts and contain all six schema-valid canonical records. Human-reviewed `.baton/bin/baton _activate --from PATH` validates the proposal and current baselines before writing active state.
 
@@ -162,9 +163,9 @@ An LLM may analyze and propose cleanup from that evidence. Humans retain authori
 
 The source repository has two different validation boundaries:
 
-- **Source evaluation** inspects product source, root `.baton/` state, release classification, tests, docs, and release tooling. It is never consumer payload content.
+- **Source evaluation** inspects product source, root `.baton/` state, the strict template boundary, tests, docs, and release tooling. It is never consumer payload content.
 - **Consumer validation** inspects Baton-owned `.baton/` paths and explicit Git-visible integration paths. It does not recursively scan ignored vendor trees or claim ownership of the surrounding repository.
 
-Release acceptance combines classification validation, exact dual-manifest validation, empty-project and mature-adoption smokes, legacy migration, collision/rollback/lock/path-safety coverage, Python compatibility, two-axis review, and independent disposable Internal Audit.
+Release acceptance combines template-boundary validation, exact dual-manifest validation, empty-project and mature-adoption smokes, legacy migration, collision/rollback/lock/path-safety coverage, Python compatibility, two-axis review, and independent disposable Internal Audit.
 
 See [Releasing](releasing.md) for the stable publication policy and procedure.

@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Replaced installed root lifecycle tooling with the small `.baton/bin/baton` status, update, and check surface.
 - Added explicit reviewed mature-state activation, immutable per-file GitHub evidence, checksum-rich transaction reports, and automatic Codex agent-registry reconciliation when Consultants are hired or fired.
 - Made permanent-task messages the sole wake mechanism and prohibited persistent goals as role identity or lifecycle control, including legacy auto-resume handling.
+- Removed the repository-wide source-classification inventory; release payloads now derive only from tracked `template/.baton/` content with shared defaults, explicit starter/adoption-only projections, and exact generated manifests.
 
 ## [0.5.0] - 2026-07-14
 

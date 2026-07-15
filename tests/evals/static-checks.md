@@ -6,8 +6,8 @@
 
 - `BT-001`: `VERSION` is exactly the candidate Baton version.
 - `BT-002`: active source identity, repository URL, product naming, and normal non-template repository contract agree.
-- `BT-003`: reusable consumer source exists only under `template/.baton/`; source utilities and classification are consolidated under `scripts/`; obsolete `packages/`, `examples/`, `tools/`, `release/`, root installer source, evaluator docs nesting, and split release-policy paths are absent; source-repository state cannot enter a payload.
-- `BT-004`: every Git-visible candidate path has exactly one valid source classification and no classification drifts from the enforced layout.
+- `BT-003`: reusable consumer source exists only under `template/.baton/`; source utilities are consolidated under `scripts/`; obsolete `packages/`, `examples/`, `tools/`, `release/`, root installer source, source-classification inventory, evaluator docs nesting, and split release-policy paths are absent; source-repository state cannot enter a payload.
+- `BT-004`: consumer projection is rooted exclusively at `template/.baton/`, with shared defaults and explicit starter/adoption-only exceptions; source-repository paths are never eligible.
 - `BT-005`: new-project and adoption projections are exact, distinct where required, and contain only safe `.baton/` paths.
 - `BT-012`: consumer integration is limited to `.baton/`, the marked `AGENTS.md` block, individual skill-discovery links, and project-scoped Codex configuration; forbidden root project identity or source-repository files cannot be adopted.
 

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Deterministic release-classification and dual-payload tests for Baton."""
+"""Deterministic template-projection and dual-payload tests for Baton."""
 
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -21,10 +20,11 @@ from baton_testkit import (  # noqa: E402
     archive_names,
     build_bundle,
     git_commit,
-    inferred_class,
+    inferred_projection,
     make_candidate,
     manifest,
     projected_path,
+    resign_manifest,
     run,
     sha256,
 )
@@ -54,53 +54,41 @@ class ReleaseDistributionTests(unittest.TestCase):
         validated = run([sys.executable, RELEASE_TOOL, "validate", "--bundle", self.bundle])
         self.assertTrue(json.loads(validated.stdout)["ok"])
 
-    def test_every_source_path_has_the_exact_release_class(self) -> None:
-        document = json.loads(
-            (self.source / "scripts/source-classification.json").read_text(encoding="utf-8")
-        )
-        tracked = set(
+    def test_consumer_projection_is_rooted_only_at_template_baton(self) -> None:
+        tracked = sorted(
             item
             for item in run(["git", "ls-files", "-z"], cwd=self.source).stdout.split("\0")
             if item
         )
-        self.assertEqual(document["schema"], "baton.source-classification/v1")
-        self.assertEqual(set(document["files"]), tracked)
+        template_paths = [path for path in tracked if path.startswith("template/")]
+        self.assertTrue(template_paths)
+        self.assertTrue(all(path.startswith("template/.baton/") for path in template_paths))
+        self.assertEqual(inferred_projection("template/.baton/guide.md"), "shared")
+        self.assertEqual(inferred_projection("template/.baton/state/project.json"), "starter")
         self.assertEqual(
-            document["files"],
-            {path: inferred_class(path) for path in sorted(tracked)},
+            inferred_projection("template/.baton/integration/README.md"),
+            "adoption-only",
         )
-        self.assertEqual(document["files"][".baton/AGENTS.md"], "source-only")
-        self.assertEqual(document["files"]["scripts/install.sh"], "source-only")
-        self.assertEqual(
-            document["files"]["scripts/source-classification.json"],
-            "source-only",
-        )
-        self.assertNotIn("release/source-classification.json", document["files"])
-        self.assertEqual(document["files"]["template/.baton/guide.md"], "shared")
-        self.assertEqual(
-            document["files"]["template/.baton/state/project.json"],
-            "template-only",
-        )
-        self.assertEqual(
-            document["files"]["template/.baton/integration/README.md"],
-            "adoption-runtime",
-        )
+        self.assertFalse((self.source / "scripts/source-classification.json").exists())
 
     def test_manifest_lists_exact_new_project_and_adoption_payloads(self) -> None:
         release_manifest = manifest(self.bundle)
-        classifications = json.loads(
-            (self.source / "scripts/source-classification.json").read_text(encoding="utf-8")
-        )["files"]
+        source_paths = [
+            path
+            for path in run(["git", "ls-files", "-z"], cwd=self.source).stdout.split("\0")
+            if path.startswith("template/.baton/")
+        ]
         self.assertEqual(set(release_manifest["payloads"]), {"new-project", "adoption"})
         for payload in ("new-project", "adoption"):
             expected = [
                 {
                     "path": destination,
                     "sourcePath": source_path,
-                    "classification": classification,
+                    "projection": projection,
                 }
-                for source_path, classification in classifications.items()
-                for destination in [projected_path(source_path, classification, payload)]
+                for source_path in source_paths
+                for projection in [inferred_projection(source_path)]
+                for destination in [projected_path(source_path, projection, payload)]
                 if destination is not None
             ]
             expected.sort(key=lambda item: item["path"])
@@ -108,7 +96,7 @@ class ReleaseDistributionTests(unittest.TestCase):
                 {
                     "path": item["path"],
                     "sourcePath": item["sourcePath"],
-                    "classification": item["classification"],
+                    "projection": item["projection"],
                 }
                 for item in release_manifest["payloads"][payload]["files"]
             ]
@@ -133,14 +121,32 @@ class ReleaseDistributionTests(unittest.TestCase):
         self.assertFalse(any("__pycache__" in path or path.endswith(".pyc") for path in new_paths | adoption_paths))
         self.assertFalse(any(path.startswith(".baton/state/") for path in adoption_paths))
 
-    def test_unclassified_source_change_fails_closed(self) -> None:
+    def test_source_repository_growth_is_never_payload_eligible(self) -> None:
         drifted = self.base / "drifted"
         shutil.copytree(self.source, drifted, symlinks=True)
-        (drifted / "new-source-file.txt").write_text("unclassified\n", encoding="utf-8")
+        (drifted / "new-source-file.txt").write_text("source repository only\n", encoding="utf-8")
         run(["git", "add", "new-source-file.txt"], cwd=drifted)
-        run(["git", "commit", "-qm", "unclassified source"], cwd=drifted)
-        failed = build_bundle(drifted, self.base / "drifted-bundle", expected=1)
-        self.assertIn("source classification drift", failed.stderr)
+        run(["git", "commit", "-qm", "source repository growth"], cwd=drifted)
+        bundle = self.base / "drifted-bundle"
+        build_bundle(drifted, bundle)
+        source_paths = {
+            item["sourcePath"]
+            for payload in manifest(bundle)["payloads"].values()
+            for item in payload["files"]
+        }
+        self.assertNotIn("new-source-file.txt", source_paths)
+        for payload in ("new-project", "adoption"):
+            artifact = manifest(bundle)["payloads"][payload]["artifact"]
+            self.assertEqual(sha256(bundle / artifact), sha256(self.bundle / artifact))
+
+    def test_template_content_outside_baton_fails_closed(self) -> None:
+        polluted = self.base / "polluted-template"
+        shutil.copytree(self.source, polluted, symlinks=True)
+        (polluted / "template/project-root.txt").write_text("must not ship\n", encoding="utf-8")
+        run(["git", "add", "template/project-root.txt"], cwd=polluted)
+        run(["git", "commit", "-qm", "polluted consumer template"], cwd=polluted)
+        failed = build_bundle(polluted, self.base / "polluted-template-bundle", expected=1)
+        self.assertIn("consumer source exists outside template/.baton", failed.stderr)
 
     def test_upgrade_origin_requires_both_full_commit_and_manifest_digest(self) -> None:
         failed = build_bundle(
@@ -161,6 +167,29 @@ class ReleaseDistributionTests(unittest.TestCase):
         )
         self.assertIn("checksum mismatch: baton-adoption.tar.gz", failed.stderr)
 
+    def test_validator_rejects_false_projection_provenance(self) -> None:
+        cases = {
+            "source-outside-template": ("sourcePath", "README.md"),
+            "projection-does-not-match-source": ("projection", "starter"),
+        }
+        for name, (field, value) in cases.items():
+            with self.subTest(name=name):
+                tampered = self.base / f"false-provenance-{name}"
+                shutil.copytree(self.bundle, tampered)
+                document = manifest(tampered)
+                record = next(
+                    item
+                    for item in document["payloads"]["adoption"]["files"]
+                    if item["path"] == ".baton/guide.md"
+                )
+                record[field] = value
+                resign_manifest(tampered, document)
+                failed = run(
+                    [sys.executable, RELEASE_TOOL, "validate", "--bundle", tampered],
+                    expected=1,
+                )
+                self.assertIn("payload projection provenance mismatch", failed.stderr)
+
     def test_validator_rejects_an_unexpected_sixth_asset(self) -> None:
         polluted = self.base / "polluted"
         shutil.copytree(self.bundle, polluted)
@@ -178,13 +207,7 @@ class ReleaseDistributionTests(unittest.TestCase):
         self.assertEqual(release_manifest["stableTag"], "v0.6.0")
         self.assertEqual(release_manifest["source"]["commit"], git_commit(self.source))
         self.assertRegex(release_manifest["source"]["commit"], r"^[0-9a-f]{40}$")
-        self.assertRegex(release_manifest["sourceClassificationSha256"], r"^[0-9a-f]{64}$")
-        self.assertEqual(
-            release_manifest["sourceClassificationSha256"],
-            hashlib.sha256(
-                (self.source / "scripts/source-classification.json").read_bytes()
-            ).hexdigest(),
-        )
+        self.assertNotIn("sourceClassificationSha256", release_manifest)
 
 
 if __name__ == "__main__":

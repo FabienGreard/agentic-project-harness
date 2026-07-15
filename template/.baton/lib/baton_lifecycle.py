@@ -36,6 +36,19 @@ from harness_team import (
 METADATA_PATH = ".baton/metadata.json"
 LEGACY_METADATA_PATH = ".agent-harness.json"
 MANIFEST_SCHEMA = "baton.release-bundle/v1"
+TEMPLATE_PREFIX = "template/.baton/"
+ADOPTION_ONLY_SOURCE = "template/.baton/integration/README.md"
+STARTER_SOURCE = "template/.baton/thread-registry.md"
+STARTER_SOURCE_PREFIXES = (
+    "template/.baton/state/",
+    "template/.baton/dashboard/",
+    "template/.baton/docs/",
+    "template/.baton/decisions/",
+    "template/.baton/implementation-reports/",
+    "template/.baton/prds/",
+    "template/.baton/review-packets/",
+    "template/.baton/tickets/",
+)
 OFFICIAL_REPOSITORIES = {"FabienGreard/baton", "FabienGreard/agentic-project-harness"}
 LEGACY_RELEASE_ANCHORS = {
     "0.2.0": {
@@ -186,15 +199,47 @@ def manifest_payload(manifest: dict[str, Any], payload: str) -> dict[str, Any]:
     return record
 
 
+def payload_projection(source_path: str) -> str:
+    if not source_path.startswith(TEMPLATE_PREFIX):
+        raise LifecycleError(f"consumer source is outside template/.baton: {source_path}")
+    if source_path == ADOPTION_ONLY_SOURCE:
+        return "adoption-only"
+    if source_path == STARTER_SOURCE or source_path.startswith(STARTER_SOURCE_PREFIXES):
+        return "starter"
+    return "shared"
+
+
+def projected_payload_path(source_path: str, projection: str, payload: str) -> str | None:
+    if not source_path.startswith(TEMPLATE_PREFIX):
+        raise LifecycleError(f"consumer source is outside template/.baton: {source_path}")
+    relative = source_path[len("template/"):]
+    if payload == "new-project":
+        return None if projection == "adoption-only" else relative
+    if payload == "adoption":
+        if projection in {"shared", "adoption-only"}:
+            return relative
+        if projection == "starter":
+            return ".baton/integration/starter/" + relative[len(".baton/"):]
+    return None
+
+
 def validate_payload_tree(payload_root: Path, manifest: dict[str, Any], payload: str) -> dict[str, dict[str, Any]]:
     record = manifest_payload(manifest, payload)
     indexed: dict[str, dict[str, Any]] = {}
     for item in record["files"]:
-        if not isinstance(item, dict) or set(item) != {"path", "sourcePath", "classification", "kind", "sha256"}:
+        if not isinstance(item, dict) or set(item) != {"path", "sourcePath", "projection", "kind", "sha256"}:
             raise LifecycleError(f"invalid payload file record: {payload}")
         relative = safe_relative(item["path"])
         if relative in indexed or not relative.startswith(".baton/"):
             raise LifecycleError(f"invalid or duplicate payload path: {relative}")
+        try:
+            source_path = safe_relative(item["sourcePath"])
+            expected_projection = payload_projection(source_path)
+            expected_path = projected_payload_path(source_path, expected_projection, payload)
+        except LifecycleError:
+            raise LifecycleError(f"payload projection provenance mismatch: {relative}") from None
+        if item["projection"] != expected_projection or relative != expected_path:
+            raise LifecycleError(f"payload projection provenance mismatch: {relative}")
         path = inside(payload_root, relative)
         digest = entry_digest(path)
         kind = "symlink" if path.is_symlink() else "file" if path.is_file() else None
@@ -712,12 +757,12 @@ def build_metadata(
 ) -> dict[str, Any]:
     managed: dict[str, dict[str, str]] = {}
     for relative, record in payload_records.items():
-        if record["classification"] == "template-only" and status != "Needs Integration":
+        if record["projection"] == "starter" and status != "Needs Integration":
             continue
         digest = entry_digest(inside(prepared, relative))
         if digest is not None:
             managed[relative] = {
-                "ownership": "generated-config" if record["classification"] == "template-only" else "baton-managed",
+                "ownership": "generated-config" if record["projection"] == "starter" else "baton-managed",
                 "baselineSha256": digest,
             }
     for relative in sorted(set(integration_paths)):
@@ -912,7 +957,7 @@ def install_or_adopt(
                 project_owned = [
                     relative
                     for relative, record in payload_records.items()
-                    if record["classification"] == "template-only"
+                    if record["projection"] == "starter"
                 ]
                 project_owned.append(".baton/state/team.json")
                 generated.extend(
@@ -1043,7 +1088,7 @@ def update_installation(
     if metadata.get("schemaVersion") != 3:
         raise LifecycleError("unsupported installed Baton metadata schema")
     if payload != "adoption":
-        raise LifecycleError("updates use the adoption-runtime payload")
+        raise LifecycleError("updates use the adoption payload")
     current = tuple(int(item) for item in str(metadata.get("batonVersion", "")).split("."))
     target = tuple(int(item) for item in str(manifest.get("version", "")).split("."))
     if len(current) != 3 or len(target) != 3:
@@ -1107,7 +1152,7 @@ def update_installation(
             new_managed: dict[str, dict[str, str]] = {}
             for relative, record in payload_records.items():
                 if (
-                    record["classification"] == "template-only"
+                    record["projection"] == "starter"
                     and metadata.get("installationStatus") != "Needs Integration"
                 ):
                     continue
@@ -1125,7 +1170,7 @@ def update_installation(
                     replace.append(relative)
                 if desired is not None:
                     new_managed[relative] = {
-                        "ownership": "generated-config" if record["classification"] == "template-only" else "baton-managed",
+                        "ownership": "generated-config" if record["projection"] == "starter" else "baton-managed",
                         "baselineSha256": desired,
                     }
             if metadata.get("installationStatus") == "Installed":

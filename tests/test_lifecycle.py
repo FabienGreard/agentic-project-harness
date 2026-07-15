@@ -32,6 +32,7 @@ from baton_testkit import (  # noqa: E402
     make_candidate,
     make_mature_project,
     manifest,
+    resign_manifest,
     semantic_toml,
     sha256,
     tree_snapshot,
@@ -82,6 +83,25 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         self.assertEqual(status["integrity"], {"modified": [], "missing": [], "agentsBlock": "ok"})
         self.assertEqual(baton(target, ["check", "--json"], state_home).returncode, 0)
         assert_no_python_cache(target)
+
+    def test_install_rejects_false_projection_provenance(self) -> None:
+        tampered = self.base / "false-projection-bundle"
+        shutil.copytree(self.bundle, tampered)
+        document = manifest(tampered)
+        record = next(
+            item
+            for item in document["payloads"]["new-project"]["files"]
+            if item["path"] == ".baton/guide.md"
+        )
+        record["projection"] = "starter"
+        resign_manifest(tampered, document)
+        result = install_bundle(
+            tampered,
+            self.base / "false-projection-target",
+            self.base / "state-false-projection",
+            expected=1,
+        )
+        self.assertIn("payload projection provenance mismatch", result.stdout)
 
     def test_concurrent_installers_recheck_target_state_inside_the_lock(self) -> None:
         target = self.base / "concurrent-install"

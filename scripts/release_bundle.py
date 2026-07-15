@@ -24,11 +24,22 @@ ADOPTION_ARCHIVE = "baton-adoption.tar.gz"
 CHECKSUMS_NAME = "SHA256SUMS"
 INSTALLER_NAME = "install.sh"
 INSTALLER_SOURCE = "scripts/install.sh"
-CLASSIFICATION_NAME = "scripts/source-classification.json"
 MANIFEST_SCHEMA = "baton.release-bundle/v1"
-CLASSIFICATION_SCHEMA = "baton.source-classification/v1"
 CHANNEL = "stable"
-SOURCE_CLASSES = {"source-only", "template-only", "adoption-runtime", "shared"}
+TEMPLATE_PREFIX = "template/.baton/"
+PROJECTIONS = {"shared", "starter", "adoption-only"}
+ADOPTION_ONLY_PATH = "template/.baton/integration/README.md"
+STARTER_PATH = "template/.baton/thread-registry.md"
+STARTER_PREFIXES = (
+    "template/.baton/state/",
+    "template/.baton/dashboard/",
+    "template/.baton/docs/",
+    "template/.baton/decisions/",
+    "template/.baton/implementation-reports/",
+    "template/.baton/prds/",
+    "template/.baton/review-packets/",
+    "template/.baton/tickets/",
+)
 PAYLOADS = {
     "new-project": NEW_PROJECT_ARCHIVE,
     "adoption": ADOPTION_ARCHIVE,
@@ -137,97 +148,53 @@ def source_entry(source: Path, relative: str) -> dict[str, Any]:
     }
 
 
-def inferred_class(relative: str) -> str:
-    if relative == "template/.baton/integration/README.md":
-        return "adoption-runtime"
-    if relative.startswith("template/.baton/"):
-        payload_relative = relative.removeprefix("template/")
-        template_prefixes = (
-            ".baton/state/",
-            ".baton/dashboard/",
-            ".baton/docs/",
-            ".baton/decisions/",
-            ".baton/implementation-reports/",
-            ".baton/prds/",
-            ".baton/review-packets/",
-            ".baton/tickets/",
-        )
-        if payload_relative == ".baton/thread-registry.md" or payload_relative.startswith(template_prefixes):
-            return "template-only"
-        return "shared"
-    return "source-only"
+def template_sources(paths: list[str]) -> list[str]:
+    template_paths = [path for path in paths if path.startswith("template/")]
+    invalid = sorted(path for path in template_paths if not path.startswith(TEMPLATE_PREFIX))
+    if invalid:
+        fail(f"consumer source exists outside template/.baton: {invalid}")
+    if not template_paths:
+        fail("consumer source template/.baton is empty")
+    if ADOPTION_ONLY_PATH not in template_paths:
+        fail(f"adoption-only source is missing: {ADOPTION_ONLY_PATH}")
+    if STARTER_PATH not in template_paths:
+        fail(f"starter source is missing: {STARTER_PATH}")
+    return sorted(template_paths)
 
 
-def classification_document(paths: list[str]) -> dict[str, Any]:
-    return {
-        "schema": CLASSIFICATION_SCHEMA,
-        "files": {path: inferred_class(path) for path in paths},
-    }
+def projection_for(source_path: str) -> str:
+    if not source_path.startswith(TEMPLATE_PREFIX):
+        fail(f"consumer source is outside template/.baton: {source_path}")
+    if source_path == ADOPTION_ONLY_PATH:
+        return "adoption-only"
+    if source_path == STARTER_PATH or source_path.startswith(STARTER_PREFIXES):
+        return "starter"
+    return "shared"
 
 
-def load_classification(source: Path, paths: list[str]) -> dict[str, str]:
-    path = source / CLASSIFICATION_NAME
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        fail(f"invalid source classification: {error}")
-    if not isinstance(raw, dict) or set(raw) != {"schema", "files"}:
-        fail("source classification keys do not match the contract")
-    if raw["schema"] != CLASSIFICATION_SCHEMA or not isinstance(raw["files"], dict):
-        fail("source classification schema is invalid")
-    records = raw["files"]
-    if set(records) != set(paths):
-        missing = sorted(set(paths) - set(records))
-        stale = sorted(set(records) - set(paths))
-        fail(f"source classification drift; missing={missing}, stale={stale}")
-    for relative, value in records.items():
-        safe_path(relative)
-        if value not in SOURCE_CLASSES:
-            fail(f"unsupported source classification for {relative}: {value!r}")
-        expected = inferred_class(relative)
-        if value != expected:
-            fail(f"source classification policy mismatch for {relative}: expected {expected}, got {value}")
-    return dict(sorted(records.items()))
-
-
-def classify(args: argparse.Namespace) -> None:
-    source = Path(args.source).resolve()
-    paths = tracked_paths(source)
-    document = classification_document(paths)
-    destination = source / CLASSIFICATION_NAME
-    if args.write:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    else:
-        existing = load_classification(source, paths)
-        document = {"schema": CLASSIFICATION_SCHEMA, "files": existing}
-    counts = {name: list(document["files"].values()).count(name) for name in sorted(SOURCE_CLASSES)}
-    print(json.dumps({"ok": True, "path": str(destination), "files": len(paths), "counts": counts}, sort_keys=True))
-
-
-def payload_path(source_path: str, classification: str, payload: str) -> str | None:
-    prefix = "template/"
-    if not source_path.startswith(prefix) or classification == "source-only":
-        return None
-    relative = source_path.removeprefix(prefix)
+def payload_path(source_path: str, projection: str, payload: str) -> str | None:
+    if projection not in PROJECTIONS:
+        fail(f"unsupported payload projection for {source_path}: {projection!r}")
+    if not source_path.startswith(TEMPLATE_PREFIX):
+        fail(f"consumer source is outside template/.baton: {source_path}")
+    relative = source_path.removeprefix("template/")
     if payload == "new-project":
-        if classification == "adoption-runtime":
+        if projection == "adoption-only":
             return None
         return relative
-    if classification == "shared" or classification == "adoption-runtime":
+    if projection in {"shared", "adoption-only"}:
         return relative
-    if classification == "template-only":
-        if not relative.startswith(".baton/"):
-            fail(f"template-only source is outside .baton: {source_path}")
+    if projection == "starter":
         return ".baton/integration/starter/" + relative.removeprefix(".baton/")
     return None
 
 
-def payload_entries(source: Path, classifications: dict[str, str], payload: str) -> list[dict[str, Any]]:
+def payload_entries(source: Path, source_paths: list[str], payload: str) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for source_path, classification in classifications.items():
-        destination = payload_path(source_path, classification, payload)
+    for source_path in source_paths:
+        projection = projection_for(source_path)
+        destination = payload_path(source_path, projection, payload)
         if destination is None:
             continue
         safe_path(destination)
@@ -239,7 +206,7 @@ def payload_entries(source: Path, classifications: dict[str, str], payload: str)
             {
                 "path": destination,
                 "source_path": source_path,
-                "classification": classification,
+                "projection": projection,
                 "kind": entry["kind"],
                 "data": entry["data"],
                 "link_target": entry["link_target"],
@@ -317,7 +284,7 @@ def manifest_payload(entries: list[dict[str, Any]], artifact: str, artifact_sha:
             {
                 "path": item["path"],
                 "sourcePath": item["source_path"],
-                "classification": item["classification"],
+                "projection": item["projection"],
                 "kind": item["kind"],
                 "sha256": item["sha256"],
             }
@@ -330,7 +297,9 @@ def build(args: argparse.Namespace) -> None:
     source = Path(args.source).resolve()
     output = Path(args.output).resolve()
     commit, paths = checked_source(source)
-    classifications = load_classification(source, paths)
+    consumer_sources = template_sources(paths)
+    if INSTALLER_SOURCE not in paths:
+        fail(f"installer source is not tracked: {INSTALLER_SOURCE}")
     version = version_from_source(source)
     tag = f"v{version}"
     if args.tag != tag:
@@ -343,12 +312,11 @@ def build(args: argparse.Namespace) -> None:
     if output == source or source in output.parents:
         fail("output directory must stay outside the source repository")
 
-    new_entries = payload_entries(source, classifications, "new-project")
-    adoption_entries = payload_entries(source, classifications, "adoption")
+    new_entries = payload_entries(source, consumer_sources, "new-project")
+    adoption_entries = payload_entries(source, consumer_sources, "adoption")
     new_archive = archive_bytes(new_entries)
     adoption_archive = archive_bytes(adoption_entries)
     installer = source_entry(source, INSTALLER_SOURCE)
-    classification_bytes = (source / CLASSIFICATION_NAME).read_bytes()
     manifest = {
         "schema": MANIFEST_SCHEMA,
         "channel": CHANNEL,
@@ -360,7 +328,6 @@ def build(args: argparse.Namespace) -> None:
         },
         "stateSchemaVersion": args.state_schema_version,
         "supportedUpgradeOrigins": origins,
-        "sourceClassificationSha256": sha256_bytes(classification_bytes),
         "payloads": {
             "new-project": manifest_payload(new_entries, NEW_PROJECT_ARCHIVE, sha256_bytes(new_archive)),
             "adoption": manifest_payload(adoption_entries, ADOPTION_ARCHIVE, sha256_bytes(adoption_archive)),
@@ -404,14 +371,25 @@ def validate_payload_record(name: str, record: Any) -> dict[str, dict[str, Any]]
         fail(f"payload has no files: {name}")
     indexed: dict[str, dict[str, Any]] = {}
     for item in record["files"]:
-        if not isinstance(item, dict) or set(item) != {"path", "sourcePath", "classification", "kind", "sha256"}:
+        if not isinstance(item, dict) or set(item) != {"path", "sourcePath", "projection", "kind", "sha256"}:
             fail(f"invalid payload file record: {name}")
         path = item["path"]
+        source_path = item["sourcePath"]
+        if not isinstance(path, str) or not isinstance(source_path, str):
+            fail(f"invalid payload file record: {name}")
         safe_path(path)
+        safe_path(source_path)
         if path in indexed or not path.startswith(".baton/"):
             fail(f"invalid or duplicate payload path: {path}")
-        if item["classification"] not in SOURCE_CLASSES - {"source-only"} or item["kind"] not in {"file", "symlink"} or not is_sha256(item["sha256"]):
+        if item["projection"] not in PROJECTIONS or item["kind"] not in {"file", "symlink"} or not is_sha256(item["sha256"]):
             fail(f"invalid payload metadata: {path}")
+        try:
+            expected_projection = projection_for(source_path)
+            expected_path = payload_path(source_path, expected_projection, name)
+        except BundleError:
+            fail(f"payload projection provenance mismatch: {path}")
+        if item["projection"] != expected_projection or path != expected_path:
+            fail(f"payload projection provenance mismatch: {path}")
         indexed[path] = item
     if list(indexed) != sorted(indexed):
         fail(f"payload files are not sorted: {name}")
@@ -428,7 +406,7 @@ def load_manifest(path: Path) -> dict[str, Any]:
     required = {
         "schema", "channel", "version", "stableTag", "source",
         "stateSchemaVersion", "supportedUpgradeOrigins",
-        "sourceClassificationSha256", "payloads", "artifacts",
+        "payloads", "artifacts",
     }
     if set(value) != required or value["schema"] != MANIFEST_SCHEMA or value["channel"] != CHANNEL:
         fail("manifest keys or schema do not match the stable contract")
@@ -439,8 +417,6 @@ def load_manifest(path: Path) -> dict[str, Any]:
         fail("manifest source is not immutable")
     if type(value["stateSchemaVersion"]) is not int or value["stateSchemaVersion"] < 1:
         fail("manifest state schema version is invalid")
-    if not is_sha256(value["sourceClassificationSha256"]):
-        fail("manifest source classification checksum is invalid")
     if not isinstance(value["supportedUpgradeOrigins"], dict):
         fail("manifest upgrade origins are invalid")
     for tag, origin in value["supportedUpgradeOrigins"].items():
@@ -556,10 +532,6 @@ def validate(args: argparse.Namespace) -> None:
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     commands = result.add_subparsers(dest="command", required=True)
-    classify_parser = commands.add_parser("classify", help="validate or regenerate the exact source-file classification")
-    classify_parser.add_argument("--source", required=True)
-    classify_parser.add_argument("--write", action="store_true")
-    classify_parser.set_defaults(handler=classify)
     build_parser = commands.add_parser("build", help="build two fail-closed stable payloads")
     build_parser.add_argument("--source", required=True)
     build_parser.add_argument("--output", required=True)
