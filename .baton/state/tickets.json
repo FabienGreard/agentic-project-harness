@@ -5,7 +5,7 @@
     {
       "id": "BATON-V060-REL",
       "title": "Certify and publish the exact v0.6.0 candidate",
-      "status": "In Review",
+      "status": "Done",
       "priority": "P0",
       "owner": "Operations",
       "goal": "BATON-V060",

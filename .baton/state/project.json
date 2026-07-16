@@ -22,9 +22,9 @@
       "Evidence before completion"
     ],
     "openQuestions": [],
-    "currentGoal": "BATON-V060",
+    "currentGoal": "",
     "agentProvider": "codex",
-    "phase": "Release branch cleanup",
+    "phase": "Active",
     "templateMode": false,
     "lastVerified": "2026-07-16",
     "decisionPaths": [],
@@ -37,8 +37,8 @@
     }
   },
   "baton": {
-    "owner": "Operations",
-    "action": "Remove every non-main branch locally and remotely, then record terminal proof",
-    "returnTrigger": "Both branch inventories contain only main and the local main checkout is clean"
+    "owner": "Management",
+    "action": "Define the next Goal and Ticket",
+    "returnTrigger": "A bounded Ready Ticket is recorded"
   }
 }

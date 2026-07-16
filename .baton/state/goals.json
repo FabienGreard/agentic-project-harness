@@ -5,7 +5,7 @@
     {
       "id": "BATON-V060",
       "title": "Release Baton v0.6.0",
-      "status": "Review",
+      "status": "Done",
       "priority": "P0",
       "owner": "Management",
       "objective": "Publish the approved current Baton implementation as the stable v0.6.0 release and finish clean on main.",
@@ -24,7 +24,9 @@
         ".baton/records/BATON-V060/review-release-management.md"
       ],
       "plannedStart": "2026-07-16",
-      "plannedEnd": "2026-07-16"
+      "plannedEnd": "2026-07-16",
+      "resultSummary": "Published stable Baton v0.6.0 from the exact reviewed candidate, verified immutable remote installation and asset identities, and left only main locally and remotely.",
+      "completedAt": "2026-07-16"
     }
   ]
 }

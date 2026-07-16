@@ -23,8 +23,8 @@ Publication is one exact-source transaction. The audit-discovered public v0.5 co
 
 ## Limits and follow-up
 
-Complete local/remote non-`main` branch cleanup remains pending. GitHub reports the repository protection enabled while the new release remains inside its grace interval.
+Local and remote branch inventories each contain only `main`, and the local checkout is clean on `main`. GitHub reports repository immutable-release protection enabled while the new release remains inside its grace interval. The only non-blocking limitation is that the historical v0.5 regression fixture requires full Git history; runtime and release assets are unaffected.
 
 ## Ownership returned
 
-Not yet; Operations remains in `Verifying` state.
+Operations returned ownership after every release and cleanup acceptance criterion passed.

@@ -22,8 +22,8 @@ PR [#4](https://github.com/FabienGreard/baton/pull/4) merged the reviewed candid
 
 ## Limits and follow-up
 
-The [GitHub release](https://github.com/FabienGreard/baton/releases/tag/v0.6.0), tag, assets, latest redirect, and remote installation are proven. Complete local/remote non-`main` branch cleanup remains pending. GitHub reports repository immutable-release protection enabled while the newly published release remains inside its platform grace interval.
+The [GitHub release](https://github.com/FabienGreard/baton/releases/tag/v0.6.0), tag, assets, latest redirect, and remote installation are proven. Local and remote branch inventories each contain only `main`; the local checkout is clean on `main`. GitHub reports repository immutable-release protection enabled while the newly published release remains inside its platform grace interval. One non-blocking test limitation remains: the historical v0.5 regression fixture requires full Git history, so that fixture does not run in a depth-one clone; runtime and release assets are unaffected.
 
 ## Ownership returned
 
-Operations retains ownership until publication and cleanup are proven.
+Operations returned release ownership to Management after publication, remote verification, and exact local/remote branch cleanup completed.
