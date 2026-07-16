@@ -9,13 +9,17 @@
       "priority": "P0",
       "owner": "Management",
       "objective": "Publish the approved current Baton implementation as the stable v0.6.0 release and finish clean on main.",
-      "context": "The user approved this implementation as v0.6.0 and authorized replacement of the older pending v0.6 branch.",
+      "context": "The user selected this implementation for v0.6.0 and authorized replacement of the older pending branch; material audit repairs require fresh exact-candidate Release clearance.",
       "dependencies": [],
       "assurance": {
         "clearanceProtocol": "Release Clearance",
         "overrideReason": ""
       },
-      "blockers": [],
+      "blockers": [
+        "Fresh Goal Release clearance for the final full commit and validated asset set"
+      ],
+      "blockerOwner": "Management",
+      "resumeCondition": "The user explicitly approves the frozen full commit after reviewing its release packet",
       "briefPath": ".baton/records/BATON-V060/brief.md",
       "decisionPaths": [],
       "reportPath": ".baton/records/BATON-V060/report.md",

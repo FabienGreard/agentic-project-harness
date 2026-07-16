@@ -42,22 +42,43 @@ from baton_testkit import (  # noqa: E402
 
 V05_COMMIT = "4191fe4be3a8da1ce3cea075bfb8f81a8d0d737c"
 V05_MANIFEST_SHA256 = "744041e438990c37f3303666560c49cfbb919dec84e937e15307bae1fad3c88a"
-V05_SKILL_PATHS = (
-    ".agents/skills/README.md",
-    ".agents/skills/brainstorm/SKILL.md",
-    ".agents/skills/brainstorm/agents/openai.yaml",
-    ".agents/skills/code-review/SKILL.md",
-    ".agents/skills/code-review/agents/openai.yaml",
-    ".agents/skills/code-review/references/review-axes.md",
-    ".agents/skills/fire-consultant/SKILL.md",
-    ".agents/skills/fire-consultant/agents/openai.yaml",
-    ".agents/skills/hire-consultant/SKILL.md",
-    ".agents/skills/hire-consultant/agents/openai.yaml",
-    ".agents/skills/improve-codebase-architecture/SKILL.md",
-    ".agents/skills/improve-codebase-architecture/agents/openai.yaml",
-    ".agents/skills/improve-codebase-architecture/references/report-format.md",
-    ".agents/skills/skills.json",
-)
+V05_SKILL_SHA256 = {
+    ".agents/skills/README.md": "5461f291c53007e45154d2613d8a3a55a7934539529d3c5c10be9a66d525ebf6",
+    ".agents/skills/brainstorm/SKILL.md": "844b0ee7b0ad76e45e910f5445ae7e99338620f6eb72f2ef6ffa734ae4c0ef58",
+    ".agents/skills/brainstorm/agents/openai.yaml": "d5e6aa35b923b66e59bada674ff4431ab7a3a84945d85e0abb06b5cbdd3e3fee",
+    ".agents/skills/code-review/SKILL.md": "156037f47ded66a46c042fd6a5e84677d71b9f042725f7a50a02c85f1df1d9f0",
+    ".agents/skills/code-review/agents/openai.yaml": "c56b16c6c336acf61c2d48d1b8c523462193fc2be63b6e9d612c8f9a013141b8",
+    ".agents/skills/code-review/references/review-axes.md": "ed33fe1a791fd3ab77eda3bde474feddb67939df117e3efe756bb4f27aae5bc1",
+    ".agents/skills/fire-consultant/SKILL.md": "51234613a45ec3c15c64d2510d577e6c0246ce85310867fb0895c83db7600f96",
+    ".agents/skills/fire-consultant/agents/openai.yaml": "ad8a1be296e0a2d46c41826185b3b12df94906ba8c554e1d28908021c5d6b9d8",
+    ".agents/skills/hire-consultant/SKILL.md": "216558a28ae3eb30410b7a115d6dbc91102e285d98b78963fb54966bc4be4331",
+    ".agents/skills/hire-consultant/agents/openai.yaml": "ae90d99f5da3fa7c564ee043ac7ff373228c68b93e51f7e6cbf85f172242983f",
+    ".agents/skills/improve-codebase-architecture/SKILL.md": "caa564a7a074072001f30e3174ecb100eebee150d96d018ca27f2cf40dcdab53",
+    ".agents/skills/improve-codebase-architecture/agents/openai.yaml": "2ded29ea6a85bc6b83bd4fd9b18632eedac133b2fb1e7b6b12fa2a70e6a326ad",
+    ".agents/skills/improve-codebase-architecture/references/report-format.md": "093dc9148f47a7721a684f09ba64261a576bf07a129b2bd6e29f5a8c9dab8fe9",
+    ".agents/skills/skills.json": "caf453ec741cf0d320cc601baec574658ce17b37864d17618fb1ab98859ef4c4",
+}
+V05_SKILL_PATHS = tuple(V05_SKILL_SHA256)
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+_V05_SKILL_CONTENTS: dict[str, bytes] | None = None
+
+
+def v05_skill_contents() -> dict[str, bytes]:
+    global _V05_SKILL_CONTENTS
+    if _V05_SKILL_CONTENTS is None:
+        loaded: dict[str, bytes] = {}
+        for relative, expected_sha256 in V05_SKILL_SHA256.items():
+            content = subprocess.run(
+                ["git", "show", f"{V05_COMMIT}:{relative}"],
+                cwd=REPOSITORY_ROOT,
+                check=True,
+                capture_output=True,
+            ).stdout
+            if hashlib.sha256(content).hexdigest() != expected_sha256:
+                raise AssertionError(f"v0.5 fixture hash mismatch: {relative}")
+            loaded[relative] = content
+        _V05_SKILL_CONTENTS = loaded
+    return _V05_SKILL_CONTENTS
 
 
 def make_v05_skill_install(target: Path) -> dict[str, bytes]:
@@ -72,8 +93,7 @@ def make_v05_skill_install(target: Path) -> dict[str, bytes]:
             "baselineSha256": hashlib.sha256(project_file.read_bytes()).hexdigest(),
         }
     }
-    for relative in V05_SKILL_PATHS:
-        content = f"public v0.5 skill-shape fixture: {relative}\n".encode()
+    for relative, content in v05_skill_contents().items():
         path = target / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
@@ -503,6 +523,47 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
             self.bundle_with_v05_origin,
             target,
             self.base / "state-modified-v05-skill-discovery",
+            expected=1,
+        )
+        self.assertIn("skill-discovery collision", failed.stdout + failed.stderr)
+        self.assertEqual(tree_snapshot(target), before)
+
+    def test_coherently_forged_v05_skill_and_baseline_fail_before_any_write(self) -> None:
+        target = self.base / "forged-v05-skill-discovery"
+        make_v05_skill_install(target)
+        modified = target / ".agents/skills/brainstorm/SKILL.md"
+        modified.write_text("# Locally modified legacy skill with forged baseline\n", encoding="utf-8")
+        metadata_path = target / ".agent-harness.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["managedFiles"][".agents/skills/brainstorm/SKILL.md"]["baselineSha256"] = hashlib.sha256(
+            modified.read_bytes()
+        ).hexdigest()
+        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        before = tree_snapshot(target)
+        failed = install_bundle(
+            self.bundle_with_v05_origin,
+            target,
+            self.base / "state-forged-v05-skill-discovery",
+            expected=1,
+        )
+        self.assertIn("skill-discovery collision", failed.stdout + failed.stderr)
+        self.assertEqual(tree_snapshot(target), before)
+
+    def test_incomplete_v05_skill_set_and_metadata_fail_before_any_write(self) -> None:
+        target = self.base / "incomplete-v05-skill-discovery"
+        make_v05_skill_install(target)
+        shutil.rmtree(target / ".agents/skills/fire-consultant")
+        metadata_path = target / ".agent-harness.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        for relative in tuple(metadata["managedFiles"]):
+            if relative.startswith(".agents/skills/fire-consultant/"):
+                del metadata["managedFiles"][relative]
+        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        before = tree_snapshot(target)
+        failed = install_bundle(
+            self.bundle_with_v05_origin,
+            target,
+            self.base / "state-incomplete-v05-skill-discovery",
             expected=1,
         )
         self.assertIn("skill-discovery collision", failed.stdout + failed.stderr)

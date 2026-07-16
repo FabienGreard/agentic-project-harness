@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Added a limited ubiquitous language for Goal, Ticket, Release, Publication, and their clearance boundaries.
 - Expanded the ubiquitous language with Project, Repository, State, Record, Brief, Decision, Report, Evidence, Review, and Memory.
 - Added aggregate state contract v2 so stable updates cannot silently mix legacy assurance fields with the new protocol model.
-- Added authenticated v0.5 skill-discovery quarantine so unchanged legacy installations can adopt v0.6 without overwriting legacy files or partially installing new links; activation remains blocked until human-approved cleanup completes the exact link set.
+- Added authenticated v0.5 skill-discovery quarantine, bound to the public release's exact path-and-hash set, so unchanged legacy installations can adopt v0.6 without overwriting legacy files or partially installing new links; activation remains blocked until human-approved cleanup completes the exact link set.
 
 ### Changed
 

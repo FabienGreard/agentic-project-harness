@@ -37,8 +37,8 @@
     }
   },
   "baton": {
-    "owner": "Operations",
-    "action": "Freeze and certify the exact v0.6.0 candidate, then publish and clean up the superseded branch",
-    "returnTrigger": "The exact candidate passes both reviews, Internal Audit, asset validation, and immutable remote smoke"
+    "owner": "Management",
+    "action": "Review the frozen v0.6.0 release packet and decide exact-candidate Release clearance",
+    "returnTrigger": "A fresh human decision names the final full commit and validated asset set"
   }
 }

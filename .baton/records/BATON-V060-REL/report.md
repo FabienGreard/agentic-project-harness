@@ -7,19 +7,19 @@ Reviewed by: Operations
 
 ## Outcome and change
 
-The repaired v0.6.0 source tree passes its complete local source matrix on Python 3.13 and 3.9. Exact-commit artifact, review, and publication evidence remains in progress.
+The repaired v0.6.0 source tree passes its pre-freeze source matrix on Python 3.13. Exact-commit Python 3.13/3.9, artifact, review, and publication evidence remains in progress.
 
 ## Decisions
 
-Publication is one exact-source transaction. The audit-discovered public v0.5 collision is resolved through authenticated zero-link quarantine rather than destructive or partial discovery installation.
+Publication is one exact-source transaction. The audit-discovered public v0.5 collision is resolved through zero-link quarantine bound to the immutable public v0.5 path-and-hash set rather than mutable local baselines, destructive changes, or partial discovery installation.
 
 ## Verification
 
 - Readiness Protocol: Standard Protocol
 - Clearance Protocol: Release Clearance
-- Commands, environment, observations, and results: `python3 scripts/harness_eval.py --strict` passed 19/19; `bash tests/install_smoke.sh` passed 137/137 on Python 3.13.5; `PYTHON=python3.9 bash tests/install_smoke.sh` passed 137/137 on Python 3.9.23; shell syntax, `git diff --check`, focused authentic-v0.5 quarantine and activation tests, and `baton doctor check` passed. The commit containing this report is the exact candidate to be rechecked and bundled.
+- Commands, environment, observations, and results: before freeze, `python3 scripts/harness_eval.py --strict` passed 19/19 and `bash tests/install_smoke.sh` passed 139/139 on Python 3.13.5; shell syntax, `git diff --check`, authentic-v0.5 quarantine/activation, modified-byte, coherent forged-baseline, incomplete-set, extra-file, and collision tests, plus `baton doctor check`, passed. The commit containing this report is the exact candidate to be rechecked on Python 3.13 and 3.9 and bundled.
 - Consultant decisions and evidence: none required.
-- Goal or Ticket Clearances and status: Goal Release Clearance approved; technical review and audit pending.
+- Goal or Ticket Clearances and status: the earlier Goal Release Clearance was invalidated by material audit repairs; exact-candidate Release clearance, technical review, and audit are pending.
 
 ## Limits and follow-up
 

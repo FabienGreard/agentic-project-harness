@@ -78,6 +78,23 @@ SKILL_NAMES = (
     "terminal",
     "upgrade",
 )
+V05_SKILL_DISCOVERY_SHA256 = {
+    ".agents/skills/README.md": "5461f291c53007e45154d2613d8a3a55a7934539529d3c5c10be9a66d525ebf6",
+    ".agents/skills/brainstorm/SKILL.md": "844b0ee7b0ad76e45e910f5445ae7e99338620f6eb72f2ef6ffa734ae4c0ef58",
+    ".agents/skills/brainstorm/agents/openai.yaml": "d5e6aa35b923b66e59bada674ff4431ab7a3a84945d85e0abb06b5cbdd3e3fee",
+    ".agents/skills/code-review/SKILL.md": "156037f47ded66a46c042fd6a5e84677d71b9f042725f7a50a02c85f1df1d9f0",
+    ".agents/skills/code-review/agents/openai.yaml": "c56b16c6c336acf61c2d48d1b8c523462193fc2be63b6e9d612c8f9a013141b8",
+    ".agents/skills/code-review/references/review-axes.md": "ed33fe1a791fd3ab77eda3bde474feddb67939df117e3efe756bb4f27aae5bc1",
+    ".agents/skills/fire-consultant/SKILL.md": "51234613a45ec3c15c64d2510d577e6c0246ce85310867fb0895c83db7600f96",
+    ".agents/skills/fire-consultant/agents/openai.yaml": "ad8a1be296e0a2d46c41826185b3b12df94906ba8c554e1d28908021c5d6b9d8",
+    ".agents/skills/hire-consultant/SKILL.md": "216558a28ae3eb30410b7a115d6dbc91102e285d98b78963fb54966bc4be4331",
+    ".agents/skills/hire-consultant/agents/openai.yaml": "ae90d99f5da3fa7c564ee043ac7ff373228c68b93e51f7e6cbf85f172242983f",
+    ".agents/skills/improve-codebase-architecture/SKILL.md": "caa564a7a074072001f30e3174ecb100eebee150d96d018ca27f2cf40dcdab53",
+    ".agents/skills/improve-codebase-architecture/agents/openai.yaml": "2ded29ea6a85bc6b83bd4fd9b18632eedac133b2fb1e7b6b12fa2a70e6a326ad",
+    ".agents/skills/improve-codebase-architecture/references/report-format.md": "093dc9148f47a7721a684f09ba64261a576bf07a129b2bd6e29f5a8c9dab8fe9",
+    ".agents/skills/skills.json": "caf453ec741cf0d320cc601baec574658ce17b37864d17618fb1ab98859ef4c4",
+}
+V05_CODEX_SKILLS_SHA256 = "3c74c93317f015d16370349a76529b6f8332c808bdd589e7640eeba6a1b1b874"
 LEGACY_SKILL_DISCOVERY_ACTION = (
     "Authenticated verified v0.5 skill discovery was preserved and no v0.6 links were created. "
     "After explicit legacy-cleanup approval, remove the obsolete .codex/skills alias and replace "
@@ -415,10 +432,10 @@ def verified_v05_skill_discovery(project_root: Path, manifest: dict[str, Any]) -
     if (
         not isinstance(codex_discovery, dict)
         or codex_discovery.get("ownership") != "harness-managed"
-        or not is_sha256(codex_discovery.get("baselineSha256"))
+        or codex_discovery.get("baselineSha256") != V05_CODEX_SKILLS_SHA256
         or not codex_path.is_symlink()
         or os.readlink(codex_path) != "../.agents/skills"
-        or entry_digest(codex_path) != codex_discovery["baselineSha256"]
+        or entry_digest(codex_path) != V05_CODEX_SKILLS_SHA256
     ):
         return False
     actual_files: set[str] = set()
@@ -433,15 +450,19 @@ def verified_v05_skill_discovery(project_root: Path, manifest: dict[str, Any]) -
             actual_files.add(relative)
         else:
             return False
-    if actual_files != set(managed_skills):
+    if (
+        set(managed_skills) != set(V05_SKILL_DISCOVERY_SHA256)
+        or actual_files != set(V05_SKILL_DISCOVERY_SHA256)
+    ):
         return False
     expected_directories: set[str] = set()
-    for relative, record in managed_skills.items():
+    for relative, expected_sha256 in V05_SKILL_DISCOVERY_SHA256.items():
+        record = managed_skills[relative]
         if (
             not isinstance(record, dict)
             or record.get("ownership") != "harness-managed"
-            or not is_sha256(record.get("baselineSha256"))
-            or entry_digest(inside(project_root, relative)) != record["baselineSha256"]
+            or record.get("baselineSha256") != expected_sha256
+            or entry_digest(inside(project_root, relative)) != expected_sha256
         ):
             return False
         parent = PurePosixPath(relative).parent

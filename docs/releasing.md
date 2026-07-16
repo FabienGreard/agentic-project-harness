@@ -23,7 +23,7 @@ Confirm:
 - `VERSION` and changelog agree;
 - root `.baton/` remains source-only;
 - consumer source exists only under `template/.baton/`;
-- the seven public skills still match their CLI families;
+- the ten public skills still match their CLI and work families;
 - state, team, memory, adoption, update, and rollback contracts are current; and
 - the diff contains only intended work.
 

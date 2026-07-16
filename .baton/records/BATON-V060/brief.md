@@ -7,7 +7,7 @@ Priority: P0
 
 ## Outcome and context
 
-Publish the approved current Baton implementation as the stable `v0.6.0` release. It supersedes the older pending v0.6 branch and must leave the repository on `main` after publication.
+Publish the current Baton implementation as the stable `v0.6.0` release after exact-candidate approval. It supersedes the older pending v0.6 branch and must leave the repository on `main` after publication.
 
 ## Scope and non-goals
 
