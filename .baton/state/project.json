@@ -24,7 +24,7 @@
     "openQuestions": [],
     "currentGoal": "BATON-V060",
     "agentProvider": "codex",
-    "phase": "Release certification",
+    "phase": "Release branch cleanup",
     "templateMode": false,
     "lastVerified": "2026-07-16",
     "decisionPaths": [],
@@ -37,8 +37,8 @@
     }
   },
   "baton": {
-    "owner": "Management",
-    "action": "Review the frozen v0.6.0 release packet and decide exact-candidate Release clearance",
-    "returnTrigger": "A fresh human decision names the final full commit and validated asset set"
+    "owner": "Operations",
+    "action": "Remove every non-main branch locally and remotely, then record terminal proof",
+    "returnTrigger": "Both branch inventories contain only main and the local main checkout is clean"
   }
 }

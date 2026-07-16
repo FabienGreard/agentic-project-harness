@@ -6,8 +6,10 @@
       "id": "release-baton-v060",
       "goal": "BATON-V060",
       "stage": "Release",
-      "status": "Pending",
-      "path": ".baton/records/BATON-V060/review-release-management.md"
+      "status": "Approved",
+      "path": ".baton/records/BATON-V060/review-release-management.md",
+      "reviewer": "Fabien Greard",
+      "recordedAt": "2026-07-16"
     }
   ],
   "consultantReviews": []

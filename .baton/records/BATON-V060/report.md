@@ -6,23 +6,23 @@ Reviewed by: Operations
 
 ## Outcome and change
 
-Release certification is in progress. The candidate is normalized to v0.6.0 and the audit-discovered v0.5 skill-discovery collision now has a fail-closed, zero-link quarantine path bound to the public release's exact path-and-hash set, with activation blocked until explicit cleanup.
+Baton v0.6.0 is published from exact candidate `d1b3e7b3f7cc6af741f8323424a0d2e0eb74d49f`. The release includes the fail-closed public-v0.5 migration boundary, state schema v2, durable company Memory, permanent-team bootstrap, deterministic public management commands, and the validated dual-payload installer.
 
 ## Decisions
 
-The current implementation supersedes the older pending v0.6 branch. Publication remains tied to one frozen commit and one validated asset set.
+PR [#4](https://github.com/FabienGreard/baton/pull/4) merged the reviewed candidate. Annotated tag `v0.6.0` peels to the exact candidate while `main` points to merge commit `e65fe90e39b04a8f627b8c37a1271cf5d676f493`. The release uses the five prevalidated assets without rebuilding.
 
 ## Verification
 
 - Readiness Protocol: Standard Protocol
 - Clearance Protocol: Release Clearance
-- Commands, environment, observations, and results: before freeze, `python3 scripts/harness_eval.py --strict` passed 19/19 and `bash tests/install_smoke.sh` passed 139/139 on Python 3.13.5; shell syntax, `git diff --check`, authentic v0.5 quarantine/activation, modified-byte, coherent forged-baseline, incomplete-set, extra-file, and collision tests, plus `baton doctor check`, passed. The commit containing this report is the candidate to be rechecked on Python 3.13 and 3.9, bundled, and reviewed exactly.
-- Consultant decisions and evidence: no Consultant is required; two independent code reviews and disposable Internal Audit are required by the repository release workflow.
-- Goal or Ticket Clearances and status: the earlier Goal Release Clearance was invalidated by material audit repairs; exact-candidate Release clearance is pending.
+- Commands, environment, observations, and results: exact candidate evaluation passed 19/19; the complete suite passed 139/139 on Python 3.13.5 and 139/139 on Python 3.9.23; shell syntax, `git diff --check`, fresh/mature local assets, authentic public-v0.5 adoption, coherent forged-baseline and incomplete-set atomic rejection, bundle validation, independent rebuild, public asset digest verification, latest-stable installer verification, and `bash tests/install_remote_smoke.sh v0.6.0 d1b3e7b3f7cc6af741f8323424a0d2e0eb74d49f` passed. Repository immutable-release protection is enabled.
+- Consultant decisions and evidence: no Consultant was required; two independent code reviews approved and fresh Internal Audit passed.
+- Goal or Ticket Clearances and status: exact-candidate Goal Release clearance approved for `d1b3e7b3f7cc6af741f8323424a0d2e0eb74d49f` and its recorded five-asset set, with only `main` permitted to remain locally and remotely after completion.
 
 ## Limits and follow-up
 
-Exact-commit bundle validation, authentic public v0.5 adoption, independent reviews, fresh exact-candidate Release clearance, GitHub publication, immutable remote smoke testing, and branch cleanup are pending the frozen-candidate verification gate.
+The [GitHub release](https://github.com/FabienGreard/baton/releases/tag/v0.6.0), tag, assets, latest redirect, and remote installation are proven. Complete local/remote non-`main` branch cleanup remains pending. GitHub reports repository immutable-release protection enabled while the newly published release remains inside its platform grace interval.
 
 ## Ownership returned
 
