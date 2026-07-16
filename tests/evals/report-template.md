@@ -32,6 +32,30 @@ For each finding: stable ID, rubric/check ID, confidence, severity, trigger, sup
 
 Report hard-gate delta, category distributions, variance, resolved defects, and new regressions.
 
+## Verification iteration
+
+- Candidate/source identity:
+- Test/evidence method identity:
+- Required final gate:
+- Failure classifications:
+- Retry/attempt budget and consumed attempts:
+- Preserved failed attempts or rejected samples:
+- Known-bad rejection and known-good acceptance:
+
+## Fast-feedback development
+
+- Coherent increment boundaries:
+- Riskiest assumptions and earliest checks:
+- Cheapest-to-most-expensive feedback ladder:
+- Intermediate review points:
+- Unit / integration / end-to-end portfolio shape:
+- Contract, smoke, feature E2E, certification, and soak cadence:
+- Certification candidate/source fingerprint and artifact identity:
+- Certification coverage and invalidation boundary:
+- Reused versus regenerated evidence:
+- Test-family and gate durations:
+- Slowest feedback path and any improvement:
+
 ## Recommendation
 
 - Accept / revise / reject

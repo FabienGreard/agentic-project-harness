@@ -1,0 +1,4 @@
+interface:
+  display_name: "Upgrade"
+  short_description: "Upgrade Baton and apply required migrations"
+  default_prompt: "Use $upgrade to state the installed release, explain the verified target, and apply only an approved safe upgrade."

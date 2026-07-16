@@ -6,24 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
-## [0.7.0] - Unreleased candidate
+## [0.6.0] - 2026-07-16
 
 ### Added
 
-- Added Management-first `$bootstrap-baton` onboarding with stable named coworkers, idempotent permanent-task reconciliation, copy-ready fallback, interruption recovery, and one-question project discovery.
-- Added one project-local company memory with confirmed claims, candidates, named personnel, evidence-backed reviews, privacy controls, local chronology, and bounded role-specific recall through `$memory`.
+- Added `$boot` onboarding with stable named coworkers, idempotent permanent-task reconciliation, copy-ready fallback, interruption recovery, and one-question Project discovery.
+- Added one project-local internal Memory service with confirmed claims, candidates, named personnel, evidence-backed reviews, privacy controls, local chronology, and bounded role-specific recall.
 - Added an independent memory schema/version boundary, snapshot-authoritative transactional writer, mature-adoption quarantine, sequential migration contract, external rollback evidence, and local-history redaction with accurate Git-retention warnings.
+- Added Boot selectors for the Readiness Protocol and Clearance Protocol, including canonical Project, Goal, Ticket, and Clearance State.
+- Added seven matching management skills and CLI families: `boot`, `control`, `roster`, `terminal`, `upgrade`, `doctor`, and `scrap`.
+- Added immutable Scrap plans with exact tree revalidation, explicit approval, external backup, transaction Reports, and rollback.
+- Added a limited ubiquitous language for Goal, Ticket, Release, Publication, and their clearance boundaries.
+- Expanded the ubiquitous language with Project, Repository, State, Record, Brief, Decision, Report, Evidence, Review, and Memory.
+- Added aggregate state contract v2 so stable updates cannot silently mix legacy assurance fields with the new protocol model.
 
 ### Changed
 
-- Replaced generic first-task instructions with the explicit bootstrap skill while preserving Management, Operations, Consultant, Contractor, and Internal Audit authority.
+- Replaced generic first-task instructions with `$boot` while preserving Management, Operations, Consultant, Contractor, and Internal Audit authority.
 - Extended the dashboard with privacy-filtered personnel, task-readiness, memory-candidate, and company-history views without universal worker scores or leaderboard behavior.
-- Kept the installed public command surface at `status`, `update`, and `check`; deterministic memory mutation remains hidden behind the two skills.
-
-## [0.6.0] - Unpublished candidate
-
-### Changed
-
+- Replaced `status`, `update`, `check`, hidden activation, and separate bootstrap/hire/fire/Memory skills with the seven public management families; each skill delegates only to its matching CLI family and Memory remains internal behind an advanced CLI-only `control memory` seam.
+- Limited the curl installer to verified acquisition or update with safe starter defaults; Project, protocol, reasoning, and team choices now happen through installed skills.
+- Made short skill discovery all-or-nothing: an occupied non-Baton name blocks installation before mutation.
+- Replaced test-rigor and human-review-stage settings with Readiness Protocol levels (`Waived`, `Field Check`, `Standard Protocol`, `Full Certification`) and Clearance Protocol levels (`Autonomous`, `Release Clearance`, `Completion Clearance`, `Continuous Clearance`); fresh projects default to `Standard Protocol` and `Release Clearance`.
+- Defined Continuous Clearance as review at every canonical Goal and Ticket boundary, while preserving Management authority for destructive, security, compliance, and new external-commitment decisions at every level.
+- Replaced `.baton/work/` with flat Project, Goal, and Ticket scopes under `.baton/records/`, linked from canonical State with unambiguous ids and paths.
+- Renamed host version metadata from `projectVersion` to `repositoryVersion`.
 - Renamed the product to Baton and converted the repository from a consumer template into a normal source/product repository.
 - Isolated all consumer runtime, state, governance, roles, schemas, dashboards, and reports under `.baton/`, with only thin `AGENTS.md`, Codex config, and per-skill discovery integrations outside it.
 - Split stable distribution into exact checksum-bound new-project and mature-adoption payloads generated only from `template/`.
@@ -89,7 +96,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Game-development and business-operations adaptation examples.
 - GitHub contribution and community-health files.
 
-[Unreleased]: https://github.com/FabienGreard/baton/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/FabienGreard/baton/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/FabienGreard/baton/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.3.0...v0.5.0
 [0.3.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/FabienGreard/agentic-project-harness/compare/v0.1.0...v0.2.0

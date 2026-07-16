@@ -56,7 +56,7 @@
             "Player intent, rules, controls, failure states, balance assumptions, and playable acceptance are explicit."
           ],
           "evidenceRequirements": [
-            "A representative playable slice and observed behavior demonstrate the intended player experience."
+            "A representative playable build and observed behavior demonstrate the intended player experience."
           ],
           "acceptanceAuthority": "Accepts or rejects game-design behavior inside the approved design boundary."
         },

@@ -1,6 +1,0 @@
-interface:
-  display_name: "Memory"
-  short_description: "Manage project-local company memory"
-  default_prompt: "Use $memory to inspect or update this project's local company memory."
-policy:
-  allow_implicit_invocation: false

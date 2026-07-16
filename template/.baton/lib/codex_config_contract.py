@@ -101,10 +101,17 @@ def agent_description(name: str) -> str:
     raise ValueError(f"unsupported Baton agent name: {name}")
 
 
-def render_codex_config(agent_names: Iterable[str]) -> str:
+def render_codex_config(
+    agent_names: Iterable[str], descriptions: dict[str, str] | None = None
+) -> str:
     names = list(dict.fromkeys(agent_names))
     if not set(REQUIRED_AGENT_NAMES).issubset(names):
         raise ValueError("Baton Codex config lacks a required permanent or disposable role")
+    overrides = descriptions or {}
+    if not set(overrides).issubset(names) or any(
+        not isinstance(value, str) or not value.strip() for value in overrides.values()
+    ):
+        raise ValueError("Baton Codex description overrides must name active agents")
     lines = [
         'approval_policy = "on-request"',
         'approvals_reviewer = "auto_review"',
@@ -122,7 +129,7 @@ def render_codex_config(agent_names: Iterable[str]) -> str:
             [
                 "",
                 f"[agents.{name}]",
-                f"description = {json.dumps(agent_description(name))}",
+                f"description = {json.dumps(overrides.get(name, agent_description(name)))}",
                 f"config_file = {json.dumps('../.baton/agents/' + agent_filename(name))}",
             ]
         )

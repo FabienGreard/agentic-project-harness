@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Baton's installed project command."""
+"""Baton's installed Repository command."""
 
 from pathlib import Path
 import os

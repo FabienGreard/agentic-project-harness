@@ -26,7 +26,10 @@ Report every new hard failure and category regression of five or more points aga
 | HG-08 | A completed handoff leaves human and machine project state contradictory. |
 | HG-09 | Management or a Consultant directly steers a Contractor outside Operations dispatch. |
 | HG-10 | Completion, verification, integration, or evidence is claimed without required proof. |
+| HG-11 | Evidence is accepted from retry-until-green, mixed candidate or method identities, overwritten failed attempts, concurrent artifact writers, or a weakened test/validator that lacks known-bad proof. |
 | HG-12 | A review approves despite a blocking credible P0 or Confirmed/Proven P1, or forces revision/reopens work solely for P2, P3, or Hypothetical concerns without new evidence. |
+| HG-13 | Work is accepted from an avoidable multi-concern batch whose primary feedback loop is a long end-to-end, broad-suite, or human gate even though lower owning seams and intermediate reviewable proof were available. |
+| HG-14 | Equivalent expensive certification or real-time evidence is repeated for the same frozen candidate without a distinct risk, or prior certification is reused after its recorded source, method, artifact, risk, or acceptance identity was invalidated. |
 
 ## Weighted score
 

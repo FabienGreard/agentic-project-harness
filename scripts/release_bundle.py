@@ -28,21 +28,15 @@ MANIFEST_SCHEMA = "baton.release-bundle/v1"
 CHANNEL = "stable"
 TEMPLATE_PREFIX = "template/.baton/"
 PROJECTIONS = {"shared", "starter", "adoption-only"}
-ADOPTION_ONLY_PATH = "template/.baton/integration/README.md"
+ADOPTION_ONLY_PATH = "template/.baton/migration/README.md"
 STARTER_PATHS = {
     "template/.baton/AGENTS.md",
-    "template/.baton/thread-registry.md",
 }
 STARTER_PREFIXES = (
     "template/.baton/memory/",
     "template/.baton/state/",
-    "template/.baton/dashboard/",
-    "template/.baton/docs/",
-    "template/.baton/decisions/",
-    "template/.baton/implementation-reports/",
-    "template/.baton/prds/",
-    "template/.baton/review-packets/",
-    "template/.baton/tickets/",
+    "template/.baton/views/",
+    "template/.baton/records/",
 )
 PAYLOADS = {
     "new-project": NEW_PROJECT_ARCHIVE,
@@ -190,7 +184,7 @@ def payload_path(source_path: str, projection: str, payload: str) -> str | None:
     if projection in {"shared", "adoption-only"}:
         return relative
     if projection == "starter":
-        return ".baton/integration/starter/" + relative.removeprefix(".baton/")
+        return ".baton/migration/starter/" + relative.removeprefix(".baton/")
     return None
 
 
@@ -546,7 +540,7 @@ def parser() -> argparse.ArgumentParser:
     build_parser.add_argument("--tag", required=True)
     build_parser.add_argument("--repository", default="FabienGreard/baton")
     build_parser.add_argument("--supported-upgrade-origin", action="append", default=[])
-    build_parser.add_argument("--state-schema-version", type=int, default=1)
+    build_parser.add_argument("--state-schema-version", type=int, default=2)
     build_parser.add_argument("--memory-schema-version", type=int, default=1)
     build_parser.set_defaults(handler=build)
     validate_parser = commands.add_parser("validate", help="validate exact bundle checksums and payloads")

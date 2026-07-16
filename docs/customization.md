@@ -1,131 +1,69 @@
-# Customize Baton without taking over the project
+# Customization
 
-Baton separates product-managed runtime from project-owned intent. Customize through the supported ownership boundary; do not fork Baton's lifecycle inside the consuming repository.
+Change Project intent and team choices without forking Baton.
 
-## Know which layer you are changing
+## Ownership layers
 
-| Layer | Examples | Change path |
+| Layer | Examples | Change with |
 | --- | --- | --- |
-| Baton-managed runtime | `.baton/bin/`, `.baton/lib/`, rules, schemas, shared roles, shared skills | Stable Baton update only |
-| Generated config | `.baton/agents/*.toml`, `.baton/dashboard/index.html`, `.baton/thread-registry.md`, generated config proposal | Team/state/memory tools or activation/update |
-| Project-owned Baton content | direction, goals, tickets, decisions, PRDs, reviews, implementation reports, active team choices, company memory | Validated project workflow or `$memory` |
-| Narrow integration | Baton block in `AGENTS.md`, project Codex config registration, individual skill links | Installer/activation plus manual collision review |
-| Surrounding project | identity, source, root docs, `VERSION`, package manifests, license, `.github/`, tests, tools, release system | Project owners only |
+| Baton-managed | runtime, rules, schemas, shared roles and skills | `$upgrade` |
+| Generated | role config, dashboard, team task view | Baton skills |
+| Project-owned | State, scoped Records, Memory | `$control` and the Project workflow |
+| Host integration | marked `AGENTS.md` block, provider config, skill links | Installer/activation plus collision review |
+| Repository | source, root docs, versioning, CI, license, releases | Project owners |
 
-`.baton/metadata.json` records the exact ownership and baseline of installed paths. Do not hand-edit managed checksums, provenance, installation status, transaction IDs, cleanup candidates, or ownership classes to make a check pass.
+`.baton/metadata.json` records path ownership and baselines. Never hand-edit it or a generated view to make validation pass.
 
-## Keep role authorities stable
+## Team
 
-Project prose may use professional personas such as Product Manager or Game Director, but the common authority names remain Management, Operations, Consultants, Contractors, and Internal Audit. Include the common name when ambiguity is possible: “Game Director (Management)” or “Producer (Operations).”
+Stable authority names are Management, Operations, Consultants, Contractors, and Internal Audit. Presets add professional context, not authority.
 
-Do not create a parallel dispatch role. Management owns outcomes and readiness; Operations alone dispatches and revises Contractor work; Consultants define and accept only their approved domains; Contractors execute bounded assignments; Internal Audit independently evaluates Baton behavior.
-
-## Extend expertise with Consultants
-
-The supported presets are Software Product, Game Development, Business Operations, and Research. A preset selects professional context, reasoning defaults, a finite Consultant catalog, and a Contractor capability bench. It does not change authority.
-
-Use the project skills for recurring expert domains:
+Use:
 
 ```text
-$hire-consultant
-$fire-consultant
+$roster
 ```
 
-`$hire-consultant` can select a preset Consultant or prepare a custom definition that matches `.baton/schemas/consultant.schema.json`. A custom Consultant needs a unique lowercase hyphen-case ID, title, headline, domain, readiness requirements, evidence requirements, and acceptance authority. Every Consultant keeps the fixed non-authorities: no overall priority, Contractor dispatch, technical integration, or publication.
+`$roster` shows the current team before making changes. Add a Consultant only for recurring expertise and acceptance. Use a disposable Contractor for bounded work. Custom Consultants must satisfy `.baton/schemas/consultant.schema.json` and never gain Management or Operations authority.
 
-`$fire-consultant` marks the Consultant inactive and preserves history. It removes only an unchanged generated agent config. A modified config is retained with an exact manual action.
+Offboarding preserves history and removes only an unchanged generated config. Modified files remain for human review.
 
-Do not hire a permanent Consultant for one implementation or one-off question; Operations can use a disposable Contractor. Multiple Consultants are valid when their recurring acceptance domains are distinct.
+## State and protocols
 
-## Change project state transactionally
+Approved direction and coordination live under `.baton/state/`. Project-wide Records use `.baton/records/PROJECT/`; Goal and Ticket Records use `.baton/records/<GOAL-ID>/` and `.baton/records/<TICKET-ID>/`.
 
-Canonical project records live under `.baton/state/`. Narrative intent and evidence live in `.baton/docs/`, `.baton/decisions/`, `.baton/prds/`, `.baton/review-packets/`, and `.baton/implementation-reports/`.
+Invoke `$control` to inspect or change Project controls. It shows the current values and validates any human-approved update.
 
-Use the public check before relying on state:
+Each Ticket selects one Readiness Protocol:
 
-```sh
-.baton/bin/baton check --json
-```
+- `Waived`: explicitly unverified;
+- `Field Check`: focused proof of the change;
+- `Standard Protocol`: Field Check plus affected regression and runtime proof; or
+- `Full Certification`: broader regression, failure-path, and operational proof.
 
-Use Baton's role and skill workflows for authorized state and team changes; their deterministic mutation plumbing is intentionally not a public CLI. Apply one schema-valid state transition at a time and keep project, goals, tickets, ownership, reviews, team, narrative evidence, and the generated dashboard consistent.
+Each Goal and Ticket also selects one Clearance Protocol:
 
-Never hand-edit `.baton/dashboard/index.html` or `.baton/thread-registry.md`. They are generated local views; memory and team transactions refresh them together when task or personnel state changes.
+- `Autonomous`: no routine Clearance;
+- `Release Clearance`: approve the completed Goal before release;
+- `Completion Clearance`: also approve each completed Ticket; or
+- `Continuous Clearance`: also approve Goal and Ticket readiness.
 
-## Manage company memory through one skill
+An override needs human authority and a reason. See [language](../template/.baton/language.md) and [workflow](../template/.baton/workflow.md) for exact rules.
 
-Current company, user, and coworker memory lives in `.baton/memory/memory.json`; the value-minimized company chronology lives in `.baton/memory/history.jsonl`. The files are project-owned and inspectable, but accepted mutation, redaction, revision, and cross-record behavior belongs to `$memory` and its hidden deterministic writer.
+## Company Memory
 
-Use `$memory` to remember, inspect, confirm or reject a candidate, correct, forget, or explicitly retrieve more context. Do not add a second memory command, global store, import/sync layer, transcript archive, personnel database, or project-management mirror. Tickets, PRDs, decisions, ownership, approvals, and evidence remain authoritative in their existing records; memory may link to them without copying their contents.
+Memory is an internal service used by `$boot`, `$roster`, and role workflows. It has no public skill. Do not edit Memory files or create another store. Advanced users can use the privacy-filtered commands in the [CLI reference](cli.md).
 
-Only confirmed claims can enter automatic role briefings. The automatic packet is selected for the role and assignment and stops at 10 claims or the conservative 600-token budget. Candidates, superseded claims, raw history, old reviews, inactive coworkers, and assignment text already present are excluded. Explicit retrieval does not silently enlarge future automatic packets.
+Automatic briefings contain only confirmed, relevant claims: at most 10 claims and 1,800 UTF-8 bytes. Memory can link to State, Records, and Evidence but never replaces them. Forgetting cannot erase Git history, remotes, clones, caches, or backups.
 
-Forgetting removes the active value, clears matching candidates, redacts matching local chronology values, refreshes generated views, and returns an external report and rollback location. Baton warns that earlier Git commits and retained external backups may still contain the value; it never rewrites Git history or deletes backups automatically.
+## Host integration
 
-Names and bounded professional working styles may be edited through the supported memory flow. Stable IDs, generation seeds, task registrations, employment history, and evidence links must remain coherent. Permanent Management, Operations, or Consultant seat replacement requires explicit user approval; Operations may select and replace disposable Contractors inside approved delivery work.
+Baton owns only its marked block in root `AGENTS.md`. Surrounding instructions and nested maps remain project-owned.
 
-## Tune assurance explicitly
+During mature adoption, Baton may place a provider-config proposal under `.baton/migration/`. Later `$roster` conflicts preserve the Repository config and return a checksummed proposal. Skill links are created only when every target path is free; a collision stops the change.
 
-The project record defines `assuranceDefaults`. Every ticket still records its resolved `assurance`:
+## Contributing to Baton
 
-- `Lean` gives focused changed-behavior proof plus explicit ticket verification.
-- `Standard` adds affected regression and applicable runtime or operational evidence.
-- `Thorough` adds broader regression, negative/failure paths, and applicable operational or experiential evidence.
+Consumer runtime source belongs only under `template/.baton/`. Root `.baton/` is Baton's own control plane and is never shipped. Public docs, scripts, tests, evaluator material, and release tooling stay source-only.
 
-Human review is an explicit subset of `Readiness`, `Acceptance`, and `Release`; `[]` means none. A ticket that differs from project defaults requires a human-authorized `overrideReason`. Safety, legal, compliance, irreversible-action, and publication gates cannot be waived by a lower test-rigor label.
-
-Readiness gates execution, Acceptance gates `Done`, and Release remains a separate publication boundary.
-
-## Keep project and Baton versions separate
-
-`batonVersion` identifies the installed Baton runtime and comes from immutable stable provenance. `projectVersion` is optional project information and may remain `null`.
-
-Do not rename, replace, or repurpose a root `VERSION`, package manifest, Git tag, or domain-specific release record for Baton. Conversely, do not set `batonVersion` from project data. If the project later integrates `projectVersion`, use an approved supported transition; do not hand-edit metadata.
-
-## Preserve root integrations
-
-### `AGENTS.md`
-
-Keep project instructions outside Baton's marked block. Baton owns only the content between `<!-- BATON:START -->` and `<!-- BATON:END -->`. Nested project `AGENTS.md` files remain project-owned and continue to scope local instructions.
-
-### Codex config
-
-When the project already owns `.codex/config.toml`, Baton preserves it and writes `.baton/integration/codex-config.toml` as a merge proposal. Merge semantically: retain project settings, register the needed `.baton/agents/*.toml` files, and resolve any permission difference deliberately. Do not replace the project file wholesale.
-
-The Baton base contract is:
-
-```toml
-approval_policy = "on-request"
-approvals_reviewer = "auto_review"
-sandbox_mode = "workspace-write"
-
-[agents]
-max_threads = 4
-max_depth = 1
-
-[sandbox_workspace_write]
-network_access = true
-```
-
-These are defaults in a trusted project config. The active permission selection, CLI overrides, closer configs, profiles, and managed requirements may take precedence. Auto-review changes the reviewer for eligible requests, not the sandbox boundary. Workspace-write may still protect `.git/` and `.codex/`; command network access does not grant browser, connector, app, Computer Use, account, or publication access. Subagents inherit the parent turn's live permission mode.
-
-See OpenAI's [project config](https://learn.chatgpt.com/docs/config-file/config-advanced#project-config-files-codexconfigtoml), [sandbox](https://learn.chatgpt.com/docs/sandboxing), and [Auto-review](https://learn.chatgpt.com/docs/sandboxing/auto-review) documentation.
-
-### Skill discovery
-
-The source of truth is `.baton/skills/<name>`. Codex discovers supported Baton skills through individual `.agents/skills/<name>` links. Preserve any collision and decide manually whether to keep the existing project skill, rename project-owned content, or add a different approved discovery path. Do not create a duplicate skill tree or root `.codex/skills` link.
-
-## Treat mature-adoption artifacts as quarantine
-
-While `.baton/metadata.json` says `Needs Integration`, nothing in `.baton/integration/starter/` is authoritative. Build a separate non-template proposal from verified mature-project facts, review it, and use the generated `.baton/bin/baton _activate --from PATH` handoff only after human confirmation.
-
-Activation does not authorize cleanup. Keep starter material, legacy records, transaction reports, and backups until a human reviews the direct GitHub compare/file links and approves exact archival or deletion candidates.
-
-## Source-repository changes
-
-Contributors changing Baton itself work in this normal source/product repository. The root `.baton/` belongs to Baton's own project and must never become consumer content. Consumer runtime changes originate under `template/.baton/`.
-
-Consumer runtime changes belong under `template/.baton/`. Files there are shared by default; starter state and the adoption-only integration guide follow the explicit path conventions documented in [Architecture](architecture.md). The release builder rejects any consumer source elsewhere under `template/` and records the exact projected files in the generated manifest.
-
-Do not place consumer source at repository root to make packaging easier. `scripts/`, tests, docs, release files, and the source evaluator are outside the only eligible payload root and cannot appear in either consumer archive. The release builder publishes `scripts/install.sh` as the separate top-level installer asset without installing it into projects.
-
-See [Architecture](architecture.md) for projection-to-payload mapping and [Releasing](releasing.md) for candidate verification.
+Next: [Architecture](architecture.md).

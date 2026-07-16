@@ -1,0 +1,4 @@
+interface:
+  display_name: "Boot"
+  short_description: "Onboard or adopt a Baton Project"
+  default_prompt: "Use $boot to onboard this Project or resume mature-repository adoption in Baton's restrained company-terminal voice."

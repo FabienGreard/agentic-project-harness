@@ -21,6 +21,7 @@ LIB = ROOT / "template/.baton/lib"
 sys.path.insert(0, str(LIB))
 
 import baton_memory  # noqa: E402
+import harness_team  # noqa: E402
 
 
 class MemoryTests(unittest.TestCase):
@@ -31,6 +32,30 @@ class MemoryTests(unittest.TestCase):
         (self.project / ".baton").mkdir(parents=True)
         shutil.copytree(ROOT / "template/.baton/memory", self.project / ".baton/memory")
         shutil.copytree(ROOT / "template/.baton/schemas", self.project / ".baton/schemas")
+        shutil.copytree(ROOT / "template/.baton/state", self.project / ".baton/state")
+        views = self.project / ".baton/views"
+        views.mkdir()
+        (views / "dashboard.html").write_text("<!doctype html><title>Baton</title>\n", encoding="utf-8")
+        shutil.copy2(
+            ROOT / "template/.baton/views/team-tasks.md",
+            views / "team-tasks.md",
+        )
+        shutil.copy2(
+            ROOT / "template/.baton/team-presets.json",
+            self.project / ".baton/team-presets.json",
+        )
+        harness_team.initialize_team(
+            project_root=self.project,
+            preset_id="software-product",
+            selected=[],
+            reasoning={
+                "management": "inherit",
+                "operations": "inherit",
+                "consultants": "inherit",
+                "contractors": "inherit",
+                "internalAudit": "inherit",
+            },
+        )
         self.state_home = self.base / "state"
         self.environment = mock.patch.dict(os.environ, {"XDG_STATE_HOME": str(self.state_home)}, clear=False)
         self.environment.start()
@@ -71,6 +96,73 @@ class MemoryTests(unittest.TestCase):
         defaults = {"action": "ensure", "role": "Management", "seat": "Management", "specialty": "", "seed": "project-seed:management"}
         defaults.update(values)
         return baton_memory.transact(self.project, self.command("personnel", revision, **defaults))
+
+    def confirm_project_intent(
+        self,
+        revision=0,
+        *,
+        seed="project-seed",
+        preset="software-product",
+        consultant_seats=None,
+        identity="Baton",
+    ):
+        consultant_seats = list(consultant_seats or [])
+        baton_memory.transact(
+            self.project,
+            self.command("bootstrap", revision, action="start", seed=seed),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                revision + 1,
+                action="project-preset",
+                preset=preset,
+                consultantSeats=consultant_seats,
+                userApproved=True,
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "remember",
+                revision + 2,
+                category="preference",
+                subject="user",
+                statement="The user’s preferred name is Captain.",
+                sourceClass="explicit-user",
+                assignmentTypes=["bootstrap"],
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                revision + 3,
+                action="provisional",
+                project={
+                    "identity": identity,
+                    "purpose": "Create a dependable project.",
+                    "users": "The intended users.",
+                    "outcome": "A useful maintained result.",
+                    "constraints": [],
+                    "unresolved": [],
+                    "readinessProtocol": "Standard Protocol",
+                    "clearanceProtocol": "Release Clearance",
+                },
+                ready=True,
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                revision + 4,
+                action="confirm",
+                userApproved=True,
+            ),
+        )
+        return revision + 5
 
     def test_starter_records_validate_with_revision_zero_and_empty_history(self):
         result = baton_memory.inspect(self.project)
@@ -120,6 +212,46 @@ class MemoryTests(unittest.TestCase):
         with self.assertRaisesRegex(baton_memory.MemoryError, "collision"):
             baton_memory.initialize(self.project)
         self.assertEqual(memory_path.read_bytes(), memory_before)
+
+    def test_source_repository_initialization_accepts_only_exact_schema_projection(self):
+        memory_path = self.project / ".baton/memory/memory.json"
+        history_path = self.project / ".baton/memory/history.jsonl"
+        metadata_path = self.project / ".baton/metadata.json"
+        metadata_path.write_text(
+            json.dumps(
+                {
+                    "installationStatus": "Source Repository",
+                    "managedFiles": {},
+                    "projectOwnedFiles": [],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        projected = self.project / "template/.baton/schemas"
+        projected.parent.mkdir(parents=True)
+        shutil.move(self.project / ".baton/schemas", projected)
+        (self.project / ".baton/schemas").symlink_to("../template/.baton/schemas")
+        memory_path.unlink()
+        history_path.unlink()
+
+        initialized = baton_memory.initialize(self.project)
+        self.assertTrue(initialized["changed"])
+        self.assertEqual(self.snapshot()["revision"], 0)
+
+        memory_path.unlink()
+        history_path.unlink()
+        (self.project / ".baton/schemas").unlink()
+        alternate = self.project / "alternate-schemas"
+        shutil.copytree(projected, alternate)
+        (self.project / ".baton/schemas").symlink_to("../alternate-schemas")
+        with self.assertRaisesRegex(
+            baton_memory.MemoryError,
+            "requires installed memory schemas",
+        ):
+            baton_memory.initialize(self.project)
+        self.assertFalse(memory_path.exists())
+        self.assertFalse(history_path.exists())
 
     def test_failed_explicit_initialization_removes_partial_files(self):
         memory_path = self.project / ".baton/memory/memory.json"
@@ -406,34 +538,47 @@ class MemoryTests(unittest.TestCase):
     def test_personnel_identity_name_and_style_are_stable_from_seed(self):
         first = self.person()
         person = self.snapshot()["personnel"][0]
+        self.confirm_project_intent(1, seed="project-seed")
         plan = baton_memory.reconcile_bootstrap(
             self.project,
-            {"list": True, "create": True, "stableIdentity": True, "read": True, "message": True},
-            {"seed": "project-seed", "seats": [{"role": "Management", "seat": "Management"}]},
+            {"list": True, "create": True, "stableIdentity": True, "read": True, "message": True, "title": True, "archive": True},
+            {
+                "seed": "project-seed",
+                "seats": [{"role": "Management", "seat": "Management"}],
+                "liveTasks": [],
+            },
         )
         self.assertEqual(plan["plan"][0]["personnelId"], first["personnelIds"][0])
         self.assertEqual(plan["plan"][0]["name"], person["name"])
         self.assertEqual(plan["plan"][0]["workingStyle"], person["workingStyle"])
         self.assertEqual(plan["plan"][0]["taskAction"], "create")
 
-    def test_fresh_native_bootstrap_persists_management_first_roster_before_creation(self):
+    def test_confirmed_native_bootstrap_persists_ordered_roster_before_creation(self):
         capabilities = {
             "list": True,
             "create": True,
             "stableIdentity": True,
             "read": True,
             "message": True,
+            "title": True,
+            "archive": True,
+        }
+        self.confirm_project_intent(seed="native-project")
+        live_tasks = []
+        observations = {
+            "seed": "native-project",
+            "actor": "Operations",
+            "actorId": "different-caller-must-not-change-bootstrap-semantics",
+            "seats": [
+                {"role": "Operations", "seat": "Operations"},
+                {"role": "Management", "seat": "Management"},
+            ],
+            "liveTasks": live_tasks,
         }
         plan = baton_memory.reconcile_bootstrap(
             self.project,
             capabilities,
-            {
-                "seed": "native-project",
-                "seats": [
-                    {"role": "Operations", "seat": "Operations"},
-                    {"role": "Management", "seat": "Management"},
-                ],
-            },
+            observations,
         )
         self.assertEqual(
             [item["role"] for item in plan["plan"]],
@@ -441,10 +586,10 @@ class MemoryTests(unittest.TestCase):
         )
         self.assertEqual(
             [item["taskAction"] for item in plan["plan"]],
-            ["create", "create"],
+            ["create", "wait-for-prior"],
         )
         snapshot = self.snapshot()
-        self.assertEqual(snapshot["revision"], 1)
+        self.assertEqual(snapshot["revision"], 6)
         self.assertEqual(
             snapshot["bootstrap"]["roster"],
             [item["personnelId"] for item in plan["plan"]],
@@ -453,20 +598,909 @@ class MemoryTests(unittest.TestCase):
             [person["role"] for person in snapshot["personnel"]],
             ["Management", "Operations"],
         )
-        with self.assertRaisesRegex(baton_memory.MemoryError, "Management task"):
+        memory_before_direct_register = (
+            self.project / ".baton/memory/memory.json"
+        ).read_bytes()
+        with self.assertRaisesRegex(baton_memory.MemoryError, "created checkpoint"):
             baton_memory.transact(
                 self.project,
                 self.command(
                     "task",
-                    1,
+                    6,
                     actor="Operations",
                     actorId="ops",
                     action="register",
-                    personnelId=plan["plan"][1]["personnelId"],
+                    personnelId=plan["plan"][0]["personnelId"],
+                    taskId="management-task",
+                    wakePath="message:management-task",
+                    observedTitle=plan["plan"][0]["taskTitle"],
+                ),
+            )
+        self.assertEqual(
+            (self.project / ".baton/memory/memory.json").read_bytes(),
+            memory_before_direct_register,
+        )
+        live_tasks.append(
+            {
+                "taskId": "management-task",
+                "wakePath": "message:management-task",
+                "title": plan["plan"][0]["taskTitle"],
+                "attemptId": plan["plan"][0]["attemptId"],
+            }
+        )
+        created_management = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                6,
+                actor="Operations",
+                actorId="ops",
+                action="created",
+                personnelId=plan["plan"][0]["personnelId"],
+                attemptId=plan["plan"][0]["attemptId"],
+                taskId="management-task",
+                wakePath="message:management-task",
+            ),
+        )
+        with self.assertRaisesRegex(baton_memory.MemoryError, "verified title"):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    created_management["revision"],
+                    actor="Operations",
+                    actorId="ops",
+                    action="register",
+                    personnelId=plan["plan"][0]["personnelId"],
+                    taskId="management-task",
+                    wakePath="message:management-task",
+                    observedTitle="wrong title",
+                ),
+            )
+        registered_management = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                created_management["revision"],
+                actor="Operations",
+                actorId="ops",
+                action="register",
+                personnelId=plan["plan"][0]["personnelId"],
+                taskId="management-task",
+                wakePath="message:management-task",
+                observedTitle=plan["plan"][0]["taskTitle"],
+            ),
+        )
+        waiting_for_wake = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            observations,
+        )
+        self.assertEqual(
+            [item["taskAction"] for item in waiting_for_wake["plan"]],
+            ["wake", "wait-for-prior"],
+        )
+        self.assertFalse(waiting_for_wake["deliveryReady"])
+        online_management = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                registered_management["revision"],
+                actor="Operations",
+                actorId="ops",
+                action="online",
+                personnelId=plan["plan"][0]["personnelId"],
+            ),
+        )
+        after_management = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        operations = after_management["plan"][1]
+        self.assertEqual(operations["taskAction"], "create")
+        live_tasks.append(
+            {
+                "taskId": "operations-task",
+                "wakePath": "message:operations-task",
+                "title": operations["taskTitle"],
+                "attemptId": operations["attemptId"],
+            }
+        )
+        created_operations = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                online_management["revision"],
+                actor="Operations",
+                actorId="ops",
+                action="created",
+                personnelId=operations["personnelId"],
+                attemptId=operations["attemptId"],
+                taskId="operations-task",
+                wakePath="message:operations-task",
+            ),
+        )
+        registered_operations = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                created_operations["revision"],
+                actor="Operations",
+                actorId="ops",
+                action="register",
+                personnelId=operations["personnelId"],
+                taskId="operations-task",
+                wakePath="message:operations-task",
+                observedTitle=operations["taskTitle"],
+            ),
+        )
+        online_operations = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                registered_operations["revision"],
+                actor="Operations",
+                actorId="ops",
+                action="online",
+                personnelId=operations["personnelId"],
+            ),
+        )
+        replay = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            observations,
+        )
+        self.assertEqual(
+            [item["taskAction"] for item in replay["plan"]],
+            ["reuse", "reuse"],
+        )
+        self.assertTrue(replay["deliveryReady"])
+        self.assertEqual(replay["revision"], online_operations["revision"])
+
+    def test_interrupted_native_create_recovers_or_cleans_up_before_retry(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        seats = [{"role": "Management", "seat": "Management"}]
+        self.confirm_project_intent(seed="recover-create", identity="Recovery Project")
+        observations = {
+            "seed": "recover-create",
+            "seats": seats,
+            "liveTasks": [],
+        }
+        initial = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        planned = initial["plan"][0]
+        self.assertEqual(planned["taskAction"], "create")
+        self.assertTrue(planned["attemptId"])
+
+        duplicate_inventory = dict(
+            observations,
+            liveTasks=[
+                {
+                    "taskId": "duplicate-a",
+                    "wakePath": "message:duplicate-a",
+                    "title": "Provisioning task",
+                    "attemptId": planned["attemptId"],
+                },
+                {
+                    "taskId": "duplicate-b",
+                    "wakePath": "message:duplicate-b",
+                    "title": "Provisioning task",
+                    "attemptId": planned["attemptId"],
+                },
+            ],
+        )
+        self.assertEqual(
+            baton_memory.reconcile_bootstrap(
+                self.project, capabilities, duplicate_inventory
+            )["plan"][0]["taskAction"],
+            "resolve-duplicate",
+        )
+
+        observations["liveTasks"] = [
+            {
+                "taskId": "recovered-task",
+                "wakePath": "message:recovered-task",
+                "title": "Provisioning task",
+                "attemptId": planned["attemptId"],
+            }
+        ]
+        recovered = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        self.assertEqual(recovered["plan"][0]["taskAction"], "recover-created")
+        self.assertEqual(
+            recovered["plan"][0]["recoveredTaskId"], "recovered-task"
+        )
+        created = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                recovered["revision"],
+                actor="Operations",
+                actorId="ops",
+                action="created",
+                personnelId=planned["personnelId"],
+                attemptId=planned["attemptId"],
+                taskId="recovered-task",
+                wakePath="message:recovered-task",
+            ),
+        )
+        missing_inventory = dict(observations, liveTasks=[])
+        inspected = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, missing_inventory
+        )
+        self.assertEqual(inspected["plan"][0]["taskAction"], "inspect-created")
+        cleanup = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                created["revision"],
+                actor="Operations",
+                actorId="ops",
+                action="cleanup-required",
+                personnelId=planned["personnelId"],
+                reason="title update failed",
+            ),
+        )
+        blocked = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        self.assertEqual(blocked["plan"][0]["taskAction"], "archive")
+        self.assertEqual(
+            baton_memory.reconcile_bootstrap(
+                self.project, capabilities, observations
+            )["plan"][0]["taskAction"],
+            "archive",
+        )
+        archived = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                cleanup["revision"],
+                actor="Operations",
+                actorId="ops",
+                action="archived",
+                personnelId=planned["personnelId"],
+                archiveConfirmed=True,
+            ),
+        )
+        retry = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, missing_inventory
+        )
+        self.assertEqual(retry["revision"], archived["revision"])
+        self.assertEqual(retry["plan"][0]["taskAction"], "create")
+        self.assertNotEqual(retry["plan"][0]["attemptId"], planned["attemptId"])
+
+    def test_bound_onboarding_rejects_every_wrong_task_mutation(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        bound = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {
+                "seed": "bound-project",
+                "invocationTaskId": "task-A",
+                "seats": [],
+            },
+        )
+        memory_before = (self.project / ".baton/memory/memory.json").read_bytes()
+        wrong_commands = [
+            self.command(
+                "bootstrap",
+                bound["revision"],
+                action="project-preset",
+                invocationTaskId="task-B",
+                preset="software-product",
+                consultantSeats=[],
+                userApproved=True,
+            ),
+            self.command(
+                "remember",
+                bound["revision"],
+                category="preference",
+                subject="user",
+                statement="The user’s preferred name is Captain.",
+                sourceClass="explicit-user",
+                assignmentTypes=["bootstrap"],
+                invocationTaskId="task-B",
+            ),
+            self.command(
+                "bootstrap",
+                bound["revision"],
+                action="provisional",
+                invocationTaskId="task-B",
+                project={"identity": "Wrong task"},
+            ),
+            self.command(
+                "bootstrap",
+                bound["revision"],
+                action="confirm",
+                invocationTaskId="task-B",
+                userApproved=True,
+            ),
+        ]
+        for command in wrong_commands:
+            with self.assertRaisesRegex(
+                baton_memory.MemoryError, "original invoking task"
+            ):
+                baton_memory.transact(self.project, command)
+            self.assertEqual(
+                (self.project / ".baton/memory/memory.json").read_bytes(),
+                memory_before,
+            )
+
+    def test_native_assembly_requires_created_order_and_provider_inventory(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        seats = [
+            {"role": "Management", "seat": "Management"},
+            {"role": "Operations", "seat": "Operations"},
+        ]
+        observations = {
+            "seed": "ordered-provider-project",
+            "seats": seats,
+            "liveTasks": [],
+        }
+        self.confirm_project_intent(seed="ordered-provider-project")
+        plan = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        management, operations = plan["plan"]
+        self.assertEqual(
+            [person["task"]["status"] for person in self.snapshot()["personnel"]],
+            ["create-pending", "unregistered"],
+        )
+
+        memory_before = (self.project / ".baton/memory/memory.json").read_bytes()
+        with self.assertRaisesRegex(baton_memory.MemoryError, "created checkpoint"):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    plan["revision"],
+                    action="register",
+                    personnelId=management["personnelId"],
+                    taskId="management-task",
+                    wakePath="message:management-task",
+                    observedTitle=management["taskTitle"],
+                ),
+            )
+        with self.assertRaisesRegex(baton_memory.MemoryError, "reserved"):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    plan["revision"],
+                    action="created",
+                    personnelId=operations["personnelId"],
+                    attemptId="unreserved-operations-attempt",
                     taskId="operations-task",
                     wakePath="message:operations-task",
                 ),
             )
+        self.assertEqual(
+            (self.project / ".baton/memory/memory.json").read_bytes(),
+            memory_before,
+        )
+
+        provider_task = {
+            "taskId": "management-task",
+            "wakePath": "message:management-task",
+            "title": management["taskTitle"],
+            "attemptId": management["attemptId"],
+        }
+        created = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                plan["revision"],
+                action="created",
+                personnelId=management["personnelId"],
+                attemptId=management["attemptId"],
+                taskId=provider_task["taskId"],
+                wakePath=provider_task["wakePath"],
+            ),
+        )
+        registered = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                created["revision"],
+                action="register",
+                personnelId=management["personnelId"],
+                taskId=provider_task["taskId"],
+                wakePath=provider_task["wakePath"],
+                observedTitle=provider_task["title"],
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                registered["revision"],
+                action="online",
+                personnelId=management["personnelId"],
+            ),
+        )
+
+        missing = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        self.assertEqual(
+            [item["taskAction"] for item in missing["plan"]],
+            ["inspect-recorded", "wait-for-prior"],
+        )
+        self.assertFalse(missing["deliveryReady"])
+        observations["liveTasks"] = [provider_task]
+        verified = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        self.assertEqual(
+            [item["taskAction"] for item in verified["plan"]],
+            ["reuse", "create"],
+        )
+
+    def test_post_confirmation_task_mutations_remain_bound_to_invoking_task(self):
+        coordinator = "bound-assembly-task"
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        observations = {
+            "seed": "bound-assembly-project",
+            "invocationTaskId": coordinator,
+            "seats": [{"role": "Management", "seat": "Management"}],
+            "liveTasks": [],
+        }
+        started = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                started["revision"],
+                action="project-preset",
+                invocationTaskId=coordinator,
+                preset="software-product",
+                consultantSeats=[],
+                userApproved=True,
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "remember",
+                2,
+                category="preference",
+                subject="user",
+                statement="The user’s preferred name is Captain.",
+                sourceClass="explicit-user",
+                assignmentTypes=["bootstrap"],
+                invocationTaskId=coordinator,
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                3,
+                action="provisional",
+                invocationTaskId=coordinator,
+                project={
+                    "identity": "Bound Assembly Project",
+                    "purpose": "Prove one-task assembly ownership.",
+                    "users": "Project owners.",
+                    "outcome": "A safely assembled team.",
+                    "constraints": [],
+                    "unresolved": [],
+                    "readinessProtocol": "Standard Protocol",
+                    "clearanceProtocol": "Release Clearance",
+                },
+                ready=True,
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                4,
+                action="confirm",
+                invocationTaskId=coordinator,
+                userApproved=True,
+            ),
+        )
+        plan = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        management = plan["plan"][0]
+
+        def reject_wrong_task(action, revision, **values):
+            before = (self.project / ".baton/memory/memory.json").read_bytes()
+            with self.assertRaisesRegex(
+                baton_memory.MemoryError, "original invoking task"
+            ):
+                baton_memory.transact(
+                    self.project,
+                    self.command(
+                        "task",
+                        revision,
+                        action=action,
+                        invocationTaskId="different-task",
+                        personnelId=management["personnelId"],
+                        **values,
+                    ),
+                )
+            self.assertEqual(
+                (self.project / ".baton/memory/memory.json").read_bytes(), before
+            )
+
+        task_values = {
+            "attemptId": management["attemptId"],
+            "taskId": "bound-management-task",
+            "wakePath": "message:bound-management-task",
+        }
+        reject_wrong_task("created", plan["revision"], **task_values)
+        created = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                plan["revision"],
+                action="created",
+                invocationTaskId=coordinator,
+                personnelId=management["personnelId"],
+                **task_values,
+            ),
+        )
+        reject_wrong_task(
+            "register",
+            created["revision"],
+            taskId=task_values["taskId"],
+            wakePath=task_values["wakePath"],
+            observedTitle=management["taskTitle"],
+        )
+        registered = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                created["revision"],
+                action="register",
+                invocationTaskId=coordinator,
+                personnelId=management["personnelId"],
+                taskId=task_values["taskId"],
+                wakePath=task_values["wakePath"],
+                observedTitle=management["taskTitle"],
+            ),
+        )
+        reject_wrong_task("online", registered["revision"])
+        reject_wrong_task(
+            "cleanup-required",
+            registered["revision"],
+            reason="provider wake failed",
+        )
+
+    def test_provisional_answers_cannot_overwrite_bootstrap_control_metadata(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        started = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {
+                "seed": "metadata-bound-project",
+                "invocationTaskId": "metadata-task",
+                "seats": [],
+            },
+        )
+        before = (self.project / ".baton/memory/memory.json").read_bytes()
+        with self.assertRaisesRegex(baton_memory.MemoryError, "control metadata"):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "bootstrap",
+                    started["revision"],
+                    action="provisional",
+                    invocationTaskId="metadata-task",
+                    project={
+                        "identity": "Injected Project",
+                        "coordinatorTaskId": "attacker-task",
+                        "projectPresetConfirmed": True,
+                    },
+                ),
+            )
+        self.assertEqual(
+            (self.project / ".baton/memory/memory.json").read_bytes(), before
+        )
+
+    def test_reset_allows_confirmed_incomplete_assembly_but_rejects_complete_team(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        seats = [{"role": "Management", "seat": "Management"}]
+        self.confirm_project_intent(seed="confirmed-incomplete")
+        plan = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {"seed": "confirmed-incomplete", "seats": seats, "liveTasks": []},
+        )
+        management = plan["plan"][0]
+        created = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                plan["revision"],
+                action="created",
+                personnelId=management["personnelId"],
+                attemptId=management["attemptId"],
+                taskId="incomplete-management-task",
+                wakePath="message:incomplete-management-task",
+            ),
+        )
+        reset = baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                created["revision"],
+                action="reset-onboarding",
+                userApproved=True,
+                sourceClass="explicit-user",
+            ),
+        )
+        self.assertEqual(reset["result"], "updated")
+        self.assertEqual(
+            self.snapshot()["bootstrap"]["cleanupTasks"][0]["taskId"],
+            "incomplete-management-task",
+        )
+
+        complete_project = self.base / "complete-project"
+        (complete_project / ".baton").mkdir(parents=True)
+        shutil.copytree(
+            ROOT / "template/.baton/memory", complete_project / ".baton/memory"
+        )
+        shutil.copytree(
+            ROOT / "template/.baton/schemas", complete_project / ".baton/schemas"
+        )
+        shutil.copytree(
+            ROOT / "template/.baton/state", complete_project / ".baton/state"
+        )
+        shutil.copytree(
+            ROOT / "template/.baton/views", complete_project / ".baton/views"
+        )
+        (complete_project / ".baton/views/dashboard.html").write_text(
+            "<!doctype html><title>Baton</title>\n", encoding="utf-8"
+        )
+        shutil.copy2(
+            ROOT / "template/.baton/team-presets.json",
+            complete_project / ".baton/team-presets.json",
+        )
+        harness_team.initialize_team(
+            project_root=complete_project,
+            preset_id="software-product",
+            selected=[],
+            reasoning={
+                "management": "inherit",
+                "operations": "inherit",
+                "consultants": "inherit",
+                "contractors": "inherit",
+                "internalAudit": "inherit",
+            },
+        )
+        commands = [
+            self.command("bootstrap", 0, action="start", seed="complete-project"),
+            self.command(
+                "bootstrap",
+                1,
+                action="project-preset",
+                preset="software-product",
+                consultantSeats=[],
+                userApproved=True,
+            ),
+            self.command(
+                "remember",
+                2,
+                category="preference",
+                subject="user",
+                statement="The user’s preferred name is Captain.",
+                sourceClass="explicit-user",
+                assignmentTypes=["bootstrap"],
+            ),
+            self.command(
+                "bootstrap",
+                3,
+                action="provisional",
+                project={
+                    "identity": "Complete Project",
+                    "purpose": "Prove complete onboarding cannot be reset here.",
+                    "users": "Project owners.",
+                    "outcome": "An online team.",
+                    "constraints": [],
+                    "unresolved": [],
+                    "readinessProtocol": "Standard Protocol",
+                    "clearanceProtocol": "Release Clearance",
+                },
+                ready=True,
+            ),
+            self.command(
+                "bootstrap", 4, action="confirm", userApproved=True
+            ),
+        ]
+        for command in commands:
+            baton_memory.transact(complete_project, command)
+        fallback = baton_memory.reconcile_bootstrap(
+            complete_project,
+            {},
+            {"seed": "complete-project", "seats": seats},
+        )
+        complete_management = fallback["plan"][0]
+        registered = baton_memory.transact(
+            complete_project,
+            self.command(
+                "task",
+                fallback["revision"],
+                action="register",
+                personnelId=complete_management["personnelId"],
+                taskId="complete-management-task",
+                wakePath="message:complete-management-task",
+                observedTitle=complete_management["taskTitle"],
+            ),
+        )
+        online = baton_memory.transact(
+            complete_project,
+            self.command(
+                "task",
+                registered["revision"],
+                action="online",
+                personnelId=complete_management["personnelId"],
+            ),
+        )
+        before_complete_reset = (
+            complete_project / ".baton/memory/memory.json"
+        ).read_bytes()
+        with self.assertRaisesRegex(baton_memory.MemoryError, "complete onboarding"):
+            baton_memory.transact(
+                complete_project,
+                self.command(
+                    "bootstrap",
+                    online["revision"],
+                    action="reset-onboarding",
+                    userApproved=True,
+                    sourceClass="explicit-user",
+                ),
+            )
+        self.assertEqual(
+            (complete_project / ".baton/memory/memory.json").read_bytes(),
+            before_complete_reset,
+        )
+
+    def test_incomplete_intent_and_legacy_unbound_resume_fail_closed(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        bound = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {
+                "seed": "intent-project",
+                "invocationTaskId": "intent-task",
+                "seats": [],
+            },
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                bound["revision"],
+                action="project-preset",
+                invocationTaskId="intent-task",
+                preset="software-product",
+                consultantSeats=[],
+                userApproved=True,
+            ),
+        )
+        before = (self.project / ".baton/memory/memory.json").read_bytes()
+        with self.assertRaisesRegex(baton_memory.MemoryError, "project intent requires"):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "bootstrap",
+                    2,
+                    action="provisional",
+                    invocationTaskId="intent-task",
+                    project={"identity": "Only a name"},
+                    ready=True,
+                ),
+            )
+        self.assertEqual(
+            (self.project / ".baton/memory/memory.json").read_bytes(), before
+        )
+
+        other = self.base / "legacy-project"
+        (other / ".baton").mkdir(parents=True)
+        shutil.copytree(ROOT / "template/.baton/memory", other / ".baton/memory")
+        shutil.copytree(ROOT / "template/.baton/schemas", other / ".baton/schemas")
+        shutil.copy2(
+            ROOT / "template/.baton/team-presets.json",
+            other / ".baton/team-presets.json",
+        )
+        baton_memory.transact(
+            other,
+            self.command("bootstrap", 0, action="start", seed="legacy-partial"),
+        )
+        baton_memory.transact(
+            other,
+            self.command(
+                "bootstrap",
+                1,
+                action="project-preset",
+                preset="software-product",
+                consultantSeats=[],
+                userApproved=True,
+            ),
+        )
+        with self.assertRaisesRegex(baton_memory.MemoryError, "explicit reset"):
+            baton_memory.reconcile_bootstrap(
+                other,
+                capabilities,
+                {
+                    "seed": "legacy-partial",
+                    "invocationTaskId": "new-task",
+                    "seats": [],
+                },
+            )
+
+    def test_preset_selection_does_not_reactivate_a_legacy_consultant_task(self):
+        consultant = self.person(
+            role="Consultant",
+            seat="product-designer",
+            specialty="product and interaction design",
+            seed="legacy-preset:Consultant:product-designer:product and interaction design",
+        )
+        consultant_id = consultant["personnelIds"][0]
         baton_memory.transact(
             self.project,
             self.command(
@@ -475,43 +1509,1270 @@ class MemoryTests(unittest.TestCase):
                 actor="Operations",
                 actorId="ops",
                 action="register",
-                personnelId=plan["plan"][0]["personnelId"],
+                personnelId=consultant_id,
+                taskId="legacy-consultant-task",
+                wakePath="message:legacy-consultant-task",
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "personnel",
+                2,
+                action="fire",
+                personnelId=consultant_id,
+                userApproved=True,
+            ),
+        )
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        bound = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {
+                "seed": "legacy-preset",
+                "invocationTaskId": "legacy-bootstrap-task",
+                "seats": [],
+            },
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                bound["revision"],
+                action="project-preset",
+                invocationTaskId="legacy-bootstrap-task",
+                preset="software-product",
+                consultantSeats=["product-designer"],
+                userApproved=True,
+            ),
+        )
+        person = self.snapshot()["personnel"][0]
+        self.assertEqual(person["employmentStatus"], "former")
+        self.assertEqual(person["task"]["status"], "inactive")
+        self.assertEqual(
+            baton_memory.inspect(self.project, {"section": "personnel"})[
+                "personnel"
+            ][0]["taskStatus"],
+            "inactive",
+        )
+
+    def test_profile_mismatch_recommendation_is_durable_and_rejection_suppresses_repeats(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        coordinator = "profile-bootstrap-task"
+        bound = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {
+                "seed": "profile-project",
+                "invocationTaskId": coordinator,
+                "seats": [],
+            },
+        )
+        preset = baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                bound["revision"],
+                action="project-preset",
+                invocationTaskId=coordinator,
+                preset="software-product",
+                consultantSeats=["product-designer"],
+                userApproved=True,
+            ),
+        )
+        evidence = [
+            "The project is explicitly described as a cooperative game.",
+            "The repository direction defines player-facing survival systems.",
+        ]
+        with self.assertRaisesRegex(
+            baton_memory.MemoryError, "one to four concise evidence statements"
+        ):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "bootstrap",
+                    preset["revision"],
+                    idempotencyKey="profile-mismatch-too-little-project-evidence",
+                    action="profile-mismatch",
+                    invocationTaskId=coordinator,
+                    recommendedPreset="game-development",
+                    evidenceBasis="discoverable-project-facts",
+                    evidence=evidence[:1],
+                ),
+            )
+        with self.assertRaisesRegex(
+            baton_memory.MemoryError, "listed recommended preset"
+        ):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "bootstrap",
+                    preset["revision"],
+                    idempotencyKey="profile-mismatch-unlisted",
+                    action="profile-mismatch",
+                    invocationTaskId=coordinator,
+                    recommendedPreset="imaginary-project-profile",
+                    evidenceBasis="discoverable-project-facts",
+                    evidence=evidence,
+                ),
+            )
+        proposed = baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                preset["revision"],
+                idempotencyKey="profile-mismatch-proposed",
+                action="profile-mismatch",
+                invocationTaskId=coordinator,
+                recommendedPreset="game-development",
+                evidenceBasis="discoverable-project-facts",
+                evidence=evidence,
+            ),
+        )
+        mismatch = self.snapshot()["bootstrap"]["provisionalProject"][
+            "profileMismatch"
+        ]
+        self.assertEqual(mismatch["configuredPreset"], "software-product")
+        self.assertEqual(mismatch["recommendedPreset"], "game-development")
+        self.assertEqual(mismatch["evidenceBasis"], "discoverable-project-facts")
+        self.assertEqual(mismatch["status"], "proposed")
+        self.assertEqual(mismatch["evidence"], evidence)
+        self.assertTrue(mismatch["evidenceFingerprint"])
+        with self.assertRaisesRegex(
+            baton_memory.MemoryError, "active profile recommendation"
+        ):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "bootstrap",
+                    proposed["revision"],
+                    idempotencyKey="profile-mismatch-active-overwrite",
+                    action="profile-mismatch",
+                    invocationTaskId=coordinator,
+                    recommendedPreset="game-development",
+                    evidenceBasis="discoverable-project-facts",
+                    evidence=evidence
+                    + ["Another repository fact appeared before the user answered."],
+                ),
+            )
+
+        rejected = baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                proposed["revision"],
+                idempotencyKey="profile-mismatch-rejected",
+                action="profile-mismatch",
+                invocationTaskId=coordinator,
+                recommendedPreset="game-development",
+                recommendationStatus="rejected",
+                userApproved=True,
+            ),
+        )
+        self.assertEqual(
+            self.snapshot()["bootstrap"]["provisionalProject"][
+                "profileMismatch"
+            ]["status"],
+            "rejected",
+        )
+        rejected_fingerprint = self.snapshot()["bootstrap"][
+            "provisionalProject"
+        ]["profileMismatch"]["evidenceFingerprint"]
+        self.assertIn(
+            rejected_fingerprint,
+            self.snapshot()["bootstrap"]["provisionalProject"][
+                "rejectedProfileMismatchFingerprints"
+            ],
+        )
+        before_repeat = (self.project / ".baton/memory/memory.json").read_bytes()
+        with self.assertRaisesRegex(baton_memory.MemoryError, "already rejected"):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "bootstrap",
+                    rejected["revision"],
+                    idempotencyKey="profile-mismatch-repeated",
+                    action="profile-mismatch",
+                    invocationTaskId=coordinator,
+                    recommendedPreset="game-development",
+                    evidenceBasis="discoverable-project-facts",
+                    evidence=evidence,
+                ),
+            )
+        self.assertEqual(
+            (self.project / ".baton/memory/memory.json").read_bytes(),
+            before_repeat,
+        )
+        with self.assertRaisesRegex(baton_memory.MemoryError, "already rejected"):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "bootstrap",
+                    rejected["revision"],
+                    idempotencyKey="profile-mismatch-reordered",
+                    action="profile-mismatch",
+                    invocationTaskId=coordinator,
+                    recommendedPreset="game-development",
+                    evidenceBasis="discoverable-project-facts",
+                    evidence=list(reversed(evidence)),
+                ),
+            )
+        self.assertEqual(
+            (self.project / ".baton/memory/memory.json").read_bytes(),
+            before_repeat,
+        )
+
+        alternate = baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                rejected["revision"],
+                idempotencyKey="profile-mismatch-alternate-proposed",
+                action="profile-mismatch",
+                invocationTaskId=coordinator,
+                recommendedPreset="research",
+                evidenceBasis="discoverable-project-facts",
+                evidence=evidence,
+            ),
+        )
+        alternate_rejected = baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                alternate["revision"],
+                idempotencyKey="profile-mismatch-alternate-rejected",
+                action="profile-mismatch",
+                invocationTaskId=coordinator,
+                recommendedPreset="research",
+                recommendationStatus="rejected",
+                userApproved=True,
+            ),
+        )
+        before_cross_repeat = (
+            self.project / ".baton/memory/memory.json"
+        ).read_bytes()
+        with self.assertRaisesRegex(baton_memory.MemoryError, "already rejected"):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "bootstrap",
+                    alternate_rejected["revision"],
+                    idempotencyKey="profile-mismatch-cross-repeat",
+                    action="profile-mismatch",
+                    invocationTaskId=coordinator,
+                    recommendedPreset="game-development",
+                    evidenceBasis="discoverable-project-facts",
+                    evidence=evidence,
+                ),
+            )
+        self.assertEqual(
+            (self.project / ".baton/memory/memory.json").read_bytes(),
+            before_cross_repeat,
+        )
+
+        materially_changed = baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                alternate_rejected["revision"],
+                idempotencyKey="profile-mismatch-new-evidence",
+                action="profile-mismatch",
+                invocationTaskId=coordinator,
+                recommendedPreset="game-development",
+                evidenceBasis="discoverable-project-facts",
+                evidence=evidence
+                + ["The user confirmed that the intended outcome is playable."],
+            ),
+        )
+        accepted = baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                materially_changed["revision"],
+                idempotencyKey="profile-mismatch-accepted",
+                action="project-preset",
+                invocationTaskId=coordinator,
+                preset="game-development",
+                consultantSeats=["art-director"],
+                userApproved=True,
+            ),
+        )
+        self.assertEqual(accepted["revision"], materially_changed["revision"] + 1)
+        provisional = self.snapshot()["bootstrap"]["provisionalProject"]
+        self.assertEqual(provisional["projectPreset"], "game-development")
+        self.assertEqual(provisional["profileMismatch"]["status"], "accepted")
+        self.assertTrue(provisional["profileMismatch"]["resolvedAt"])
+        explicit = baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                accepted["revision"],
+                idempotencyKey="profile-mismatch-explicit-user",
+                action="profile-mismatch",
+                invocationTaskId=coordinator,
+                recommendedPreset="software-product",
+                evidenceBasis="explicit-user",
+                evidence=["The user explicitly says this is a software product."],
+            ),
+        )
+        self.assertEqual(explicit["revision"], accepted["revision"] + 1)
+        self.assertEqual(
+            self.snapshot()["bootstrap"]["provisionalProject"]["profileMismatch"][
+                "evidenceBasis"
+            ],
+            "explicit-user",
+        )
+
+    def test_project_preset_catalog_allows_only_the_contained_source_projection_symlink(self):
+        source = self.base / "source-project"
+        (source / ".baton").mkdir(parents=True)
+        shutil.copytree(ROOT / "template/.baton/memory", source / ".baton/memory")
+        shutil.copytree(ROOT / "template/.baton/schemas", source / ".baton/schemas")
+        (source / "template/.baton").mkdir(parents=True)
+        shutil.copy2(
+            ROOT / "template/.baton/team-presets.json",
+            source / "template/.baton/team-presets.json",
+        )
+        (source / ".baton/team-presets.json").symlink_to(
+            "../template/.baton/team-presets.json"
+        )
+        (source / ".baton/metadata.json").write_text(
+            json.dumps({"installationStatus": "Source Repository"}) + "\n",
+            encoding="utf-8",
+        )
+
+        started = baton_memory.transact(
+            source,
+            self.command("bootstrap", 0, action="start", seed="source-project"),
+        )
+        selected = baton_memory.transact(
+            source,
+            self.command(
+                "bootstrap",
+                started["revision"],
+                action="project-preset",
+                preset="software-product",
+                consultantSeats=[],
+                userApproved=True,
+            ),
+        )
+        self.assertEqual(selected["revision"], 2)
+
+        unexpected_catalog = source / "unexpected-team-presets.json"
+        shutil.copy2(
+            ROOT / "template/.baton/team-presets.json", unexpected_catalog
+        )
+        (source / ".baton/team-presets.json").unlink()
+        (source / ".baton/team-presets.json").symlink_to(unexpected_catalog)
+        with self.assertRaisesRegex(baton_memory.MemoryError, "safe project preset catalog"):
+            baton_memory.transact(
+                source,
+                self.command(
+                    "bootstrap",
+                    selected["revision"],
+                    action="profile-mismatch",
+                    recommendedPreset="game-development",
+                    evidenceBasis="explicit-user",
+                    evidence=["The user explicitly says this is a game."],
+                ),
+            )
+
+    def test_bootstrap_keeps_one_conversation_until_confirmed_then_titles_the_team(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        seats = [
+            {"role": "Management", "seat": "Management"},
+            {"role": "Operations", "seat": "Operations"},
+            {
+                "role": "Consultant",
+                "seat": "product-designer",
+                "id": "product-designer",
+                "title": "Product Designer",
+                "domain": "product and interaction design",
+                "configPath": ".baton/agents/consultant-product-designer.toml",
+                "acceptanceAuthority": "Accepts product-design work.",
+                "status": "active",
+            },
+        ]
+        conversation = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {
+                "seed": "quiet-project",
+                "presetLabel": "Software Product",
+                "invocationTaskId": "bootstrap-task-1",
+                "seats": seats,
+                "liveTasks": [],
+            },
+        )
+        self.assertEqual(conversation["nextStep"], "confirm-project-preset")
+        self.assertEqual(conversation["coordinatorTaskId"], "bootstrap-task-1")
+        self.assertEqual(conversation["plan"], [])
+        self.assertEqual(self.snapshot()["personnel"], [])
+        self.assertEqual(
+            conversation["publicStatus"]["question"],
+            "Keep Software Product, or change it before I assemble the team?",
+        )
+        public = json.dumps(conversation["publicStatus"])
+        self.assertNotIn("transaction", public.casefold())
+        self.assertNotIn("backup", public.casefold())
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                1,
+                action="project-preset",
+                invocationTaskId="bootstrap-task-1",
+                preset="software-product",
+                consultantSeats=["product-designer"],
+                userApproved=True,
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "remember",
+                2,
+                category="preference",
+                subject="user",
+                statement="The user’s preferred name is Captain.",
+                sourceClass="explicit-user",
+                assignmentTypes=["bootstrap"],
+                invocationTaskId="bootstrap-task-1",
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                3,
+                action="provisional",
+                invocationTaskId="bootstrap-task-1",
+                project={
+                    "identity": "X Hero Siege v2",
+                    "purpose": "Build a cooperative action game.",
+                    "users": "Players who enjoy team survival games.",
+                    "outcome": "A playable and maintainable release.",
+                    "constraints": [],
+                    "unresolved": [],
+                    "readinessProtocol": "Full Certification",
+                    "clearanceProtocol": "Release Clearance",
+                },
+                ready=True,
+            ),
+        )
+        before_confirmation = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {
+                "seed": "quiet-project",
+                "presetLabel": "Software Product",
+                "invocationTaskId": "bootstrap-task-1",
+                "seats": seats,
+            },
+        )
+        self.assertEqual(before_confirmation["nextStep"], "confirm-project-intent")
+        self.assertEqual(
+            before_confirmation["coordinatorTaskId"], "bootstrap-task-1"
+        )
+        self.assertEqual(before_confirmation["plan"], [])
+        self.assertEqual(self.snapshot()["personnel"], [])
+        with self.assertRaisesRegex(
+            baton_memory.MemoryError, "original invoking task"
+        ):
+            baton_memory.reconcile_bootstrap(
+                self.project,
+                capabilities,
+                {
+                    "seed": "quiet-project",
+                    "presetLabel": "Software Product",
+                    "invocationTaskId": "different-bootstrap-task",
+                    "seats": seats,
+                    "liveTasks": [],
+                },
+            )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                before_confirmation["revision"],
+                action="confirm",
+                invocationTaskId="bootstrap-task-1",
+                userApproved=True,
+            ),
+        )
+        project = json.loads(
+            (self.project / ".baton/state/project.json").read_text(encoding="utf-8")
+        )["project"]
+        self.assertEqual(project["name"], "X Hero Siege v2")
+        self.assertEqual(project["purpose"], "Build a cooperative action game.")
+        self.assertEqual(project["users"], ["Players who enjoy team survival games."])
+        self.assertEqual(project["outcome"], "A playable and maintainable release.")
+        self.assertEqual(project["constraints"], [])
+        self.assertEqual(project["openQuestions"], [])
+        self.assertEqual(
+            project["assuranceDefaults"],
+            {
+                "readinessProtocol": "Full Certification",
+                "clearanceProtocol": "Release Clearance",
+            },
+        )
+        self.assertFalse(project["templateMode"])
+        provisional = self.snapshot()["bootstrap"]["provisionalProject"]
+        for field in (
+            "identity",
+            "purpose",
+            "users",
+            "outcome",
+            "constraints",
+            "unresolved",
+            "readinessProtocol",
+            "clearanceProtocol",
+        ):
+            self.assertNotIn(field, provisional)
+
+        assembled = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {
+                "seed": "quiet-project",
+                "presetLabel": "Software Product",
+                "invocationTaskId": "bootstrap-task-1",
+                "seats": seats,
+                "liveTasks": [],
+            },
+        )
+        self.assertEqual(assembled["nextStep"], "assemble-team")
+        self.assertEqual(
+            [item["taskTitle"] for item in assembled["plan"]],
+            [
+                "(X Hero Siege v2) - Management - %s" % assembled["plan"][0]["name"],
+                "(X Hero Siege v2) - Operations - %s" % assembled["plan"][1]["name"],
+                "(X Hero Siege v2) - Product Designer Consultant - %s"
+                % assembled["plan"][2]["name"],
+            ],
+        )
+
+    def test_one_conversation_trace_keeps_the_invoking_task_through_confirmation(self):
+        task_id = "single-bootstrap-task"
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        seats = [
+            {"role": "Management", "seat": "Management"},
+            {"role": "Operations", "seat": "Operations"},
+            {
+                "role": "Consultant",
+                "seat": "product-designer",
+                "id": "product-designer",
+                "title": "Product Designer",
+                "domain": "product and interaction design",
+                "configPath": ".baton/agents/consultant-product-designer.toml",
+                "acceptanceAuthority": "Accepts product-design work.",
+                "status": "active",
+            },
+        ]
+        observations = {
+            "seed": "trace-project",
+            "presetLabel": "Software Product",
+            "invocationTaskId": task_id,
+            "seats": seats,
+            "liveTasks": [],
+        }
+        trace = []
+
+        step = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        trace.append((task_id, step["nextStep"], len(step["plan"])))
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                step["revision"],
+                action="project-preset",
+                invocationTaskId=task_id,
+                preset="software-product",
+                consultantSeats=["product-designer"],
+                userApproved=True,
+            ),
+        )
+        step = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        trace.append((task_id, step["nextStep"], len(step["plan"])))
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "remember",
+                step["revision"],
+                actor="Management",
+                actorId=task_id,
+                category="preference",
+                subject="user",
+                statement="The user’s preferred name is Captain.",
+                sourceClass="explicit-user",
+                assignmentTypes=["bootstrap"],
+                invocationTaskId=task_id,
+                userApproved=True,
+            ),
+        )
+        step = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        trace.append((task_id, step["nextStep"], len(step["plan"])))
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                step["revision"],
+                actor="Management",
+                actorId=task_id,
+                action="provisional",
+                invocationTaskId=task_id,
+                project={
+                    "identity": "Trace Project",
+                    "purpose": "Prove one continuous onboarding conversation.",
+                    "users": "Project owners.",
+                    "outcome": "A confirmed project ready for team assembly.",
+                    "constraints": [],
+                    "unresolved": [],
+                    "readinessProtocol": "Standard Protocol",
+                    "clearanceProtocol": "Release Clearance",
+                },
+                ready=True,
+            ),
+        )
+        step = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        trace.append((task_id, step["nextStep"], len(step["plan"])))
+        self.assertEqual(self.snapshot()["personnel"], [])
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                step["revision"],
+                actor="Management",
+                actorId=task_id,
+                action="confirm",
+                invocationTaskId=task_id,
+                userApproved=True,
+            ),
+        )
+        assembled = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        trace.append((task_id, assembled["nextStep"], len(assembled["plan"])))
+
+        self.assertEqual(
+            trace,
+            [
+                (task_id, "confirm-project-preset", 0),
+                (task_id, "ask-preferred-name", 0),
+                (task_id, "discover-project", 0),
+                (task_id, "confirm-project-intent", 0),
+                (task_id, "assemble-team", 3),
+            ],
+        )
+        self.assertTrue(
+            all(item[0] == assembled["coordinatorTaskId"] for item in trace)
+        )
+        self.assertEqual(
+            [item["taskAction"] for item in assembled["plan"]],
+            ["create", "wait-for-prior", "wait-for-prior"],
+        )
+
+        current = assembled
+        for index, _ in enumerate(assembled["plan"]):
+            planned = current["plan"][index]
+            self.assertEqual(current["plan"][index]["taskAction"], "create")
+            task_identity = "trace-task-%d" % index
+            created = baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    current["revision"],
+                    actor="Operations",
+                    actorId="bootstrap-operations",
+                    action="created",
+                    invocationTaskId=task_id,
+                    personnelId=planned["personnelId"],
+                    attemptId=planned["attemptId"],
+                    taskId=task_identity,
+                    wakePath="message:" + task_identity,
+                ),
+            )
+            observations["liveTasks"].append(
+                {
+                    "taskId": task_identity,
+                    "wakePath": "message:" + task_identity,
+                    "title": planned["taskTitle"],
+                    "attemptId": planned["attemptId"],
+                }
+            )
+            current = baton_memory.reconcile_bootstrap(
+                self.project, capabilities, observations
+            )
+            self.assertEqual(current["plan"][index]["taskAction"], "register")
+            registered = baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    created["revision"],
+                    actor="Operations",
+                    actorId="bootstrap-operations",
+                    action="register",
+                    invocationTaskId=task_id,
+                    personnelId=planned["personnelId"],
+                    taskId=task_identity,
+                    wakePath="message:" + task_identity,
+                    observedTitle=planned["taskTitle"],
+                ),
+            )
+            current = baton_memory.reconcile_bootstrap(
+                self.project, capabilities, observations
+            )
+            self.assertEqual(current["plan"][index]["taskAction"], "wake")
+            failed_wake_retry = baton_memory.reconcile_bootstrap(
+                self.project, capabilities, observations
+            )
+            self.assertEqual(failed_wake_retry["revision"], registered["revision"])
+            self.assertEqual(
+                failed_wake_retry["plan"][index]["taskAction"], "wake"
+            )
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    registered["revision"],
+                    actor="Operations",
+                    actorId="bootstrap-operations",
+                    action="online",
+                    invocationTaskId=task_id,
+                    personnelId=planned["personnelId"],
+                ),
+            )
+            current = baton_memory.reconcile_bootstrap(
+                self.project, capabilities, observations
+            )
+            self.assertEqual(current["plan"][index]["taskAction"], "reuse")
+
+        self.assertEqual(current["nextStep"], "complete")
+        self.assertTrue(current["deliveryReady"])
+        self.assertEqual(
+            [person["task"]["status"] for person in self.snapshot()["personnel"]],
+            ["online", "online", "online"],
+        )
+
+    def test_confirmed_project_preset_keeps_discovery_in_one_task_without_mutating_legacy_consultants(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {
+                "seed": "resume-project",
+                "presetLabel": "Software Product",
+                "invocationTaskId": "resume-bootstrap-task",
+                "seats": [],
+            },
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "personnel",
+                1,
+                action="ensure",
+                role="Consultant",
+                seat="product-designer",
+                specialty="product and interaction design",
+                seed="resume-project:Consultant:product-designer:product and interaction design",
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "remember",
+                2,
+                category="preference",
+                subject="user",
+                statement="The user’s preferred name is Captain.",
+                sourceClass="explicit-user",
+                assignmentTypes=["bootstrap"],
+                invocationTaskId="resume-bootstrap-task",
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                3,
+                action="project-preset",
+                invocationTaskId="resume-bootstrap-task",
+                preset="game-development",
+                consultantSeats=["art-director"],
+                userApproved=True,
+            ),
+        )
+        snapshot = self.snapshot()
+        self.assertEqual(
+            snapshot["bootstrap"]["provisionalProject"]["projectPreset"],
+            "game-development",
+        )
+        self.assertTrue(
+            snapshot["bootstrap"]["provisionalProject"]["projectPresetConfirmed"]
+        )
+        self.assertEqual(snapshot["bootstrap"]["roster"], [])
+        old_consultant = next(
+            person for person in snapshot["personnel"] if person["seat"] == "product-designer"
+        )
+        self.assertEqual(old_consultant["employmentStatus"], "active")
+        self.assertEqual(old_consultant["task"]["status"], "unregistered")
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                4,
+                action="provisional",
+                invocationTaskId="resume-bootstrap-task",
+                project={
+                    "identity": "A New Game",
+                    "purpose": "Create a game.",
+                    "users": "Players.",
+                    "outcome": "A playable game.",
+                    "constraints": [],
+                    "unresolved": [],
+                    "readinessProtocol": "Standard Protocol",
+                    "clearanceProtocol": "Release Clearance",
+                },
+                ready=True,
+            ),
+        )
+        resumed = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            {
+                "seed": "resume-project",
+                "presetLabel": "Game Development",
+                "invocationTaskId": "resume-bootstrap-task",
+                "seats": [],
+            },
+        )
+        self.assertEqual(resumed["nextStep"], "confirm-project-intent")
+        self.assertEqual(resumed["plan"], [])
+        self.assertEqual(
+            [person["seat"] for person in self.snapshot()["personnel"]],
+            ["product-designer"],
+        )
+
+    def test_interrupted_post_confirmation_assembly_reconciles_and_registers_the_complete_team(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        seats = [
+            {"role": "Management", "seat": "Management"},
+            {"role": "Operations", "seat": "Operations"},
+            {
+                "role": "Consultant",
+                "seat": "product-designer",
+                "id": "product-designer",
+                "title": "Product Designer",
+                "domain": "product and interaction design",
+                "configPath": ".baton/agents/consultant-product-designer.toml",
+                "acceptanceAuthority": "Accepts product-design work.",
+                "status": "active",
+            },
+        ]
+        self.confirm_project_intent(
+            seed="interrupted-project",
+            consultant_seats=["product-designer"],
+            identity="A Continuous Project",
+        )
+        live_tasks = []
+        observations = {
+            "seed": "interrupted-project",
+            "presetLabel": "Software Product",
+            "seats": seats,
+            "liveTasks": live_tasks,
+        }
+        initial = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            observations,
+        )
+        management, operations, consultant = initial["plan"]
+        live_tasks.append(
+            {
+                "taskId": "management-task",
+                "wakePath": "message:management-task",
+                "title": management["taskTitle"],
+                "attemptId": management["attemptId"],
+            }
+        )
+        created_management = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                6,
+                actor="Operations",
+                actorId="bootstrap-operations",
+                action="created",
+                personnelId=management["personnelId"],
+                attemptId=management["attemptId"],
                 taskId="management-task",
                 wakePath="message:management-task",
             ),
         )
+        registered_management = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                created_management["revision"],
+                actor="Operations",
+                actorId="bootstrap-operations",
+                action="register",
+                personnelId=management["personnelId"],
+                taskId="management-task",
+                wakePath="message:management-task",
+                observedTitle=management["taskTitle"],
+            ),
+        )
+        online_management = baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                registered_management["revision"],
+                actor="Operations",
+                actorId="bootstrap-operations",
+                action="online",
+                personnelId=management["personnelId"],
+            ),
+        )
+        assembled = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            observations,
+        )
+        self.assertEqual(
+            [item["taskAction"] for item in assembled["plan"]],
+            ["reuse", "create", "wait-for-prior"],
+        )
+        self.assertEqual(
+            self.snapshot()["bootstrap"]["roster"],
+            [item["personnelId"] for item in assembled["plan"]],
+        )
+        self.assertEqual(assembled["nextStep"], "assemble-team")
+
+        revision = online_management["revision"]
+        for person, task_id in (
+            (operations, "operations-task"),
+            (consultant, "consultant-task"),
+        ):
+            current = baton_memory.reconcile_bootstrap(
+                self.project, capabilities, observations
+            )
+            current_person = next(
+                item
+                for item in current["plan"]
+                if item["personnelId"] == person["personnelId"]
+            )
+            self.assertEqual(current_person["taskAction"], "create")
+            live_tasks.append(
+                {
+                    "taskId": task_id,
+                    "wakePath": "message:" + task_id,
+                    "title": current_person["taskTitle"],
+                    "attemptId": current_person["attemptId"],
+                }
+            )
+            created = baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    revision,
+                    actor="Management",
+                    actorId=management["personnelId"],
+                    action="created",
+                    personnelId=person["personnelId"],
+                    attemptId=current_person["attemptId"],
+                    taskId=task_id,
+                    wakePath="message:" + task_id,
+                    userApproved=True,
+                ),
+            )
+            registered = baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    created["revision"],
+                    actor="Management",
+                    actorId=management["personnelId"],
+                    action="register",
+                    personnelId=person["personnelId"],
+                    taskId=task_id,
+                    wakePath="message:" + task_id,
+                    observedTitle=current_person["taskTitle"],
+                    userApproved=True,
+                ),
+            )
+            online = baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    registered["revision"],
+                    actor="Management",
+                    actorId=management["personnelId"],
+                    action="online",
+                    personnelId=person["personnelId"],
+                    userApproved=True,
+                ),
+            )
+            revision = online["revision"]
+
+        completed = baton_memory.reconcile_bootstrap(
+            self.project,
+            capabilities,
+            observations,
+        )
+        self.assertEqual(
+            [item["taskAction"] for item in completed["plan"]],
+            ["reuse", "reuse", "reuse"],
+        )
+        self.assertTrue(completed["deliveryReady"])
+        self.assertEqual(completed["nextStep"], "complete")
+        self.assertEqual(completed["revision"], revision)
+        snapshot = self.snapshot()
+        self.assertEqual(len(snapshot["personnel"]), 3)
+        self.assertTrue(
+            all(person["task"]["status"] == "online" for person in snapshot["personnel"])
+        )
+
+    def test_user_can_reset_incomplete_onboarding_without_erasing_company_memory(self):
+        capabilities = {
+            "list": True,
+            "create": True,
+            "stableIdentity": True,
+            "read": True,
+            "message": True,
+            "title": True,
+            "archive": True,
+        }
+        observations = {
+            "seed": "resettable-project",
+            "presetLabel": "Software Product",
+            "invocationTaskId": "reset-bootstrap-task",
+            "seats": [{"role": "Management", "seat": "Management"}],
+        }
+        baton_memory.transact(
+            self.project,
+            self.command("bootstrap", 0, action="start", seed="resettable-project"),
+        )
+        manager = baton_memory.transact(
+            self.project,
+            self.command(
+                "personnel",
+                1,
+                action="ensure",
+                role="Management",
+                seat="Management",
+                seed="resettable-project:Management:Management:",
+            ),
+        )
+        manager_id = manager["personnelIds"][0]
         baton_memory.transact(
             self.project,
             self.command(
                 "task",
                 2,
                 actor="Operations",
-                actorId="ops",
+                actorId="bootstrap-operations",
                 action="register",
-                personnelId=plan["plan"][1]["personnelId"],
-                taskId="operations-task",
-                wakePath="message:operations-task",
+                personnelId=manager_id,
+                taskId="old-management-task",
+                wakePath="message:old-management-task",
             ),
         )
-        replay = baton_memory.reconcile_bootstrap(
+        baton_memory.transact(
             self.project,
-            capabilities,
+            self.command("bootstrap", 3, action="roster", personnelIds=[manager_id]),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "remember",
+                4,
+                actor="Management",
+                actorId=manager_id,
+                category="preference",
+                subject="user",
+                statement="The user’s preferred name is Captain.",
+                sourceClass="explicit-user",
+                assignmentTypes=["bootstrap"],
+                userApproved=True,
+            ),
+        )
+        company = baton_memory.transact(
+            self.project,
+            self.command(
+                "remember",
+                5,
+                statement="The company builds durable tools.",
+                category="company",
+                subject="company",
+                sourceClass="explicit-user",
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                6,
+                action="project-preset",
+                preset="software-product",
+                consultantSeats=["product-designer"],
+                userApproved=True,
+            ),
+        )
+        memory_before_denial = (
+            self.project / ".baton/memory/memory.json"
+        ).read_bytes()
+        history_before_denial = (
+            self.project / ".baton/memory/history.jsonl"
+        ).read_bytes()
+        with self.assertRaisesRegex(
+            baton_memory.MemoryError, "explicit user authorization"
+        ):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "bootstrap",
+                    7,
+                    actor="Management",
+                    actorId=manager_id,
+                    action="reset-onboarding",
+                    userApproved=True,
+                ),
+            )
+        self.assertEqual(
+            (self.project / ".baton/memory/memory.json").read_bytes(),
+            memory_before_denial,
+        )
+        self.assertEqual(
+            (self.project / ".baton/memory/history.jsonl").read_bytes(),
+            history_before_denial,
+        )
+        reset_command = self.command(
+            "bootstrap",
+            7,
+            action="reset-onboarding",
+            userApproved=True,
+            sourceClass="explicit-user",
+            references=["BATON-006"],
+        )
+        reset = baton_memory.transact(self.project, reset_command)
+
+        snapshot = self.snapshot()
+        self.assertEqual(reset["personnelIds"], [manager_id])
+        self.assertEqual(snapshot["revision"], 8)
+        self.assertEqual(
+            snapshot["bootstrap"],
             {
-                "seed": "native-project",
-                "seats": [
-                    {"role": "Operations", "seat": "Operations"},
-                    {"role": "Management", "seat": "Management"},
+                "status": "not-started",
+                "seed": "resettable-project",
+                "roster": [],
+                "provisionalProject": {"onboardingEpoch": 1},
+                "confirmedAt": "",
+                "cleanupTasks": [
+                    {
+                        "personnelId": manager_id,
+                        "taskId": "old-management-task",
+                        "wakePath": "message:old-management-task",
+                        "title": "",
+                        "status": "archive-required",
+                    }
                 ],
             },
         )
+        self.assertEqual(snapshot["personnel"], [])
         self.assertEqual(
-            [item["taskAction"] for item in replay["plan"]],
-            ["reuse", "reuse"],
+            [claim["id"] for claim in snapshot["claims"]], company["claimIds"]
         )
-        self.assertTrue(replay["deliveryReady"])
-        self.assertEqual(replay["revision"], 3)
+        replay = baton_memory.transact(self.project, reset_command)
+        self.assertEqual(replay["revision"], 8)
 
-    def test_partial_task_surface_falls_back_to_copy_ready_prompt(self):
+        cleanup = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        self.assertEqual(cleanup["nextStep"], "cleanup-team")
+        self.assertEqual(
+            [item["taskId"] for item in cleanup["cleanupPlan"]],
+            ["old-management-task"],
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                8,
+                action="cleanup-complete",
+                taskId="old-management-task",
+                archiveConfirmed=True,
+                userApproved=True,
+            ),
+        )
+
+        restarted = baton_memory.reconcile_bootstrap(
+            self.project, capabilities, observations
+        )
+        self.assertEqual(restarted["revision"], 10)
+        self.assertEqual(restarted["nextStep"], "confirm-project-preset")
+        self.assertEqual(restarted["plan"], [])
+        self.assertEqual(self.snapshot()["personnel"], [])
+
+    def test_bootstrap_management_registers_only_reconciled_private_roster_tasks(self):
+        self.confirm_project_intent(seed="bounded-registration")
         plan = baton_memory.reconcile_bootstrap(
             self.project,
             {
@@ -519,7 +2780,57 @@ class MemoryTests(unittest.TestCase):
                 "create": True,
                 "stableIdentity": True,
                 "read": True,
-                "message": False,
+                "message": True,
+                "title": True,
+                "archive": True,
+            },
+            {
+                "seed": "bounded-registration",
+                "seats": [{"role": "Management", "seat": "Management"}],
+                "liveTasks": [],
+            },
+        )
+        management = plan["plan"][0]
+        consultant = baton_memory.transact(
+            self.project,
+            self.command(
+                "personnel",
+                6,
+                action="ensure",
+                role="Consultant",
+                seat="product-designer",
+                specialty="product design",
+                seed="bounded-registration:consultant",
+            ),
+        )["personnelIds"][0]
+        with self.assertRaisesRegex(baton_memory.MemoryError, "private-roster"):
+            baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    7,
+                    actor="Management",
+                    actorId=management["personnelId"],
+                    action="register",
+                    personnelId=consultant,
+                    taskId="consultant-task",
+                    wakePath="message:consultant-task",
+                    userApproved=True,
+                ),
+            )
+
+    def test_task_surface_without_exact_title_support_falls_back_to_copy_ready_prompt(self):
+        self.confirm_project_intent(seed="fallback-project")
+        plan = baton_memory.reconcile_bootstrap(
+            self.project,
+            {
+                "list": True,
+                "create": True,
+                "stableIdentity": True,
+                "read": True,
+                "message": True,
+                "title": False,
+                "archive": True,
             },
             {
                 "seed": "fallback-project",
@@ -533,15 +2844,16 @@ class MemoryTests(unittest.TestCase):
         self.assertFalse(plan["deliveryReady"])
         self.assertEqual(
             [item["taskAction"] for item in plan["plan"]],
-            ["copy-prompt", "copy-prompt"],
+            ["copy-prompt", "wait-for-prior"],
         )
         for item in plan["plan"]:
-            self.assertIn("permanent top-level Codex task", item["copyPrompt"])
+            self.assertIn("permanent top-level task", item["copyPrompt"])
+            self.assertIn(item["taskTitle"], item["copyPrompt"])
             self.assertIn("sole wake mechanism", item["copyPrompt"])
             self.assertIn(item["personnelId"], item["registrationInstruction"])
             self.assertNotIn("persistent goal for this role", item["copyPrompt"])
         snapshot = self.snapshot()
-        self.assertEqual(snapshot["revision"], 1)
+        self.assertEqual(snapshot["revision"], 6)
         self.assertEqual(len(snapshot["bootstrap"]["roster"]), 2)
         self.assertEqual(
             [person["task"]["status"] for person in snapshot["personnel"]],
@@ -659,13 +2971,22 @@ class MemoryTests(unittest.TestCase):
                 "status": "active",
             },
         ]
+        self.confirm_project_intent(
+            2,
+            seed="mixed-seed",
+            consultant_seats=["security"],
+            identity="Mixed Capability Project",
+        )
         capabilities = {"list": True, "create": True, "stableIdentity": True, "read": True, "message": False}
         first = baton_memory.reconcile_bootstrap(
             self.project,
             capabilities,
             {"seed": "mixed-seed", "seats": seats},
         )
-        self.assertEqual([item["taskAction"] for item in first["plan"]], ["reuse", "copy-prompt", "copy-prompt"])
+        self.assertEqual(
+            [item["taskAction"] for item in first["plan"]],
+            ["manual-title", "wait-for-prior", "wait-for-prior"],
+        )
         snapshot = self.snapshot()
         self.assertEqual(len(snapshot["bootstrap"]["roster"]), 3)
         self.assertEqual(
@@ -673,46 +2994,68 @@ class MemoryTests(unittest.TestCase):
             ["online", "awaiting-task", "awaiting-task"],
         )
 
-        revision = snapshot["revision"]
-        baton_memory.transact(
-            self.project,
-            self.command(
-                "bootstrap",
-                revision,
-                actor="Management",
-                actorId="management",
-                action="provisional",
-                project={"identity": "Baton"},
-                ready=True,
-            ),
-        )
-        confirmed = baton_memory.transact(
-            self.project,
-            self.command("bootstrap", revision + 1, action="confirm"),
-        )
-        self.assertEqual(confirmed["projection"]["bootstrap"]["status"], "in-progress")
-        self.assertTrue(self.snapshot()["bootstrap"]["confirmedAt"])
-
         resumed = baton_memory.reconcile_bootstrap(
             self.project,
             capabilities,
             {"seed": "mixed-seed", "seats": seats},
         )
-        self.assertEqual([item["taskAction"] for item in resumed["plan"]], ["reuse", "copy-prompt", "copy-prompt"])
+        self.assertEqual(
+            [item["taskAction"] for item in resumed["plan"]],
+            ["manual-title", "wait-for-prior", "wait-for-prior"],
+        )
+        management = resumed["plan"][0]
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                8,
+                actor="Operations",
+                actorId="ops",
+                action="register",
+                personnelId=management["personnelId"],
+                taskId="manager-task",
+                wakePath="message:manager-task",
+                observedTitle=management["taskTitle"],
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "task",
+                9,
+                actor="Operations",
+                actorId="ops",
+                action="online",
+                personnelId=management["personnelId"],
+            ),
+        )
         awaiting = [person for person in self.snapshot()["personnel"] if person["task"]["status"] == "awaiting-task"]
         current_revision = self.snapshot()["revision"]
         for index, person in enumerate(awaiting):
-            result = baton_memory.transact(
+            plan_item = resumed["plan"][index + 1]
+            baton_memory.transact(
                 self.project,
                 self.command(
                     "task",
-                    current_revision + index,
+                    current_revision + index * 2,
                     actor="Operations",
                     actorId="ops",
                     action="register",
                     personnelId=person["id"],
                     taskId="task-%d" % index,
                     wakePath="message:task-%d" % index,
+                    observedTitle=plan_item["taskTitle"],
+                ),
+            )
+            result = baton_memory.transact(
+                self.project,
+                self.command(
+                    "task",
+                    current_revision + index * 2 + 1,
+                    actor="Operations",
+                    actorId="ops",
+                    action="online",
+                    personnelId=person["id"],
                 ),
             )
         self.assertEqual(result["projection"]["bootstrap"]["status"], "complete")
@@ -725,6 +3068,9 @@ class MemoryTests(unittest.TestCase):
             "read": True,
             "message": False,
         }
+        self.confirm_project_intent(seed="atomic-fallback")
+        memory_before = (self.project / ".baton/memory/memory.json").read_bytes()
+        history_before = (self.project / ".baton/memory/history.jsonl").read_bytes()
         with mock.patch.dict(
             os.environ,
             {"BATON_TEST_MEMORY_FAIL_AT": "after-history"},
@@ -743,10 +3089,17 @@ class MemoryTests(unittest.TestCase):
                     },
                 )
         snapshot = self.snapshot()
-        self.assertEqual(snapshot["revision"], 0)
+        self.assertEqual(snapshot["revision"], 5)
         self.assertEqual(snapshot["personnel"], [])
         self.assertEqual(snapshot["bootstrap"]["roster"], [])
-        self.assertEqual(self.history(), [])
+        self.assertEqual(
+            (self.project / ".baton/memory/memory.json").read_bytes(),
+            memory_before,
+        )
+        self.assertEqual(
+            (self.project / ".baton/memory/history.jsonl").read_bytes(),
+            history_before,
+        )
 
     def test_fallback_prompts_distinguish_two_consultants_with_acceptance_boundaries(self):
         consultants = [
@@ -771,6 +3124,11 @@ class MemoryTests(unittest.TestCase):
                 "status": "active",
             },
         ]
+        self.confirm_project_intent(
+            seed="two-consultants",
+            consultant_seats=["security", "research"],
+            identity="Two Consultant Project",
+        )
         plan = baton_memory.reconcile_bootstrap(
             self.project,
             {},
@@ -797,16 +3155,17 @@ class MemoryTests(unittest.TestCase):
         self.assertEqual(rejected["result"], "rejected")
         self.assertEqual(self.snapshot()["claims"], [])
 
-    def test_task_registration_reuses_personnel_and_rejects_duplicate_task(self):
+    def test_task_registration_reuses_personnel_but_requires_legacy_title_verification(self):
         first = self.person()
         manager_id = first["personnelIds"][0]
         baton_memory.transact(self.project, self.command("task", 1, actor="Operations", actorId="ops", action="register", personnelId=manager_id, taskId="task-1", wakePath="message:task-1"))
         second = self.person(2, role="Operations", seat="Operations", seed="project-seed:operations")
         with self.assertRaisesRegex(baton_memory.MemoryError, "already registered"):
             baton_memory.transact(self.project, self.command("task", 3, actor="Operations", actorId="ops", action="register", personnelId=second["personnelIds"][0], taskId="task-1", wakePath="message:task-1"))
+        self.confirm_project_intent(3, seed="project-seed")
         plan = baton_memory.reconcile_bootstrap(self.project, {}, {"seed": "project-seed", "seats": [{"role": "Management", "seat": "Management"}]})
-        self.assertEqual(plan["plan"][0]["taskAction"], "reuse")
-        self.assertTrue(plan["deliveryReady"])
+        self.assertEqual(plan["plan"][0]["taskAction"], "manual-title")
+        self.assertFalse(plan["deliveryReady"])
 
     def test_direct_bootstrap_roster_rejects_disposable_and_inactive_seats(self):
         manager = self.person()["personnelIds"][0]
@@ -958,11 +3317,31 @@ class MemoryTests(unittest.TestCase):
 
     def test_bootstrap_states_are_idempotently_planned_and_confirmation_is_gated(self):
         baton_memory.transact(self.project, self.command("bootstrap", 0, actor="Management", actorId="management", action="start", seed="bootstrap-seed"))
-        baton_memory.transact(self.project, self.command("bootstrap", 1, actor="Management", actorId="management", action="provisional", project={"identity": "Baton"}, ready=True))
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                1,
+                actor="Management",
+                actorId="management",
+                action="provisional",
+                project={
+                    "identity": "Baton",
+                    "purpose": "Coordinate a project.",
+                    "users": "Project owners.",
+                    "outcome": "A confirmed project.",
+                    "constraints": [],
+                    "unresolved": [],
+                    "readinessProtocol": "Standard Protocol",
+                    "clearanceProtocol": "Release Clearance",
+                },
+                ready=False,
+            ),
+        )
         denied = self.command("bootstrap", 2, actor="Management", actorId="management", action="confirm")
         with self.assertRaisesRegex(baton_memory.MemoryError, "user confirmation"):
             baton_memory.transact(self.project, denied)
-        with self.assertRaisesRegex(baton_memory.MemoryError, "roster"):
+        with self.assertRaisesRegex(baton_memory.MemoryError, "project preset"):
             baton_memory.transact(self.project, self.command("bootstrap", 2, action="confirm"))
 
     def test_gamification_and_project_management_authority_are_rejected(self):
@@ -983,6 +3362,75 @@ class MemoryTests(unittest.TestCase):
         self.assertEqual(len(reports), 1)
         self.assertEqual(json.loads(reports[0].read_text())["result"], "rolled-back")
         self.assertFalse(str(reports[0].resolve()).startswith(str(self.project.resolve())))
+
+    def test_project_confirmation_rolls_back_memory_state_and_views_together(self):
+        baton_memory.transact(
+            self.project,
+            self.command("bootstrap", 0, action="start", seed="atomic-direction"),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                1,
+                action="project-preset",
+                preset="software-product",
+                consultantSeats=[],
+                userApproved=True,
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "remember",
+                2,
+                category="preference",
+                subject="user",
+                statement="The user’s preferred name is Captain.",
+                sourceClass="explicit-user",
+                assignmentTypes=["bootstrap"],
+            ),
+        )
+        baton_memory.transact(
+            self.project,
+            self.command(
+                "bootstrap",
+                3,
+                action="provisional",
+                project={
+                    "identity": "Atomic project",
+                    "purpose": "Preserve one confirmed direction.",
+                    "users": "Project owners.",
+                    "outcome": "One canonical project record.",
+                    "constraints": [],
+                    "unresolved": [],
+                    "readinessProtocol": "Standard Protocol",
+                    "clearanceProtocol": "Release Clearance",
+                },
+                ready=True,
+            ),
+        )
+        paths = (
+            ".baton/memory/memory.json",
+            ".baton/memory/history.jsonl",
+            ".baton/state/project.json",
+            ".baton/views/dashboard.html",
+        )
+        before = {relative: (self.project / relative).read_bytes() for relative in paths}
+        with mock.patch.dict(
+            os.environ, {"BATON_TEST_MEMORY_FAIL_AT": "after-generated"}, clear=False
+        ):
+            with self.assertRaisesRegex(baton_memory.MemoryError, "rolled back"):
+                baton_memory.transact(
+                    self.project,
+                    self.command(
+                        "bootstrap", 4, action="confirm", userApproved=True
+                    ),
+                )
+        self.assertEqual(
+            {relative: (self.project / relative).read_bytes() for relative in paths},
+            before,
+        )
 
     def test_every_jsonl_line_and_cross_file_head_are_checked(self):
         self.remember()

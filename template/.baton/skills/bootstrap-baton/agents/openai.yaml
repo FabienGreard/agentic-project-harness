@@ -1,6 +1,0 @@
-interface:
-  display_name: "Bootstrap Baton"
-  short_description: "Set up the permanent Baton team safely"
-  default_prompt: "Use $bootstrap-baton to set up this project and its permanent Baton team."
-policy:
-  allow_implicit_invocation: false

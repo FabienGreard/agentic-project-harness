@@ -99,6 +99,11 @@ assert_codex_config(
         "consultant_product_designer",
     ],
 )
+skill_names = {
+    "boot", "brainstorm", "code-review", "control", "doctor",
+    "improve-codebase-architecture", "roster", "scrap", "terminal", "upgrade",
+}
+assert {path.name for path in (root / ".agents/skills").iterdir()} == skill_names
 for link in (root / ".agents/skills").iterdir():
     assert link.is_symlink()
     assert link.resolve().parent == (root / ".baton/skills").resolve()
@@ -107,7 +112,7 @@ assert not list(root.rglob("*.pyc"))
 PY
 
 PYTHONDONTWRITEBYTECODE=1 XDG_STATE_HOME="$state_home" \
-  "$target/.baton/bin/baton" status --json >"$TEMP_ROOT/status.json"
+  "$target/.baton/bin/baton" terminal status --json >"$TEMP_ROOT/status.json"
 PYTHONDONTWRITEBYTECODE=1 XDG_STATE_HOME="$state_home" \
-  "$target/.baton/bin/baton" check --json >"$TEMP_ROOT/check.json"
+  "$target/.baton/bin/baton" doctor check --json >"$TEMP_ROOT/check.json"
 printf 'PASS: immutable Baton stable release smoke at %s@%s (%s)\n' "$REPO" "$TAG" "$EXPECTED_SHA"

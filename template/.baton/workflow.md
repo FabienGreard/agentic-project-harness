@@ -1,143 +1,67 @@
-# Operating workflow
+# Baton workflow
 
-## Authority
+`AGENTS.md` and the mandatory rules own behavior. [Ubiquitous language](language.md) owns terminology. This file defines only shared states, protocols, transitions, and handoffs.
 
-- Human owner: final authority for declared human-review gates and material external commitments.
-- Management: outcomes, priority, scope, readiness, decisions, publication, and review orchestration, expressed through the configured professional persona.
-- Operations: execution plan, Contractor dispatch, ownership, integration, verification, and completion evidence, expressed through the configured professional persona.
-- Consultant: expert definition and acceptance within one active approved domain.
-- Contractor: only the assigned objective and files/systems.
-- Internal Audit: hidden independent read-only assessment of the harness; never project QA or a project-team member.
+## Ticket states
 
-Missing project or outcome intent returns to Management. Missing expert requirements return to the relevant active Consultant. Operations is the only Contractor dispatch and revision-routing path: Management and Consultants do not dispatch or steer Contractors.
+| State | Meaning |
+| --- | --- |
+| `Backlog` | Intent or execution boundary is incomplete. |
+| `Ready` | Defined, approved, and executable. |
+| `In Progress` | Assigned, building, integrating, or verifying. |
+| `Blocked` | A named dependency or decision prevents progress. |
+| `In Review` | Evidence awaits required acceptance. |
+| `Done` | Acceptance and required evidence are recorded. |
+| `Cancelled` | Intentionally stopped. |
 
-## Status vocabulary
+Active ownership may refine `In Progress` as `Assigned`, `Building`, `Blocked`, `Integrating`, `Verifying`, or `Awaiting Review`; it never changes the ticket lifecycle.
 
-Tickets use the small stakeholder-facing lifecycle `Backlog`, `Ready`, `In Progress`, `Blocked`, `In Review`, `Done`, and `Cancelled`.
+## Goal states
 
-- `Backlog`: intent, acceptance, or execution scope is still incomplete.
-- `Ready`: the work is fully defined and approved for execution.
-- `In Progress`: the delivery team is actively assigning, building, integrating, or verifying the work.
-- `Blocked`: a named dependency or decision prevents progress.
-- `In Review`: returned work is waiting for required acceptance.
-- `Done`: the work and required evidence have been accepted.
-- `Cancelled`: the work was intentionally stopped.
+Goals use `Needs Definition`, `Ready`, `Active`, `Review`, and `Done`. `project.currentGoal` names at most one unfinished primary goal. A blocked goal stays current with its blocker owner and resume condition. Nothing promotes automatically.
 
-Only `Ready` work enters execution. Internal delivery detail is recorded on active ownership as `Assigned`, `Building`, `Blocked`, `Integrating`, `Verifying`, or `Awaiting Review`; those work steps do not expand the public ticket lifecycle.
+A Done Goal needs a result summary, completion date, repository evidence, terminal linked Tickets, cleared ownership and blockers, and every clearance required by its resolved protocol. Optional `plannedStart` and `plannedEnd` ISO dates appear together.
 
-Goals use the smaller lifecycle `Needs Definition`, `Ready`, `Active`, `Review`, and `Done`. `project.currentGoal` identifies at most one non-completed primary goal. A blocked current goal remains current and records its blocker owner and exact resume condition; the pipeline never promotes itself automatically. Each goal carries a concise inline context summary plus optional PRD and decision paths. Optional `plannedStart` and `plannedEnd` ISO dates must be supplied together and place the goal on the generated Gantt timeline. `Done` additionally requires a result summary, completion date, repository evidence, terminal linked tickets, cleared ownership/blockers, and any required human approval.
+## Priority and protocols
 
-These repository project goals are observable milestones in the durable project control plane.
+Priority is `P0` critical, `P1` current-milestone essential, `P2` important, `P3` valuable, or `P4` exploratory. Dependency and safety may override priority order.
 
-## Priority vocabulary
+Each Ticket resolves one Readiness Protocol:
 
-- P0 — critical risk, outage, safety, or broken core outcome
-- P1 — essential for the current milestone
-- P2 — important improvement
-- P3 — valuable but not urgent
-- P4 — exploration, polish, or future idea
+- `Waived`: no project-imposed verification gate; the result remains explicitly unverified and cannot be represented as verified.
+- `Field Check`: focused changed-behavior proof plus explicit required verification.
+- `Standard Protocol`: Field Check plus affected regression and applicable runtime evidence.
+- `Full Certification`: Standard Protocol plus broader regression, failure paths, and applicable operational or experiential evidence.
 
-Dependencies, risk, and integration safety may override simple priority order.
+Each Goal and Ticket also resolves one Clearance Protocol:
 
-## Permanent-role lifecycle
+- `Autonomous`: no routine Goal or Ticket Clearance. Work and publication may proceed inside already approved scope, while destructive actions, new external commitments, unresolved ambiguity, and security or compliance decisions remain human-authority boundaries.
+- `Release Clearance` (default): no routine Ticket Clearance; one Goal `Release` approval is required for the exact completed candidate before the Goal becomes Done or is published.
+- `Completion Clearance`: every Ticket needs `Acceptance`, and the completed Goal needs `Release`; work does not pause for pre-execution clearance.
+- `Continuous Clearance`: Goal `Readiness` before work begins, Ticket `Readiness` before execution, Ticket `Acceptance` before completion, and Goal `Release` before the Goal becomes Done or is published.
 
-Management, Operations, and each active Consultant are permanent top-level tasks with event-driven run-to-idle lifecycles. Contractors and Internal Audit are disposable. Each active run drains meaningful work, records a named owner/action/return trigger, and pauses without polling when no meaningful action remains. Delegated idle is neither blocked nor complete.
+Every Goal and Ticket stores its resolved Clearance Protocol. Every Ticket stores its resolved Readiness Protocol. An override needs human authority and a recorded reason. Each required clearance has one canonical review record and a dedicated packet; stages and targets never substitute for one another. A material candidate change invalidates its prior Release clearance.
 
-## Definition of Ready
+## Transition path
 
-Work is Ready only when objective, context, scope, non-goals, acceptance, dependencies, affected systems, risks, owner, verification, expected evidence, resolved assurance, and major decisions are explicit. Management approves outcome readiness; Operations confirms execution readiness against live state. `requiredConsultantIds` names every applicable active Consultant, and `.baton/state/reviews.json` contains an approved `Readiness` review with evidence for each ID before execution. A ticket that lists human `Readiness` review also requires that approved staged review before execution.
+1. Management defines the Goal, its Tickets, Consultant boundaries, and resolved protocols.
+2. Management obtains any required Goal `Readiness`; required Consultants and, under Continuous Clearance, humans record Ticket `Readiness` decisions.
+3. Operations confirms executable readiness, registers ownership, and executes directly or dispatches bounded Contractors.
+4. Operations integrates returns and gathers evidence required by the Ticket's Readiness Protocol.
+5. Operations obtains independent review, Consultant `Acceptance`, and any required Ticket `Acceptance` clearance.
+6. Operations synchronizes records and returns the completed Goal candidate to Management.
+7. Management obtains any required Goal `Release` clearance for the exact candidate, then closes or publishes the Goal within the selected protocol.
 
-## Assurance controls
+## Handoffs
 
-`project.assuranceDefaults` sets the project default. Every ticket still stores its resolved `assurance` so an LLM or human can understand the expected validation and review timing without inferring inheritance.
+Every handoff names:
 
-- `Lean`: focused changed-behavior proof and the ticket's explicit required verification.
-- `Standard`: Lean plus affected regression and applicable runtime or operational evidence. This is the generated default.
-- `Thorough`: Standard plus broader regression, negative or failure paths, and applicable operational or experiential evidence.
+- controlling goal and ticket IDs;
+- current state and owner;
+- exact scope and non-goals;
+- dependencies or blocker;
+- evidence and verification;
+- decision or action requested; and
+- return destination and wake trigger.
 
-`humanReviewStages` is an explicit subset of `Readiness`, `Acceptance`, and `Release`; an empty array explicitly means no human review is required by this ticket. Management may apply a user-authorized per-ticket override, but any setting that differs from project defaults requires a non-empty `overrideReason`. An override cannot waive a separately governing legal, security, compliance, irreversible-action, or publication gate.
-
-Human `Readiness` approval gates entry to execution. Human `Acceptance` approval gates `Done`. Human `Release` approval gates the material publication or release action and does not prevent technical completion. Every approved human record in `.baton/state/reviews.json` names the exact stage, reviewer, ISO date, and dedicated regular Markdown packet under `.baton/review-packets/`. README, template, symlink, missing, and unattributed packets never satisfy a gate. Keep exactly one canonical human decision per ticket/stage and one Consultant decision per ticket/Consultant/stage; replace it transactionally when the decision changes while Git and packet history preserve the prior decision.
-
-## Management lifecycle
-
-Management uses event-driven run-to-delegated-idle:
-
-1. Confirm a new Management-task message supplied the wake event.
-2. Refresh live project and repository truth once.
-3. Classify incoming instructions and discoveries.
-4. Prepare decisions, readiness, priority, Consultant boundaries, and review gates.
-5. Assign the baton with owner, action, dependencies, and return trigger.
-6. Complete other safe non-overlapping Management work, then end without polling.
-
-If Management owns an action that is currently possible, it completes it before idling. A future Management action may wait only on a recorded trigger.
-
-## Incoming changes
-
-- **Superseding:** material overlap cannot safely wait; record the decision, request a safe pause, preserve WIP, synchronize state, and create a bounded prerequisite/replacement.
-- **Parallel:** contracts and ownership are independent; register a separate lane and let current work continue.
-- **Queued:** valid but non-urgent or not Ready; record it without interrupting the active owner.
-- **Informational:** answer from verified state without changing ownership.
-
-Prefer checkpoint-boundary adoption for non-urgent tooling, policy, architecture, and scope changes. Interrupt only to avoid material rework, invalid acceptance, WIP loss, unsafe action, or violation of explicit urgency.
-
-## Operations lifecycle
-
-Operations is run-to-idle:
-
-1. Confirm a new Operations-task message supplied the wake event.
-2. Refresh live state and select the highest-priority safe Ready work.
-3. Register ownership before edits.
-4. Decompose exclusive scopes, dependencies, checkpoints, and integration order.
-5. Default substantial independent execution to Contractors; record why any Contractor-sized scope remains direct.
-6. Review every return and changed file, integrate, and verify.
-7. Synchronize state and send one result, blocker, review, or idle-boundary handoff.
-8. Continue while meaningful Ready/integration work remains; otherwise end without polling.
-
-Direct Operations work is appropriate for small, tightly coupled, sensitive, integration, conflict-resolution, verification, or narrow revision scopes. Contractor-first is not Contractor-only.
-
-### Substantial integration review
-
-Before substantial acceptance, Operations runs a two-axis review using the [code-review skill](../.baton/skills/code-review/SKILL.md):
-
-- pin the exact committed and dirty-worktree boundary, including relevant untracked files, while excluding unrelated changes;
-- obtain independent read-only standards/architecture and specification/evidence findings;
-- verify each finding against the pinned diff, controlling requirements, and the [risk-based findings rule](../.baton/rules/risk-based-findings.md); route only a credible P0 or Confirmed/Proven P1 as a blocker and retain at most three P2/P3 follow-ups without automatically revising scope;
-- perform one initial review and at most one fix-focused follow-up, then stop when required evidence passes and no blocker remains;
-- hand off the pinned diff, both findings sets, implementation report, exact verification evidence, limitations, and next baton to Management.
-
-Reviewers do not edit, accept, integrate, update state, or route revisions. This review precedes substantial acceptance. Consultant domain approval remains a separate expert gate and does not replace technical acceptance or Operations integration.
-
-## Consultant lifecycle
-
-Every active Consultant is a permanent top-level run-to-idle task. A Consultant begins only when `.baton/state/team.json` records its approved recurring domain and a new Consultant-task message delivers a definition or review trigger. It defines proportional requirements, reviews returned evidence, accepts or requests exact revisions, and hands executable work to Operations. It does not set overall priority, dispatch Contractors, integrate implementation, remain active after offboarding, or wake itself from repository state.
-
-Management performs final-audit mode on substantial returned work by consuming Operations' pinned diff, two-axis findings, implementation report, and exact evidence. Management does not dispatch reviewers or steer Contractors; implementation revisions route through Operations. A final audit and Consultant approval do not by themselves authorize publication or satisfy a separate human-review gate.
-
-## Control-plane communication
-
-Repository records are authoritative. Canonical schema-versioned JSON is the operational state used for project outcome/baton, goals, tickets, ownership, reviews, transitions, and the generated local dashboard; narrative Markdown remains the source for direction, decisions, requirements, reports, and optional supporting rationale. The project outcome explains why the project exists, goals are observable milestones, and tickets are bounded work under a goal. Before a material transition, the authorized owner loads the operational state and uses `.baton/bin/baton _state check`; only a schema-defined, authorized operation may be applied with `.baton/bin/baton _state apply`. The state writer executes the committed JSON schemas before repository-level relationship and authority checks. Supported state, team, installation, and update mutators share one external per-project cross-process lock. The tools and generated `.baton/dashboard/index.html` are views and writers for this existing repository control plane, not a second maintenance authority.
-
-Messages signal wake, pause, blocker, decision, review, urgent invalidation, result, or idle boundary. A new message to the exact permanent task is the only signal that wakes that role. Persistent goals are never created, resumed, recreated, or attached for role lifecycle, even when complete goal controls exist; this repository policy supersedes older onboarding prompts that requested one. A legacy automatic continuation without a new task message is a non-wake event: perform no refresh, speculative work, dispatch, or mutation, report it for user or administrative removal, and end. Returning roles synchronize their owned records, send one explicit handoff to the registered destination, and stop without polling.
-
-Every handoff names controlling IDs, current status, owner, scope, dependencies, evidence, and return/wake trigger. A transition is incomplete until canonical JSON, generated view, and affected narrative records agree. LLMs may prepare and execute validated operational updates, but human authority remains required for intent, ambiguity, destructive deletion, external commitments, security/compliance, and publication.
-
-## Definition of Done
-
-Work becomes Done only when:
-
-- implementation/output matches approved scope and acceptance;
-- proportional automated, operational, experiential, and regression checks pass;
-- affected boundaries are reviewed;
-- documentation and project state are current;
-- an implementation report records changes, choices, commands/results, limitations, and follow-ups;
-- Operations accepts integration;
-- required Consultant and human reviews are recorded.
-
-For every Consultant ID required by the ticket, `.baton/state/reviews.json` must also contain an approved `Acceptance` review linked to the evidence. Readiness approval does not substitute for acceptance, and either Consultant stage remains separate from Operations integration and human gates.
-
-Completion does not bypass a separate publication, release, financial, legal, customer, or milestone approval gate.
-
-## Harness evaluation
-
-Follow the [Internal Audit contract](roles/internal-audit.md) and [independent evaluation rule](rules/harness-evaluation.md): run proportional static checks after state changes, scenario smoke after material Baton changes, repeated comparisons before accepting a major redesign, and independent live-trace audits at meaningful checkpoints or after orchestration incidents.
+Synchronize canonical records before sending one handoff. The receiving role acts only after a new message to its registered task. Results, blockers, reviews, urgent invalidations, and idle boundaries are valid wake reasons; unchanged state is not.

@@ -1,0 +1,1 @@
+../template/.baton/THIRD_PARTY_NOTICES.md

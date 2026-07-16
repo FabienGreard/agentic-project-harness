@@ -91,7 +91,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         self.assertEqual(metadata["schemaVersion"], 3)
         self.assertEqual(metadata["batonVersion"], "0.6.0")
         self.assertEqual(metadata["memorySchemaVersion"], 1)
-        self.assertIsNone(metadata["projectVersion"])
+        self.assertIsNone(metadata["repositoryVersion"])
         self.assertEqual(metadata["source"]["commit"], git_commit(self.source))
         self.assertEqual(metadata["source"]["channel"], "stable")
         self.assertEqual(
@@ -111,26 +111,35 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         self.assertFalse(
             any(path.startswith(".baton/memory/") for path in metadata["managedFiles"])
         )
-        self.assertNotIn(".baton/thread-registry.md", metadata["projectOwnedFiles"])
+        self.assertNotIn(".baton/views/team-tasks.md", metadata["projectOwnedFiles"])
         self.assertEqual(
-            metadata["managedFiles"][".baton/thread-registry.md"]["ownership"],
+            metadata["managedFiles"][".baton/views/team-tasks.md"]["ownership"],
             "generated-config",
         )
         self.assertIn(
-            "This file is generated",
-            (target / ".baton/thread-registry.md").read_text(encoding="utf-8"),
+            "Use `$boot` for initial assembly or `$roster` for later changes",
+            (target / ".baton/views/team-tasks.md").read_text(encoding="utf-8"),
+        )
+        self.assertTrue((target / ".baton/records/README.md").is_file())
+        self.assertIn(
+            ".baton/records/<GOAL-ID>/",
+            (target / ".baton/records/README.md").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            ".baton/records/<TICKET-ID>/",
+            (target / ".baton/records/README.md").read_text(encoding="utf-8"),
         )
         self.assertEqual(semantic_toml(target / ".codex/config.toml"), expected_consumer_config())
         for name in SKILLS:
             path = target / ".agents/skills" / name
             self.assertTrue(path.is_symlink(), path)
             self.assertEqual(path.readlink().as_posix(), f"../../.baton/skills/{name}")
-        status = json_output(baton(target, ["status", "--json"], state_home))
+        status = json_output(baton(target, ["terminal", "status", "--json"], state_home))
         self.assertTrue(status["ok"])
         self.assertEqual(status["batonVersion"], "0.6.0")
         self.assertEqual(status["memorySchemaVersion"], 1)
         self.assertEqual(status["integrity"], {"modified": [], "missing": [], "agentsBlock": "ok"})
-        self.assertEqual(baton(target, ["check", "--json"], state_home).returncode, 0)
+        self.assertEqual(baton(target, ["doctor", "check", "--json"], state_home).returncode, 0)
         checked_links, missing_links = markdown_link_failures(target)
         self.assertGreater(checked_links, 0)
         self.assertEqual(missing_links, [])
@@ -143,7 +152,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         record = next(
             item
             for item in document["payloads"]["new-project"]["files"]
-            if item["path"] == ".baton/guide.md"
+            if item["path"] == ".baton/workflow.md"
         )
         record["projection"] = "starter"
         resign_manifest(tampered, document)
@@ -213,7 +222,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         self.assertEqual(first.returncode, 0, first_stdout + first_stderr)
         self.assertEqual(second.returncode, 1, second_stdout + second_stderr)
         self.assertIn("Baton is already installed; use update", second_stdout + second_stderr)
-        self.assertEqual(baton(target, ["check", "--json"], state_home).returncode, 0)
+        self.assertEqual(baton(target, ["doctor", "check", "--json"], state_home).returncode, 0)
         assert_no_python_cache(target)
 
     def test_mature_adoption_preserves_project_files_and_quarantines_state(self) -> None:
@@ -226,7 +235,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         after = tree_snapshot(target)
         self.assertEqual(result["mode"], "adoption")
         self.assertEqual(result["installationStatus"], "Needs Integration")
-        adoption_check = json_output(baton(target, ["check", "--json"], state_home))
+        adoption_check = json_output(baton(target, ["doctor", "check", "--json"], state_home))
         self.assertTrue(adoption_check["ok"])
         self.assertTrue(adoption_check["quarantinedStarter"])
         for relative, content in fixtures.items():
@@ -236,11 +245,12 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
                 self.assertEqual((target / relative).read_bytes(), content, relative)
         self.assertTrue((target / "node_modules/vendor/outside-link").is_symlink())
         self.assertFalse((target / ".baton/state").exists())
-        self.assertTrue((target / ".baton/integration/starter/state/project.json").is_file())
-        self.assertTrue((target / ".baton/integration/starter/state/team.json").is_file())
+        self.assertTrue((target / ".baton/migration/starter/state/project.json").is_file())
+        self.assertTrue((target / ".baton/migration/starter/state/team.json").is_file())
         self.assertFalse((target / ".baton/AGENTS.md").exists())
-        self.assertTrue((target / ".baton/integration/starter/AGENTS.md").is_file())
-        self.assertTrue((target / ".baton/integration/starter/dashboard/index.html").is_file())
+        self.assertTrue((target / ".baton/migration/starter/AGENTS.md").is_file())
+        self.assertTrue((target / ".baton/migration/starter/views/dashboard.html").is_file())
+        self.assertTrue((target / ".baton/migration/starter/records/README.md").is_file())
         for bridge, destination in {
             "metadata.json": "../../metadata.json",
             "roles": "../../roles",
@@ -248,13 +258,13 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
             "skills": "../../skills",
             "templates": "../../templates",
         }.items():
-            path = target / ".baton/integration/starter" / bridge
+            path = target / ".baton/migration/starter" / bridge
             self.assertTrue(path.is_symlink(), bridge)
             self.assertEqual(path.readlink().as_posix(), destination)
         self.assertEqual(
             {
-                path.relative_to(target / ".baton/integration/starter/memory").as_posix(): path.read_bytes()
-                for path in (target / ".baton/integration/starter/memory").iterdir()
+                path.relative_to(target / ".baton/migration/starter/memory").as_posix(): path.read_bytes()
+                for path in (target / ".baton/migration/starter/memory").iterdir()
             },
             {
                 path.name: path.read_bytes()
@@ -262,10 +272,10 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
             },
         )
         self.assertFalse((target / ".baton/memory").exists())
-        self.assertTrue((target / ".baton/integration/cleanup-prompt.txt").is_file())
-        cleanup_prompt = (target / ".baton/integration/cleanup-prompt.txt").read_text(encoding="utf-8")
+        self.assertTrue((target / ".baton/migration/cleanup-prompt.txt").is_file())
+        cleanup_prompt = (target / ".baton/migration/cleanup-prompt.txt").read_text(encoding="utf-8")
         self.assertIn(
-            ".baton/bin/baton _activate --from /absolute/path/to/reviewed-proposal --json",
+            ".baton/bin/baton boot activate --from /absolute/path/to/reviewed-proposal --json",
             cleanup_prompt,
         )
         self.assertIn("preserved legacy files", cleanup_prompt)
@@ -276,12 +286,12 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         self.assertEqual(metadata["installationStatus"], "Needs Integration")
         self.assertEqual(metadata["batonVersion"], "0.6.0")
         self.assertEqual(metadata["memorySchemaVersion"], 1)
-        self.assertIsNone(metadata["projectVersion"])
+        self.assertIsNone(metadata["repositoryVersion"])
         self.assertEqual(metadata["legacyCleanupCandidates"], [])
         self.assertFalse((target / "install.sh").exists())
         self.assertFalse((target / ".codex/skills").exists())
         self.assertEqual(
-            semantic_toml(target / ".baton/integration/codex-config.toml"),
+            semantic_toml(target / ".baton/migration/codex-config.toml"),
             expected_consumer_config(),
         )
         changed = changed_paths(before, after)
@@ -292,19 +302,31 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
                 path == "AGENTS.md"
                 or path == ".baton"
                 or path.startswith(".baton/")
-                or path in {f".agents/skills/{name}" for name in SKILLS if name != "brainstorm"}
+                or path in {".agents", ".agents/skills"}
+                or path in {f".agents/skills/{name}" for name in SKILLS}
             )
         ]
         self.assertEqual(disallowed, [])
         self.assertEqual((target / ".codex/config.toml").read_bytes(), fixtures[".codex/config.toml"])
-        self.assertEqual(
-            (target / ".agents/skills/brainstorm/SKILL.md").read_bytes(),
-            fixtures[".agents/skills/brainstorm/SKILL.md"],
-        )
         checked_links, missing_links = markdown_link_failures(target)
         self.assertGreater(checked_links, 0)
         self.assertEqual(missing_links, [])
         assert_no_python_cache(target)
+
+    def test_skill_discovery_collision_fails_before_any_write(self) -> None:
+        target = self.base / "skill-discovery-collision"
+        collision = target / ".agents/skills/boot/SKILL.md"
+        collision.parent.mkdir(parents=True)
+        collision.write_text("# Project-owned boot skill\n", encoding="utf-8")
+        before = tree_snapshot(target)
+        failed = install_bundle(
+            self.bundle,
+            target,
+            self.base / "state-skill-discovery-collision",
+            expected=1,
+        )
+        self.assertIn("skill-discovery collision", failed.stdout + failed.stderr)
+        self.assertEqual(tree_snapshot(target), before)
 
     def test_adoption_preserves_agents_symlink_as_manual_integration(self) -> None:
         target = self.base / "agents-symlink"
@@ -319,14 +341,14 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         self.assertTrue((target / "AGENTS.md").is_symlink())
         self.assertEqual(os.readlink(target / "AGENTS.md"), "PROJECT_AGENTS.md")
         self.assertEqual(project_agents.read_bytes(), before_target)
-        proposal = target / ".baton/integration/AGENTS.md"
+        proposal = target / ".baton/migration/AGENTS.md"
         self.assertTrue(proposal.is_file())
         self.assertIn("BATON:START", proposal.read_text(encoding="utf-8"))
         self.assertTrue(any("AGENTS.md" in item for item in result["manualActions"]))
-        status = json_output(baton(target, ["status", "--json"], state_home))
+        status = json_output(baton(target, ["terminal", "status", "--json"], state_home))
         self.assertTrue(status["ok"])
         self.assertEqual(status["integrity"]["agentsBlock"], "pending-manual")
-        self.assertEqual(baton(target, ["check", "--json"], state_home).returncode, 0)
+        self.assertEqual(baton(target, ["doctor", "check", "--json"], state_home).returncode, 0)
         assert_no_python_cache(target)
 
     def test_reviewed_mature_state_requires_explicit_activate_from_path(self) -> None:
@@ -343,7 +365,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         before_invalid = tree_snapshot(target)
         rejected = baton(
             target,
-            ["_activate", "--from", invalid, "--yes", "--json"],
+            ["boot", "activate", "--from", invalid, "--yes", "--json"],
             state_home,
             expected=1,
         )
@@ -356,7 +378,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         activated = json_output(
             baton(
                 target,
-                ["_activate", "--from", proposal, "--yes", "--json"],
+                ["boot", "activate", "--from", proposal, "--yes", "--json"],
                 state_home,
             )
         )
@@ -374,6 +396,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
             any(path.startswith(".baton/memory/") for path in metadata["managedFiles"])
         )
         self.assertTrue((target / ".baton/state/team.json").is_file())
+        self.assertTrue((target / ".baton/records/README.md").is_file())
         project = json.loads((target / ".baton/state/project.json").read_text(encoding="utf-8"))
         self.assertFalse(project["project"]["templateMode"])
         self.assertEqual(project["project"]["currentGoal"], "MATURE-GOAL-001")
@@ -381,7 +404,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         for relative, content in fixtures.items():
             if relative != "AGENTS.md":
                 self.assertEqual((target / relative).read_bytes(), content, relative)
-        self.assertEqual(baton(target, ["check", "--json"], state_home).returncode, 0)
+        self.assertEqual(baton(target, ["doctor", "check", "--json"], state_home).returncode, 0)
         assert_no_python_cache(target)
 
     def test_activation_rejects_drift_in_any_managed_starter_path(self) -> None:
@@ -394,15 +417,15 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
             target,
             self.base / "activation-starter-drift-proposal",
         )
-        overview = target / ".baton/integration/starter/docs/overview.md"
-        overview.write_text(
-            overview.read_text(encoding="utf-8") + "\nUnreviewed starter drift.\n",
+        agents = target / ".baton/migration/starter/AGENTS.md"
+        agents.write_text(
+            agents.read_text(encoding="utf-8") + "\nUnreviewed starter drift.\n",
             encoding="utf-8",
         )
         before = tree_snapshot(target)
         rejected = baton(
             target,
-            ["_activate", "--from", proposal, "--yes", "--json"],
+            ["boot", "activate", "--from", proposal, "--yes", "--json"],
             state_home,
             expected=1,
         )
@@ -422,7 +445,7 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         before = tree_snapshot(target)
         failed = baton(
             target,
-            ["_activate", "--from", proposal, "--yes", "--json"],
+            ["boot", "activate", "--from", proposal, "--yes", "--json"],
             state_home,
             expected=1,
             extra_env={"BATON_TEST_FAIL_DURING_FINALIZE": "1"},
@@ -673,7 +696,7 @@ class BatonUpdateTests(unittest.TestCase):
             baton(
                 target,
                 [
-                    "_team",
+                    "roster",
                     "hire",
                     "--consultant",
                     "security-lead",
@@ -700,11 +723,11 @@ class BatonUpdateTests(unittest.TestCase):
             encoding="utf-8",
         )
         json_output(
-            baton(target, ["_state", "apply", operation, "--json"], state_home)
+            baton(target, ["control", "apply", operation, "--json"], state_home)
         )
-        overview = target / ".baton/docs/overview.md"
-        overview.write_text(
-            overview.read_text(encoding="utf-8")
+        agents = target / ".baton/AGENTS.md"
+        agents.write_text(
+            agents.read_text(encoding="utf-8")
             + "\nProject-owned update evidence.\n",
             encoding="utf-8",
         )
@@ -712,7 +735,7 @@ class BatonUpdateTests(unittest.TestCase):
             name: (target / f".baton/state/{name}.json").read_bytes()
             for name in ("project", "goals", "tickets", "ownership", "reviews", "team")
         }
-        overview_before = overview.read_bytes()
+        agents_before = agents.read_bytes()
         memory_before = {
             path.name: path.read_bytes()
             for path in (target / ".baton/memory").iterdir()
@@ -720,7 +743,7 @@ class BatonUpdateTests(unittest.TestCase):
         before = tree_snapshot(target)
         rejected = baton(
             target,
-            ["update", "--yes", "--json"],
+            ["upgrade", "apply", "--yes", "--json"],
             state_home,
             bundle=self.bad_bundle_061,
             expected=1,
@@ -730,14 +753,14 @@ class BatonUpdateTests(unittest.TestCase):
         updated = json_output(
             baton(
                 target,
-                ["update", "--yes", "--json"],
+                ["upgrade", "apply", "--yes", "--json"],
                 state_home,
                 bundle=self.bundle_061,
             )
         )
         self.assertFalse(updated["upToDate"])
         self.assertEqual(updated["version"], "0.6.1")
-        self.assertIn("Release marker: v0.6.1 target", (target / ".baton/guide.md").read_text(encoding="utf-8"))
+        self.assertIn("Release marker: v0.6.1 target", (target / ".baton/workflow.md").read_text(encoding="utf-8"))
         metadata = json.loads((target / ".baton/metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(metadata["batonVersion"], "0.6.1")
         self.assertEqual(metadata["source"]["commit"], git_commit(self.source_061))
@@ -745,7 +768,7 @@ class BatonUpdateTests(unittest.TestCase):
         self.assertFalse((target / "install.sh").exists())
         for name, content in state_before.items():
             self.assertEqual((target / f".baton/state/{name}.json").read_bytes(), content, name)
-        self.assertEqual(overview.read_bytes(), overview_before)
+        self.assertEqual(agents.read_bytes(), agents_before)
         self.assertEqual(
             {
                 path.name: path.read_bytes()
@@ -760,7 +783,7 @@ class BatonUpdateTests(unittest.TestCase):
             semantic_toml(target / ".codex/config.toml"),
             expected_consumer_config(("product-designer", "security-lead")),
         )
-        self.assertEqual(baton(target, ["check", "--json"], state_home).returncode, 0)
+        self.assertEqual(baton(target, ["doctor", "check", "--json"], state_home).returncode, 0)
 
     def test_update_does_not_initialize_memory_for_an_older_installed_project(self) -> None:
         target, state_home = self.install_060("older-install-without-memory")
@@ -778,7 +801,7 @@ class BatonUpdateTests(unittest.TestCase):
         updated = json_output(
             baton(
                 target,
-                ["update", "--yes", "--json"],
+                ["upgrade", "apply", "--yes", "--json"],
                 state_home,
                 bundle=self.bundle_061,
             )
@@ -793,7 +816,7 @@ class BatonUpdateTests(unittest.TestCase):
         initialized = json_output(
             baton(
                 target,
-                ["_memory", "initialize", "--json"],
+                ["boot", "initialize", "--json"],
                 state_home,
             )
         )
@@ -811,7 +834,58 @@ class BatonUpdateTests(unittest.TestCase):
         self.assertFalse(
             any(path.startswith(".baton/memory/") for path in metadata["managedFiles"])
         )
-        self.assertEqual(baton(target, ["check", "--json"], state_home).returncode, 0)
+        self.assertEqual(baton(target, ["doctor", "check", "--json"], state_home).returncode, 0)
+
+    def test_update_moves_generated_views_without_deleting_legacy_paths(self) -> None:
+        target, state_home = self.install_060("legacy-generated-views")
+        metadata_path = target / ".baton/metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        managed = metadata["managedFiles"]
+
+        old_dashboard = target / ".baton/dashboard/index.html"
+        old_dashboard.parent.mkdir(parents=True)
+        (target / ".baton/views/dashboard.html").replace(old_dashboard)
+        managed[".baton/dashboard/index.html"] = managed.pop(
+            ".baton/views/dashboard.html"
+        )
+
+        old_tasks = target / ".baton/thread-registry.md"
+        (target / ".baton/views/team-tasks.md").replace(old_tasks)
+        managed[".baton/thread-registry.md"] = managed.pop(
+            ".baton/views/team-tasks.md"
+        )
+        (target / ".baton/views").rmdir()
+        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        old_dashboard_bytes = old_dashboard.read_bytes()
+        old_tasks_bytes = old_tasks.read_bytes()
+
+        updated = json_output(
+            baton(
+                target,
+                ["upgrade", "apply", "--yes", "--json"],
+                state_home,
+                bundle=self.bundle_061,
+            )
+        )
+
+        self.assertEqual(updated["version"], "0.6.1")
+        self.assertTrue((target / ".baton/views/dashboard.html").is_file())
+        self.assertTrue((target / ".baton/views/team-tasks.md").is_file())
+        self.assertEqual(old_dashboard.read_bytes(), old_dashboard_bytes)
+        self.assertEqual(old_tasks.read_bytes(), old_tasks_bytes)
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        self.assertIn(".baton/views/dashboard.html", metadata["managedFiles"])
+        self.assertIn(".baton/views/team-tasks.md", metadata["managedFiles"])
+        self.assertNotIn(".baton/dashboard/index.html", metadata["managedFiles"])
+        self.assertNotIn(".baton/thread-registry.md", metadata["managedFiles"])
+        self.assertTrue(
+            {
+                ".baton/dashboard/index.html",
+                ".baton/thread-registry.md",
+            }
+            <= set(metadata["legacyCleanupCandidates"])
+        )
+        self.assertEqual(baton(target, ["doctor", "check", "--json"], state_home).returncode, 0)
 
     def test_update_rejects_memory_schema_change_without_explicit_sequential_migration(self) -> None:
         target, state_home = self.install_060("memory-schema-migration-required")
@@ -824,12 +898,30 @@ class BatonUpdateTests(unittest.TestCase):
 
         failed = baton(
             target,
-            ["update", "--yes", "--json"],
+            ["upgrade", "apply", "--yes", "--json"],
             state_home,
             bundle=schema_two_bundle,
             expected=1,
         )
         self.assertIn("explicit sequential memory migration", failed.stdout + failed.stderr)
+        self.assertEqual(tree_snapshot(target), before)
+
+    def test_update_rejects_legacy_assurance_state_without_explicit_migration(self) -> None:
+        target, state_home = self.install_060("assurance-state-migration-required")
+        metadata_path = target / ".baton/metadata.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        metadata["stateSchemaVersion"] = 1
+        metadata_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        before = tree_snapshot(target)
+
+        failed = baton(
+            target,
+            ["upgrade", "apply", "--yes", "--json"],
+            state_home,
+            bundle=self.bundle_061,
+            expected=1,
+        )
+        self.assertIn("explicit Baton migration path", failed.stdout + failed.stderr)
         self.assertEqual(tree_snapshot(target), before)
 
     def test_needs_integration_update_advances_quarantined_starter_only(self) -> None:
@@ -839,35 +931,35 @@ class BatonUpdateTests(unittest.TestCase):
         state_home = self.base / "state-needs-integration-update"
         installed = json_output(install_bundle(self.bundle_060, target, state_home))
         self.assertEqual(installed["installationStatus"], "Needs Integration")
-        starter_overview = target / ".baton/integration/starter/docs/overview.md"
-        starter_project = target / ".baton/integration/starter/state/project.json"
+        starter_agents = target / ".baton/migration/starter/AGENTS.md"
+        starter_project = target / ".baton/migration/starter/state/project.json"
         project_name = json.loads(starter_project.read_text(encoding="utf-8"))["project"]["name"]
-        self.assertNotIn("v0.6.1 target", starter_overview.read_text(encoding="utf-8"))
+        self.assertNotIn("v0.6.1 target", starter_agents.read_text(encoding="utf-8"))
 
         updated = json_output(
             baton(
                 target,
-                ["update", "--yes", "--json"],
+                ["upgrade", "apply", "--yes", "--json"],
                 state_home,
                 bundle=self.bundle_061,
             )
         )
         self.assertEqual(updated["version"], "0.6.1")
-        self.assertIn("v0.6.1 target", starter_overview.read_text(encoding="utf-8"))
+        self.assertIn("v0.6.1 target", starter_agents.read_text(encoding="utf-8"))
         self.assertEqual(
             json.loads(starter_project.read_text(encoding="utf-8"))["project"]["name"],
             project_name,
         )
         self.assertFalse((target / ".baton/state").exists())
         self.assertFalse((target / ".baton/AGENTS.md").exists())
-        self.assertTrue((target / ".baton/integration/starter/AGENTS.md").is_file())
-        self.assertTrue((target / ".baton/integration/starter/dashboard/index.html").is_file())
+        self.assertTrue((target / ".baton/migration/starter/AGENTS.md").is_file())
+        self.assertTrue((target / ".baton/migration/starter/views/dashboard.html").is_file())
         for relative, content in fixtures.items():
             if relative == "AGENTS.md":
                 self.assertIn(content.decode("utf-8"), (target / relative).read_text(encoding="utf-8"))
             else:
                 self.assertEqual((target / relative).read_bytes(), content, relative)
-        checked = json_output(baton(target, ["check", "--json"], state_home))
+        checked = json_output(baton(target, ["doctor", "check", "--json"], state_home))
         self.assertTrue(checked["ok"])
         self.assertEqual(checked["installationStatus"], "Needs Integration")
         self.assertTrue(checked["quarantinedStarter"])
@@ -895,7 +987,7 @@ class BatonUpdateTests(unittest.TestCase):
                 before = tree_snapshot(target)
                 failed = baton(
                     target,
-                    ["update", "--yes", "--json"],
+                    ["upgrade", "apply", "--yes", "--json"],
                     state_home,
                     bundle=self.bundle_061,
                     expected=1,
@@ -925,7 +1017,7 @@ class BatonUpdateTests(unittest.TestCase):
         update_environment = dict(environment)
         update_environment["BATON_TEST_HOLD_MUTATION_LOCK_MS"] = "700"
         updater = subprocess.Popen(
-            [str(target / ".baton/bin/baton"), "update", "--yes", "--json"],
+            [str(target / ".baton/bin/baton"), "upgrade", "apply", "--yes", "--json"],
             cwd=str(target),
             env=update_environment,
             text=True,
@@ -949,7 +1041,7 @@ class BatonUpdateTests(unittest.TestCase):
         activator = subprocess.Popen(
             [
                 str(target / ".baton/bin/baton"),
-                "_activate",
+                "boot", "activate",
                 "--from",
                 str(proposal),
                 "--yes",
@@ -966,7 +1058,7 @@ class BatonUpdateTests(unittest.TestCase):
         self.assertEqual(updater.returncode, 0, update_stdout + update_stderr)
         self.assertEqual(activator.returncode, 1, activate_stdout + activate_stderr)
         self.assertIn("changed while activation was waiting for the lock", activate_stdout + activate_stderr)
-        status = json_output(baton(target, ["status", "--json"], state_home))
+        status = json_output(baton(target, ["terminal", "status", "--json"], state_home))
         self.assertEqual(status["batonVersion"], "0.6.1")
         self.assertEqual(status["installationStatus"], "Needs Integration")
         self.assertTrue(status["ok"])
@@ -976,7 +1068,7 @@ class BatonUpdateTests(unittest.TestCase):
         before = tree_snapshot(target)
         failed = baton(
             target,
-            ["update", "--yes", "--json"],
+            ["upgrade", "apply", "--yes", "--json"],
             state_home,
             bundle=self.bundle_061,
             expected=1,
@@ -1003,7 +1095,7 @@ class BatonUpdateTests(unittest.TestCase):
         before = tree_snapshot(target)
         failed = baton(
             target,
-            ["update", "--yes", "--json"],
+            ["upgrade", "apply", "--yes", "--json"],
             state_home,
             bundle=self.bundle_061,
             expected=1,

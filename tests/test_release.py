@@ -63,12 +63,14 @@ class ReleaseDistributionTests(unittest.TestCase):
         template_paths = [path for path in tracked if path.startswith("template/")]
         self.assertTrue(template_paths)
         self.assertTrue(all(path.startswith("template/.baton/") for path in template_paths))
-        self.assertEqual(inferred_projection("template/.baton/guide.md"), "shared")
+        self.assertEqual(inferred_projection("template/.baton/workflow.md"), "shared")
         self.assertEqual(inferred_projection("template/.baton/AGENTS.md"), "starter")
         self.assertEqual(inferred_projection("template/.baton/memory/memory.json"), "starter")
         self.assertEqual(inferred_projection("template/.baton/state/project.json"), "starter")
+        self.assertEqual(inferred_projection("template/.baton/views/team-tasks.md"), "starter")
+        self.assertEqual(inferred_projection("template/.baton/records/README.md"), "starter")
         self.assertEqual(
-            inferred_projection("template/.baton/integration/README.md"),
+            inferred_projection("template/.baton/migration/README.md"),
             "adoption-only",
         )
         self.assertFalse((self.source / "scripts/source-classification.json").exists())
@@ -122,22 +124,22 @@ class ReleaseDistributionTests(unittest.TestCase):
         )
         self.assertNotIn(".baton/state/project.json", adoption_paths)
         self.assertNotIn(".baton/AGENTS.md", adoption_paths)
-        self.assertIn(".baton/integration/starter/AGENTS.md", adoption_paths)
-        self.assertIn(".baton/integration/starter/state/project.json", adoption_paths)
+        self.assertIn(".baton/migration/starter/AGENTS.md", adoption_paths)
+        self.assertIn(".baton/migration/starter/state/project.json", adoption_paths)
         self.assertEqual(
             {
                 path
                 for path in adoption_paths
-                if path.startswith(".baton/integration/starter/memory/")
+                if path.startswith(".baton/migration/starter/memory/")
             },
             {
-                ".baton/integration/starter/memory/history.jsonl",
-                ".baton/integration/starter/memory/memory.json",
+                ".baton/migration/starter/memory/history.jsonl",
+                ".baton/migration/starter/memory/memory.json",
             },
         )
         self.assertFalse(any(path.startswith(".baton/memory/") for path in adoption_paths))
-        self.assertIn(".baton/integration/README.md", adoption_paths)
-        self.assertNotIn(".baton/integration/README.md", new_paths)
+        self.assertIn(".baton/migration/README.md", adoption_paths)
+        self.assertNotIn(".baton/migration/README.md", new_paths)
         self.assertFalse(any(path.startswith(".codex/skills") for path in new_paths | adoption_paths))
         self.assertFalse(any("__pycache__" in path or path.endswith(".pyc") for path in new_paths | adoption_paths))
         self.assertFalse(any(path.startswith(".baton/state/") for path in adoption_paths))
@@ -201,7 +203,7 @@ class ReleaseDistributionTests(unittest.TestCase):
                 record = next(
                     item
                     for item in document["payloads"]["adoption"]["files"]
-                    if item["path"] == ".baton/guide.md"
+                    if item["path"] == ".baton/workflow.md"
                 )
                 record[field] = value
                 resign_manifest(tampered, document)
@@ -226,7 +228,7 @@ class ReleaseDistributionTests(unittest.TestCase):
         release_manifest = manifest(self.bundle)
         self.assertEqual(release_manifest["version"], "0.6.0")
         self.assertEqual(release_manifest["stableTag"], "v0.6.0")
-        self.assertEqual(release_manifest["stateSchemaVersion"], 1)
+        self.assertEqual(release_manifest["stateSchemaVersion"], 2)
         self.assertEqual(release_manifest["memorySchemaVersion"], 1)
         self.assertEqual(release_manifest["source"]["commit"], git_commit(self.source))
         self.assertRegex(release_manifest["source"]["commit"], r"^[0-9a-f]{40}$")

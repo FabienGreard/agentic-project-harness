@@ -2,13 +2,16 @@
   "schemaVersion": 1,
   "discovery": ".agents/skills/<name> -> .baton/skills/<name>",
   "skills": [
-    "bootstrap-baton",
-    "memory",
+    "boot",
+    "control",
+    "roster",
+    "terminal",
+    "upgrade",
+    "doctor",
+    "scrap",
     "brainstorm",
     "improve-codebase-architecture",
-    "code-review",
-    "hire-consultant",
-    "fire-consultant"
+    "code-review"
   ],
   "invocation": "explicit"
 }

@@ -14,5 +14,8 @@ Candidates receive only `inputs/<ID>.md`; independent judges receive the matchin
 - H-010 — human approval gate
 - H-012 — risk-based initial review with mixed finding quality
 - H-013 — bounded follow-up review and stopping condition
+- H-014 — bounded verification iteration after harness and timing failures
+- H-015 — fast-feedback small batches and test-pyramid planning
+- H-016 — evidence-efficient timing and reusable certification
 
 Version input and oracle together. Never expose oracle directories to candidate contexts.

@@ -11,26 +11,30 @@
     "project": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "outcome", "currentGoal", "agentProvider", "phase", "templateMode", "lastVerified", "assuranceDefaults"],
+      "required": ["name", "outcome", "currentGoal", "agentProvider", "phase", "templateMode", "lastVerified", "decisionPaths", "evidencePaths", "assuranceDefaults"],
       "properties": {
         "name": {"type": "string", "minLength": 1},
+        "purpose": {"type": "string"},
+        "users": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "outcome": {"type": "string"},
+        "constraints": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "nonGoals": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "principles": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "openQuestions": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "currentGoal": {"type": "string"},
-        "agentProvider": {"const": "codex"},
+        "agentProvider": {"type": "string", "minLength": 1},
         "phase": {"type": "string", "minLength": 1},
         "templateMode": {"type": "boolean"},
         "lastVerified": {"type": "string"},
+        "decisionPaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "evidencePaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
         "assuranceDefaults": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["testRigor", "humanReviewStages"],
+          "required": ["readinessProtocol", "clearanceProtocol"],
           "properties": {
-            "testRigor": {"enum": ["Lean", "Standard", "Thorough"]},
-            "humanReviewStages": {
-              "type": "array",
-              "items": {"enum": ["Readiness", "Acceptance", "Release"]},
-              "uniqueItems": true
-            }
+            "readinessProtocol": {"enum": ["Waived", "Field Check", "Standard Protocol", "Full Certification"]},
+            "clearanceProtocol": {"enum": ["Autonomous", "Release Clearance", "Completion Clearance", "Continuous Clearance"]}
           }
         }
       }

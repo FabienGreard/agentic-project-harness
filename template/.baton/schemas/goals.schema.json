@@ -13,9 +13,9 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "title", "status", "priority", "owner", "objective", "context", "dependencies", "blockers", "decisionPaths", "evidencePaths"],
+        "required": ["id", "title", "status", "priority", "owner", "objective", "context", "dependencies", "assurance", "blockers", "decisionPaths", "evidencePaths"],
         "properties": {
-          "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9-]+$"},
+          "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9-]+$", "not": {"const": "PROJECT"}},
           "title": {"type": "string", "minLength": 1},
           "status": {"enum": ["Needs Definition", "Ready", "Active", "Review", "Done"]},
           "priority": {"enum": ["P0", "P1", "P2", "P3", "P4"]},
@@ -23,11 +23,21 @@
           "objective": {"type": "string", "minLength": 1},
           "context": {"type": "string", "minLength": 1},
           "dependencies": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "assurance": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["clearanceProtocol", "overrideReason"],
+            "properties": {
+              "clearanceProtocol": {"enum": ["Autonomous", "Release Clearance", "Completion Clearance", "Continuous Clearance"]},
+              "overrideReason": {"type": "string"}
+            }
+          },
           "blockers": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
           "blockerOwner": {"type": "string", "minLength": 1},
           "resumeCondition": {"type": "string", "minLength": 1},
-          "narrativePath": {"type": "string", "minLength": 1},
+          "briefPath": {"type": "string", "minLength": 1},
           "decisionPaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "reportPath": {"type": "string", "minLength": 1},
           "evidencePaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
           "plannedStart": {"type": "string", "format": "date"},
           "plannedEnd": {"type": "string", "format": "date"},

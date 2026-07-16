@@ -122,11 +122,17 @@
       "additionalProperties": false,
       "required": ["status", "taskId", "wakePath", "prompt", "registeredAt"],
       "properties": {
-        "status": {"enum": ["unregistered", "awaiting-task", "online", "inactive"]},
+        "status": {"enum": ["unregistered", "awaiting-task", "create-pending", "created", "cleanup-required", "registered", "online", "inactive"]},
         "taskId": {"type": "string"},
         "wakePath": {"type": "string"},
         "prompt": {"type": "string"},
-        "registeredAt": {"type": "string"}
+        "registeredAt": {"type": "string"},
+        "expectedTitle": {"type": "string"},
+        "title": {"type": "string"},
+        "titleVerifiedAt": {"type": "string"},
+        "wokenAt": {"type": "string"},
+        "attemptId": {"type": "string"},
+        "cleanupReason": {"type": "string"}
       }
     },
     "review": {
@@ -187,6 +193,21 @@
         "seed": {"type": "string"},
         "roster": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^person-[a-f0-9]{24}$"}},
         "provisionalProject": {"type": "object"},
+        "cleanupTasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["personnelId", "taskId", "wakePath", "title", "status"],
+            "properties": {
+              "personnelId": {"type": "string", "pattern": "^person-[a-f0-9]{24}$"},
+              "taskId": {"type": "string", "minLength": 1},
+              "wakePath": {"type": "string"},
+              "title": {"type": "string"},
+              "status": {"const": "archive-required"}
+            }
+          }
+        },
         "confirmedAt": {"type": "string"}
       }
     },

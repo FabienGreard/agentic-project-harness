@@ -3,20 +3,28 @@
   "recordType": "project",
   "project": {
     "name": "New project",
+    "purpose": "",
+    "users": [],
     "outcome": "",
+    "constraints": [],
+    "nonGoals": [],
+    "principles": [],
+    "openQuestions": [],
     "currentGoal": "",
     "agentProvider": "codex",
     "phase": "Needs Definition",
     "templateMode": true,
     "lastVerified": "",
+    "decisionPaths": [],
+    "evidencePaths": [],
     "assuranceDefaults": {
-      "testRigor": "Standard",
-      "humanReviewStages": []
+      "readinessProtocol": "Standard Protocol",
+      "clearanceProtocol": "Release Clearance"
     }
   },
   "baton": {
     "owner": "Management",
-    "action": "Define the first Ready goal and ticket",
-    "returnTrigger": "A bounded Ready ticket is recorded"
+    "action": "Define the first Ready Goal and Ticket",
+    "returnTrigger": "A bounded Ready Ticket is recorded"
   }
 }

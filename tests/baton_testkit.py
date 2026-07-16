@@ -25,13 +25,16 @@ ARTIFACTS = {
     "SHA256SUMS",
 }
 SKILLS = (
-    "bootstrap-baton",
+    "boot",
     "brainstorm",
     "code-review",
-    "fire-consultant",
-    "hire-consultant",
+    "control",
+    "doctor",
     "improve-codebase-architecture",
-    "memory",
+    "roster",
+    "scrap",
+    "terminal",
+    "upgrade",
 )
 
 
@@ -83,22 +86,17 @@ def git_commit(source: Path) -> str:
 
 
 def inferred_projection(relative: str) -> str:
-    if relative == "template/.baton/integration/README.md":
+    if relative == "template/.baton/migration/README.md":
         return "adoption-only"
     if relative.startswith("template/.baton/"):
         payload_relative = relative.removeprefix("template/")
         template_prefixes = (
             ".baton/memory/",
             ".baton/state/",
-            ".baton/dashboard/",
-            ".baton/docs/",
-            ".baton/decisions/",
-            ".baton/implementation-reports/",
-            ".baton/prds/",
-            ".baton/review-packets/",
-            ".baton/tickets/",
+            ".baton/views/",
+            ".baton/records/",
         )
-        if payload_relative in {".baton/AGENTS.md", ".baton/thread-registry.md"} or payload_relative.startswith(template_prefixes):
+        if payload_relative == ".baton/AGENTS.md" or payload_relative.startswith(template_prefixes):
             return "starter"
         return "shared"
     raise ValueError(f"consumer source is outside template/.baton: {relative}")
@@ -112,7 +110,7 @@ def projected_path(source_path: str, projection: str, payload: str) -> Optional[
         return None if projection == "adoption-only" else relative
     if projection in {"shared", "adoption-only"}:
         return relative
-    return ".baton/integration/starter/" + relative.removeprefix(".baton/")
+    return ".baton/migration/starter/" + relative.removeprefix(".baton/")
 
 
 def make_candidate(base: Path, version: str, *, marker: str = "") -> Path:
@@ -142,11 +140,11 @@ def make_candidate(base: Path, version: str, *, marker: str = "") -> Path:
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store"),
     )
     if marker:
-        guide = source / "template/.baton/guide.md"
-        guide.write_text(guide.read_text(encoding="utf-8") + f"\nRelease marker: {marker}\n", encoding="utf-8")
-        starter_overview = source / "template/.baton/docs/overview.md"
-        starter_overview.write_text(
-            starter_overview.read_text(encoding="utf-8")
+        workflow = source / "template/.baton/workflow.md"
+        workflow.write_text(workflow.read_text(encoding="utf-8") + f"\nRelease marker: {marker}\n", encoding="utf-8")
+        starter_agents = source / "template/.baton/AGENTS.md"
+        starter_agents.write_text(
+            starter_agents.read_text(encoding="utf-8")
             + f"\nStarter release marker: {marker}\n",
             encoding="utf-8",
         )
@@ -178,7 +176,7 @@ def build_bundle(
         "--tag",
         f"v{version}",
         "--state-schema-version",
-        "1",
+        "2",
         "--memory-schema-version",
         str(memory_schema_version),
     ]
@@ -377,7 +375,6 @@ def make_mature_project(root: Path) -> Dict[str, bytes]:
         ".gitignore": b"node_modules/\nvendor/\n",
         "AGENTS.md": b"# Existing governance\n\nPreserve this instruction.\n",
         ".codex/config.toml": b"[project]\nname = \"consumer-owned\"\n",
-        ".agents/skills/brainstorm/SKILL.md": b"# Existing brainstorm skill\n",
     }
     for relative, content in fixtures.items():
         path = root / relative
@@ -391,7 +388,7 @@ def make_mature_project(root: Path) -> Dict[str, bytes]:
 
 
 def make_activation_proposal(target: Path, destination: Path, *, valid: bool = True) -> Path:
-    shutil.copytree(target / ".baton/integration/starter/state", destination / "state")
+    shutil.copytree(target / ".baton/migration/starter/state", destination / "state")
     if not valid:
         return destination
     project_path = destination / "state/project.json"
@@ -408,8 +405,8 @@ def make_activation_proposal(target: Path, destination: Path, *, valid: bool = T
     )
     project["baton"] = {
         "owner": "Management",
-        "action": "Define the first bounded mature-project ticket",
-        "returnTrigger": "A Ready ticket is recorded",
+        "action": "Define the first bounded Ticket after mature-repository adoption",
+        "returnTrigger": "A Ready Ticket is recorded",
     }
     project_path.write_text(json.dumps(project, indent=2) + "\n", encoding="utf-8")
     goals = {
@@ -422,9 +419,13 @@ def make_activation_proposal(target: Path, destination: Path, *, valid: bool = T
                 "status": "Active",
                 "priority": "P1",
                 "owner": "Management",
-                "objective": "Activate reviewed mature-project coordination state.",
-                "context": "The project predates Baton and retains its identity and assets.",
+                "objective": "Activate reviewed coordination State for the mature Repository.",
+                "context": "The Repository predates Baton and retains its identity and assets.",
                 "dependencies": [],
+                "assurance": {
+                    "clearanceProtocol": "Release Clearance",
+                    "overrideReason": "",
+                },
                 "blockers": [],
                 "decisionPaths": [],
                 "evidencePaths": [],

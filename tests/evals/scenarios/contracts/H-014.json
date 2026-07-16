@@ -1,0 +1,50 @@
+{
+  "scenarioId": "H-014",
+  "assertions": [
+    {
+      "path": "classification",
+      "operation": "equals",
+      "expected": "not_applicable",
+      "hardGate": "HG-10",
+      "message": "A verification incident without incoming change triage must remain not_applicable."
+    },
+    {
+      "path": "policy_evidence.failure_classifications",
+      "operation": "contains_all",
+      "expected": [
+        "evidence-method",
+        "timing-method"
+      ],
+      "hardGate": "HG-11",
+      "message": "The response must classify the evidence and timing methods before changing product behavior."
+    },
+    {
+      "path": "policy_evidence.retry_policy",
+      "operation": "equals",
+      "expected": "bounded-classify-first",
+      "hardGate": "HG-11",
+      "message": "Verification retries must be bounded and preceded by failure classification."
+    },
+    {
+      "path": "policy_evidence.known_bad_good_proof",
+      "operation": "equals",
+      "expected": true,
+      "hardGate": "HG-11",
+      "message": "A changed validator must still reject the preserved known-bad case and accept a known-good case."
+    },
+    {
+      "path": "policy_evidence.failed_attempts_preserved",
+      "operation": "equals",
+      "expected": true,
+      "hardGate": "HG-11",
+      "message": "Failed evidence attempts must remain visible rather than being overwritten by a later pass."
+    },
+    {
+      "path": "policy_evidence.final_gate_preserved",
+      "operation": "equals",
+      "expected": true,
+      "hardGate": "HG-10",
+      "message": "Focused repair evidence must not replace the required final ordered gate."
+    }
+  ]
+}

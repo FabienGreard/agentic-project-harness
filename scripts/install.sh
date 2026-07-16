@@ -5,21 +5,16 @@ OFFICIAL_REPO="FabienGreard/baton"
 COMMAND="smart"
 ASSUME_YES=0
 AS_JSON=0
-USE_ANSI=0
-STYLE_RESET=""
-STYLE_BOLD=""
-STYLE_MUTED=""
-STYLE_ACCENT=""
-STYLE_WARNING=""
 TEMP_DIR=""
 TARGET_OVERRIDE=""
 
 usage() {
   cat <<'EOF'
-Baton stable installer and updater for Codex
+Baton stable installer and updater for AI agent teams
 
 Usage:
-  ./install.sh                 Install, adopt, or update from the stable channel
+  ./install.sh                 Install, adopt, or auto-detect a stable update
+  ./install.sh update          Update an existing supported installation
 
 Options:
   --json                       Emit structured JSON where applicable
@@ -27,8 +22,15 @@ Options:
   --target PATH                Install or update PATH instead of the current folder
   --help                       Show this help
 
+Examples:
+  ./install.sh
+  ./install.sh --target /absolute/project --yes --json
+  ./install.sh update --target /absolute/project --yes --json
+
 The installer uses official stable GitHub release assets only. --yes never
-authorizes deletion of project files, preserved legacy files, or backups.
+authorizes deletion of Repository files, preserved legacy files, or backups.
+After installation, invoke `$boot` through your agent. Use
+`.baton/bin/baton boot status --json` only to inspect installation status.
 EOF
 }
 
@@ -39,7 +41,7 @@ import json, sys
 print(json.dumps({"ok": False, "error": sys.argv[1]}))
 PY
   else
-    printf 'Error: %s\n' "$*" >&2
+    printf '\nBaton / installer\nAttention required: %s\n' "$*" >&2
   fi
   exit 1
 }
@@ -84,185 +86,7 @@ confirm_update() {
   IFS= read -r answer </dev/tty || die "interactive input ended unexpectedly"
   case "$answer" in
     y|Y|yes|YES|Yes) return 0 ;;
-    *) printf 'No changes made.\n'; exit 0 ;;
-  esac
-}
-
-menu_select() {
-  menu_prompt="$1"
-  selected="$2"
-  shift 2
-  menu_options=("$@")
-  menu_count=${#menu_options[@]}
-  if [ "$USE_ANSI" -eq 0 ]; then
-    while :; do
-      printf '\n%s\n' "$menu_prompt" >&3
-      menu_i=0
-      while [ "$menu_i" -lt "$menu_count" ]; do
-        default=""
-        [ "$menu_i" -ne "$selected" ] || default=" [default]"
-        printf '  %d) %s%s\n' "$((menu_i + 1))" "${menu_options[$menu_i]}" "$default" >&3
-        menu_i=$((menu_i + 1))
-      done
-      printf 'Choose 1-%d [%d]: ' "$menu_count" "$((selected + 1))" >&3
-      IFS= read -r answer <&3 || die "interactive input ended unexpectedly"
-      [ -n "$answer" ] || answer=$((selected + 1))
-      case "$answer" in
-        *[!0-9]*|'') printf 'Choose one of the listed numbers.\n' >&3 ;;
-        *)
-          if [ "$answer" -ge 1 ] && [ "$answer" -le "$menu_count" ]; then
-            printf '%s' "$((answer - 1))"
-            return
-          fi
-          printf 'Choose one of the listed numbers.\n' >&3
-          ;;
-      esac
-    done
-  fi
-  printf '\n%s%s%s\n' "$STYLE_BOLD" "$menu_prompt" "$STYLE_RESET" >&3
-  while :; do
-    menu_i=0
-    while [ "$menu_i" -lt "$menu_count" ]; do
-      printf '\033[2K\r' >&3
-      if [ "$menu_i" -eq "$selected" ]; then
-        printf '  %s›%s %s%s%s\n' "$STYLE_ACCENT" "$STYLE_RESET" "$STYLE_BOLD" "${menu_options[$menu_i]}" "$STYLE_RESET" >&3
-      else
-        printf '    %s%s%s\n' "$STYLE_MUTED" "${menu_options[$menu_i]}" "$STYLE_RESET" >&3
-      fi
-      menu_i=$((menu_i + 1))
-    done
-    printf '\033[2K\r  %s↑/↓ or j/k · Enter select · 1-%d quick select%s\n' "$STYLE_MUTED" "$menu_count" "$STYLE_RESET" >&3
-    IFS= read -r -s -n 1 key <&3 || die "interactive input ended unexpectedly"
-    if [ "$key" = $'\033' ]; then
-      suffix=""
-      IFS= read -r -s -n 2 -t 1 suffix <&3 || true
-      key="$key$suffix"
-    fi
-    confirm=0
-    case "$key" in
-      ''|$'\r'|$'\n') confirm=1 ;;
-      $'\033[A'|k|K) selected=$(((selected + menu_count - 1) % menu_count)) ;;
-      $'\033[B'|j|J) selected=$(((selected + 1) % menu_count)) ;;
-      [1-9])
-        number=$((key - 1))
-        if [ "$number" -lt "$menu_count" ]; then selected="$number"; confirm=1; fi
-        ;;
-    esac
-    if [ "$confirm" -eq 1 ]; then printf '\n' >&3; printf '%s' "$selected"; return; fi
-    printf '\033[%dA' "$((menu_count + 1))" >&3
-  done
-}
-
-menu_multi_select() {
-  multi_prompt="$1"
-  multi_defaults="$2"
-  shift 2
-  multi_options=("$@")
-  multi_count=${#multi_options[@]}
-  multi_cursor=0
-  multi_marks=()
-  multi_i=0
-  while [ "$multi_i" -lt "$multi_count" ]; do
-    multi_marks[$multi_i]=0
-    case ",$multi_defaults," in *",$multi_i,"*) multi_marks[$multi_i]=1 ;; esac
-    multi_i=$((multi_i + 1))
-  done
-  if [ "$USE_ANSI" -eq 0 ]; then
-    printf '\n%s\n' "$multi_prompt" >&3
-    multi_i=0
-    while [ "$multi_i" -lt "$multi_count" ]; do
-      marker=" "
-      [ "${multi_marks[$multi_i]}" -eq 0 ] || marker="x"
-      printf '  %d) [%s] %s\n' "$((multi_i + 1))" "$marker" "${multi_options[$multi_i]}" >&3
-      multi_i=$((multi_i + 1))
-    done
-    printf "Choose comma-separated numbers, 'none', or Enter for defaults: " >&3
-    IFS= read -r answer <&3 || die "interactive input ended unexpectedly"
-    if [ -n "$answer" ]; then
-      multi_i=0
-      while [ "$multi_i" -lt "$multi_count" ]; do multi_marks[$multi_i]=0; multi_i=$((multi_i + 1)); done
-      if [ "$answer" != "none" ]; then
-        old_ifs=$IFS; IFS=,
-        for number in $answer; do
-          IFS=$old_ifs
-          case "$number" in *[!0-9]*|'') die "Consultant selection must use listed numbers" ;; esac
-          [ "$number" -ge 1 ] && [ "$number" -le "$multi_count" ] || die "Consultant selection is out of range"
-          multi_marks[$((number - 1))]=1
-          IFS=,
-        done
-        IFS=$old_ifs
-      fi
-    fi
-  else
-    printf '\n%s%s%s\n' "$STYLE_BOLD" "$multi_prompt" "$STYLE_RESET" >&3
-    while :; do
-      multi_i=0
-      while [ "$multi_i" -lt "$multi_count" ]; do
-        marker="○"
-        [ "${multi_marks[$multi_i]}" -eq 0 ] || marker="●"
-        printf '\033[2K\r' >&3
-        if [ "$multi_i" -eq "$multi_cursor" ]; then
-          printf '  %s›%s %s %s%s%s\n' "$STYLE_ACCENT" "$STYLE_RESET" "$marker" "$STYLE_BOLD" "${multi_options[$multi_i]}" "$STYLE_RESET" >&3
-        else
-          printf '    %s %s%s%s\n' "$marker" "$STYLE_MUTED" "${multi_options[$multi_i]}" "$STYLE_RESET" >&3
-        fi
-        multi_i=$((multi_i + 1))
-      done
-      printf '\033[2K\r  %s↑/↓ or j/k · Space toggle · Enter continue%s\n' "$STYLE_MUTED" "$STYLE_RESET" >&3
-      IFS= read -r -s -n 1 key <&3 || die "interactive input ended unexpectedly"
-      if [ "$key" = $'\033' ]; then
-        suffix=""
-        IFS= read -r -s -n 2 -t 1 suffix <&3 || true
-        key="$key$suffix"
-      fi
-      case "$key" in
-        ''|$'\r'|$'\n') printf '\n' >&3; break ;;
-        $'\033[A'|k|K) multi_cursor=$(((multi_cursor + multi_count - 1) % multi_count)) ;;
-        $'\033[B'|j|J) multi_cursor=$(((multi_cursor + 1) % multi_count)) ;;
-        ' ') if [ "${multi_marks[$multi_cursor]}" -eq 1 ]; then multi_marks[$multi_cursor]=0; else multi_marks[$multi_cursor]=1; fi ;;
-      esac
-      printf '\033[%dA' "$((multi_count + 1))" >&3
-    done
-  fi
-  result=""
-  multi_i=0
-  while [ "$multi_i" -lt "$multi_count" ]; do
-    if [ "${multi_marks[$multi_i]}" -eq 1 ]; then
-      [ -z "$result" ] || result="$result,"
-      result="$result$multi_i"
-    fi
-    multi_i=$((multi_i + 1))
-  done
-  printf '%s' "$result"
-}
-
-prompt_text() {
-  label="$1"
-  default="$2"
-  printf '\n%s%s%s\n' "$STYLE_BOLD" "$label" "$STYLE_RESET" >&3
-  printf '  %sDefault: %s%s\n  %s›%s ' "$STYLE_MUTED" "$default" "$STYLE_RESET" "$STYLE_ACCENT" "$STYLE_RESET" >&3
-  IFS= read -r answer <&3 || die "interactive input ended unexpectedly"
-  if [ -n "$answer" ]; then printf '%s' "$answer"; else printf '%s' "$default"; fi
-}
-
-reasoning_index() {
-  case "$1" in
-    inherit) printf 0 ;; none) printf 1 ;; minimal) printf 2 ;; low) printf 3 ;;
-    medium) printf 4 ;; high) printf 5 ;; xhigh) printf 6 ;; max) printf 7 ;; ultra) printf 8 ;;
-  esac
-}
-
-prompt_reasoning() {
-  role="$1"; default="$2"
-  choice=$(menu_select "$role reasoning" "$(reasoning_index "$default")" \
-    "Inherit — use the parent Codex setting" "None — no explicit reasoning" \
-    "Minimal — lowest explicit effort" "Low — fast bounded work" \
-    "Medium — balanced execution" "High — careful project work" \
-    "XHigh — deep reasoning" "Max — model-dependent maximum" \
-    "Ultra — model-dependent extended effort")
-  case "$choice" in
-    0) printf inherit ;; 1) printf none ;; 2) printf minimal ;; 3) printf low ;;
-    4) printf medium ;; 5) printf high ;; 6) printf xhigh ;; 7) printf max ;; 8) printf ultra ;;
+    *) printf '\nBaton / upgrade\nNo changes were made.\n'; exit 0 ;;
   esac
 }
 
@@ -282,6 +106,8 @@ CONSULTANT_REASONING="high"
 CONTRACTOR_REASONING="medium"
 AUDIT_REASONING="xhigh"
 CONSULTANTS_JSON="[]"
+READINESS_PROTOCOL="Standard Protocol"
+CLEARANCE_PROTOCOL="Release Clearance"
 
 EARLY_METADATA=0
 [ ! -f "$TARGET/.baton/metadata.json" ] || EARLY_METADATA=1
@@ -289,56 +115,6 @@ EARLY_METADATA=0
 if [ "$EARLY_METADATA" -eq 1 ]; then
   COMMAND="update"
   confirm_update
-elif [ "$COMMAND" = "smart" ] && [ "$ASSUME_YES" -eq 0 ]; then
-  [ -t 1 ] && [ -r /dev/tty ] && [ -w /dev/tty ] || die "interactive installation needs a terminal; use --yes for folder-aware defaults"
-  exec 3<>/dev/tty
-  if [ -z "${NO_COLOR:-}" ] && [ "${TERM:-}" != "dumb" ]; then
-    USE_ANSI=1
-    STYLE_RESET=$'\033[0m'; STYLE_BOLD=$'\033[1m'; STYLE_MUTED=$'\033[2m'
-    STYLE_ACCENT=$'\033[38;5;81m'; STYLE_WARNING=$'\033[38;5;214m'
-  fi
-  printf '\n%s╭──────────────────────────────────────────────╮%s\n' "$STYLE_ACCENT" "$STYLE_RESET" >&3
-  printf '%s│%s  %sBATON%s                                      %s│%s\n' "$STYLE_ACCENT" "$STYLE_RESET" "$STYLE_BOLD" "$STYLE_RESET" "$STYLE_ACCENT" "$STYLE_RESET" >&3
-  printf '%s│%s  Stable install, adoption, and safe updates  %s│%s\n' "$STYLE_ACCENT" "$STYLE_RESET" "$STYLE_ACCENT" "$STYLE_RESET" >&3
-  printf '%s╰──────────────────────────────────────────────╯%s\n' "$STYLE_ACCENT" "$STYLE_RESET" >&3
-
-  type_choice=$(menu_select "What are you building?" 0 \
-    "Software Product — app, service, platform, or library" \
-    "Game Development — playable or interactive experience" \
-    "Business Operations — process, policy, or service delivery" \
-    "Research — investigation or evidence program")
-  case "$type_choice" in
-    0) PROJECT_TYPE=software-product ;; 1) PROJECT_TYPE=game-development ;;
-    2) PROJECT_TYPE=business-operations ;; 3) PROJECT_TYPE=research ;;
-  esac
-  PROJECT_NAME=$(prompt_text "Project name" "$PROJECT_NAME")
-  TARGET=$(prompt_text "Where should Baton be installed?" ".")
-  preset_choice=$(menu_select "How much reasoning should the team use?" 1 \
-    "Low — medium leadership/Consultants, low Contractors, high Internal Audit" \
-    "Medium — high leadership/Consultants, medium Contractors, xhigh Internal Audit (recommended)" \
-    "High — xhigh leadership/Consultants, high Contractors/Internal Audit" \
-    "Custom — choose every role individually")
-  case "$preset_choice" in
-    0)
-      REASONING_PRESET=low; MANAGEMENT_REASONING=medium; OPERATIONS_REASONING=medium
-      CONSULTANT_REASONING=medium; CONTRACTOR_REASONING=low; AUDIT_REASONING=high
-      ;;
-    1)
-      REASONING_PRESET=medium
-      ;;
-    2)
-      REASONING_PRESET=high; MANAGEMENT_REASONING=xhigh; OPERATIONS_REASONING=xhigh
-      CONSULTANT_REASONING=xhigh; CONTRACTOR_REASONING=high; AUDIT_REASONING=xhigh
-      ;;
-    3)
-      REASONING_PRESET=custom
-      MANAGEMENT_REASONING=$(prompt_reasoning "Management" "$MANAGEMENT_REASONING")
-      OPERATIONS_REASONING=$(prompt_reasoning "Operations" "$OPERATIONS_REASONING")
-      CONSULTANT_REASONING=$(prompt_reasoning "Consultants" "$CONSULTANT_REASONING")
-      CONTRACTOR_REASONING=$(prompt_reasoning "Contractors" "$CONTRACTOR_REASONING")
-      AUDIT_REASONING=$(prompt_reasoning "Internal Audit" "$AUDIT_REASONING")
-      ;;
-  esac
 fi
 
 TARGET=$(python3 - "$TARGET" <<'PY'
@@ -467,39 +243,7 @@ TEAM_ENGINE="$PAYLOAD_ROOT/.baton/lib/harness_team.py"
 [ -f "$TEAM_ENGINE" ] || die "verified source is missing the team engine"
 
 if [ "$COMMAND" = "smart" ] && [ "$HAS_METADATA" -eq 0 ] && [ "$HAS_LEGACY" -eq 0 ]; then
-  if [ "$ASSUME_YES" -eq 1 ]; then
-    CONSULTANTS_JSON=$(python3 "$TEAM_ENGINE" catalog --preset "$PROJECT_TYPE" --field defaults --json)
-  else
-    CONSULTANT_IDS=()
-    CONSULTANT_OPTIONS=()
-    while IFS=$'\t' read -r consultant_id consultant_title consultant_headline; do
-      [ -n "$consultant_id" ] || continue
-      CONSULTANT_IDS+=("$consultant_id")
-      CONSULTANT_OPTIONS+=("$consultant_title — $consultant_headline")
-    done < <(python3 "$TEAM_ENGINE" catalog --preset "$PROJECT_TYPE" --field consultants)
-    DEFAULT_CONSULTANT_IDS=$(python3 "$TEAM_ENGINE" catalog --preset "$PROJECT_TYPE" --field defaults --json)
-    DEFAULT_INDEXES=$(python3 - "$DEFAULT_CONSULTANT_IDS" "${CONSULTANT_IDS[@]}" <<'PY'
-import json, sys
-defaults = set(json.loads(sys.argv[1]))
-print(",".join(str(index) for index, value in enumerate(sys.argv[2:]) if value in defaults))
-PY
-)
-    SELECTED_INDEXES=$(menu_multi_select "Hire your starting Consultants (recommendation selected)" "$DEFAULT_INDEXES" "${CONSULTANT_OPTIONS[@]}")
-    SELECTED_IDS=""
-    old_ifs=$IFS; IFS=,
-    for index in $SELECTED_INDEXES; do
-      IFS=$old_ifs
-      [ -z "$SELECTED_IDS" ] || SELECTED_IDS="$SELECTED_IDS,"
-      SELECTED_IDS="$SELECTED_IDS${CONSULTANT_IDS[$index]}"
-      IFS=,
-    done
-    IFS=$old_ifs
-    CONSULTANTS_JSON=$(python3 - "$SELECTED_IDS" <<'PY'
-import json, sys
-print(json.dumps([value for value in sys.argv[1].split(",") if value]))
-PY
-)
-  fi
+  CONSULTANTS_JSON=$(python3 "$TEAM_ENGINE" catalog --preset "$PROJECT_TYPE" --field defaults --json)
 fi
 
 if [ "$HAS_METADATA" -eq 1 ]; then
@@ -509,6 +253,7 @@ else
   set -- python3 "$ENGINE" install --project-root "$TARGET" --payload-root "$PAYLOAD_ROOT" \
     --payload "$PAYLOAD" --manifest "$MANIFEST_PATH" --manifest-sha256 "$MANIFEST_SHA" \
     --project-name "$PROJECT_NAME" --project-type "$PROJECT_TYPE" \
+    --readiness-protocol "$READINESS_PROTOCOL" --clearance-protocol "$CLEARANCE_PROTOCOL" \
     --reasoning-preset "$REASONING_PRESET" --reasoning-json "$REASONING_JSON" \
     --consultants-json "$CONSULTANTS_JSON"
 fi

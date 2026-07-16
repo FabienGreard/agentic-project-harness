@@ -1,21 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/FabienGreard/baton/blob/main/template/.baton/schemas/reviews.schema.json",
-  "title": "Baton canonical reviews record",
+  "title": "Baton canonical clearances and Consultant reviews record",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "recordType", "reviews", "consultantReviews"],
+  "required": ["schemaVersion", "recordType", "clearances", "consultantReviews"],
   "properties": {
     "schemaVersion": {"const": 1},
     "recordType": {"const": "reviews"},
-    "reviews": {
+    "clearances": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "ticket", "stage", "status", "path"],
+        "required": ["id", "stage", "status", "path"],
         "properties": {
           "id": {"type": "string", "minLength": 1},
+          "goal": {"type": "string", "minLength": 1},
           "ticket": {"type": "string", "minLength": 1},
           "stage": {"enum": ["Readiness", "Acceptance", "Release"]},
           "status": {"enum": ["Pending", "Approved", "Revision Requested", "Rejected"]},
@@ -24,6 +25,20 @@
           "recordedAt": {"type": "string", "minLength": 1, "format": "date"}
         },
         "allOf": [
+          {
+            "oneOf": [
+              {
+                "required": ["goal"],
+                "not": {"required": ["ticket"]},
+                "properties": {"stage": {"enum": ["Readiness", "Release"]}}
+              },
+              {
+                "required": ["ticket"],
+                "not": {"required": ["goal"]},
+                "properties": {"stage": {"enum": ["Readiness", "Acceptance"]}}
+              }
+            ]
+          },
           {
             "if": {"properties": {"status": {"const": "Approved"}}},
             "then": {"required": ["reviewer", "recordedAt"]}

@@ -28,7 +28,7 @@ ROOT = Path(
 BATON_DIR = ROOT / ".baton"
 STATE_DIR = BATON_DIR / "state"
 SCHEMA_DIR = BATON_DIR / "schemas"
-DASHBOARD = BATON_DIR / "dashboard/index.html"
+DASHBOARD = BATON_DIR / "views/dashboard.html"
 RECORD_NAMES = ("project", "goals", "tickets", "ownership", "reviews", "team")
 OPERATION_RECORD_NAMES = ("project", "goals", "tickets", "ownership", "reviews")
 STATUS = {"Backlog", "Ready", "In Progress", "Blocked", "In Review", "Done", "Cancelled"}
@@ -44,8 +44,19 @@ OWNERSHIP_TICKET_STATUS = {
 }
 PRIORITY = {"P0", "P1", "P2", "P3", "P4"}
 REVIEW_STATUS = {"Pending", "Approved", "Revision Requested", "Rejected"}
-TEST_RIGOR = {"Lean", "Standard", "Thorough"}
-HUMAN_REVIEW_STAGES = {"Readiness", "Acceptance", "Release"}
+READINESS_PROTOCOLS = {
+    "Waived",
+    "Field Check",
+    "Standard Protocol",
+    "Full Certification",
+}
+CLEARANCE_PROTOCOLS = {
+    "Autonomous",
+    "Release Clearance",
+    "Completion Clearance",
+    "Continuous Clearance",
+}
+CLEARANCE_STAGES = {"Readiness", "Acceptance", "Release"}
 EXECUTABLE_STATUS = {"Ready", "In Progress", "Blocked", "In Review", "Done"}
 READY_ARRAY_FIELDS = (
     "scope",
@@ -121,6 +132,34 @@ def repository_path(
     if resolved != root and root not in resolved.parents:
         errors.append(f"{location}: path target escapes the repository")
         return None
+    return candidate
+
+
+def scoped_record_path(
+    value: Any,
+    scope: str,
+    location: str,
+    errors: list[str],
+    *,
+    expected_name: str | None = None,
+    name_pattern: str | None = None,
+) -> Path | None:
+    record = PurePosixPath(str(value))
+    valid_name = (
+        record.name == expected_name
+        if expected_name is not None
+        else name_pattern is not None
+        and re.fullmatch(name_pattern, record.name) is not None
+    )
+    if record.parts[:3] != (".baton", "records", scope) or len(record.parts) != 4 or not valid_name:
+        expected = expected_name or name_pattern or "record"
+        errors.append(
+            f"{location}: expected flat .baton/records/{scope}/{expected}"
+        )
+        return None
+    candidate = repository_path(value, location, errors)
+    if candidate is not None and (candidate.is_symlink() or not candidate.is_file()):
+        errors.append(f"{location}: linked record does not exist")
     return candidate
 
 
@@ -204,37 +243,71 @@ def validate_record(name: str, data: dict[str, Any], errors: list[str]) -> None:
     if name == "project":
         reject_extra_keys(data, {"schemaVersion", "recordType", "project", "baton"}, prefix, errors)
         project, baton = data.get("project"), data.get("baton")
-        if not isinstance(project, dict) or not all(nonempty(project.get(key)) for key in ("name", "phase")) or not all(isinstance(project.get(key), str) for key in ("outcome", "currentGoal")) or project.get("agentProvider") != "codex" or not isinstance(project.get("templateMode"), bool) or not isinstance(project.get("lastVerified"), str):
+        if not isinstance(project, dict) or not all(nonempty(project.get(key)) for key in ("name", "phase", "agentProvider")) or not all(isinstance(project.get(key), str) for key in ("outcome", "currentGoal")) or not isinstance(project.get("templateMode"), bool) or not isinstance(project.get("lastVerified"), str):
             errors.append(f"{prefix}: invalid project payload")
         if not isinstance(baton, dict) or not all(nonempty(baton.get(key)) for key in ("owner", "action", "returnTrigger")):
             errors.append(f"{prefix}: invalid baton payload")
         if isinstance(project, dict):
-            reject_extra_keys(project, {"name", "outcome", "currentGoal", "agentProvider", "phase", "templateMode", "lastVerified", "assuranceDefaults"}, f"{prefix}.project", errors)
+            reject_extra_keys(
+                project,
+                {
+                    "name", "purpose", "users", "outcome", "constraints", "nonGoals",
+                    "principles", "openQuestions", "currentGoal", "agentProvider", "phase",
+                    "templateMode", "lastVerified", "decisionPaths", "evidencePaths",
+                    "assuranceDefaults",
+                },
+                f"{prefix}.project",
+                errors,
+            )
             assurance_defaults = project.get("assuranceDefaults")
             if isinstance(assurance_defaults, dict):
                 reject_extra_keys(
                     assurance_defaults,
-                    {"testRigor", "humanReviewStages"},
+                    {"readinessProtocol", "clearanceProtocol"},
                     f"{prefix}.project.assuranceDefaults",
                     errors,
                 )
-                if assurance_defaults.get("testRigor") not in TEST_RIGOR:
-                    errors.append(f"{prefix}.project.assuranceDefaults: invalid testRigor")
-                stages = assurance_defaults.get("humanReviewStages")
-                if not isinstance(stages, list) or not set(stages).issubset(HUMAN_REVIEW_STAGES):
+                if assurance_defaults.get("readinessProtocol") not in READINESS_PROTOCOLS:
                     errors.append(
-                        f"{prefix}.project.assuranceDefaults: invalid humanReviewStages"
+                        f"{prefix}.project.assuranceDefaults: invalid readinessProtocol"
+                    )
+                if assurance_defaults.get("clearanceProtocol") not in CLEARANCE_PROTOCOLS:
+                    errors.append(
+                        f"{prefix}.project.assuranceDefaults: invalid clearanceProtocol"
+                    )
+            for field in ("decisionPaths", "evidencePaths"):
+                value = project.get(field)
+                if not isinstance(value, list) or not all(nonempty(item) for item in value):
+                    errors.append(f"{prefix}.project: {field} must be a string array")
+            for index, linked_path in enumerate(project.get("decisionPaths", [])):
+                scoped_record_path(
+                    linked_path,
+                    "PROJECT",
+                    f"{prefix}.project.decisionPaths[{index}]",
+                    errors,
+                    name_pattern=r"decision-[a-z0-9]+(?:-[a-z0-9]+)*\.md",
+                )
+            for index, linked_path in enumerate(project.get("evidencePaths", [])):
+                linked = repository_path(
+                    linked_path, f"{prefix}.project.evidencePaths[{index}]", errors
+                )
+                if linked is not None and (linked.is_symlink() or not linked.is_file()):
+                    errors.append(
+                        f"{prefix}.project.evidencePaths[{index}]: evidence does not exist"
                     )
         if isinstance(baton, dict):
             reject_extra_keys(baton, {"owner", "action", "returnTrigger"}, f"{prefix}.baton", errors)
         return
     record_keys = {"schemaVersion", "recordType", name}
     if name == "reviews":
+        record_keys.remove("reviews")
+        record_keys.add("clearances")
         record_keys.add("consultantReviews")
     reject_extra_keys(data, record_keys, prefix, errors)
-    items = data.get(name)
+    collection_name = "clearances" if name == "reviews" else name
+    items = data.get(collection_name)
     if not isinstance(items, list):
-        errors.append(f"{prefix}: {name} must be an array")
+        errors.append(f"{prefix}: {collection_name} must be an array")
         return
     if name == "goals":
         for index, goal in enumerate(items):
@@ -251,8 +324,8 @@ def validate_record(name: str, data: dict[str, Any], errors: list[str]) -> None:
                 goal,
                 {
                     "id", "title", "status", "priority", "owner", "objective", "context",
-                    "dependencies", "blockers", "blockerOwner", "resumeCondition",
-                    "narrativePath", "decisionPaths", "evidencePaths",
+                    "dependencies", "assurance", "blockers", "blockerOwner", "resumeCondition",
+                    "briefPath", "decisionPaths", "reportPath", "evidencePaths",
                     "plannedStart", "plannedEnd", "resultSummary", "completedAt",
                 },
                 location,
@@ -260,10 +333,24 @@ def validate_record(name: str, data: dict[str, Any], errors: list[str]) -> None:
             )
             if re.fullmatch(r"[A-Z][A-Z0-9-]+", goal["id"]) is None:
                 errors.append(f"{location}: invalid goal id")
+            elif goal["id"] == "PROJECT":
+                errors.append(f"{location}: PROJECT is reserved for Project records")
             if goal.get("status") not in GOAL_STATUS:
                 errors.append(f"{location}: invalid status")
             if goal.get("priority") not in PRIORITY:
                 errors.append(f"{location}: invalid priority")
+            assurance = goal.get("assurance")
+            if isinstance(assurance, dict):
+                reject_extra_keys(
+                    assurance,
+                    {"clearanceProtocol", "overrideReason"},
+                    f"{location}.assurance",
+                    errors,
+                )
+                if assurance.get("clearanceProtocol") not in CLEARANCE_PROTOCOLS:
+                    errors.append(f"{location}.assurance: invalid clearanceProtocol")
+                if not isinstance(assurance.get("overrideReason"), str):
+                    errors.append(f"{location}.assurance: overrideReason must be a string")
             for field in ("dependencies", "blockers", "decisionPaths", "evidencePaths"):
                 value = goal.get(field)
                 if not isinstance(value, list) or not all(nonempty(item) for item in value):
@@ -274,7 +361,7 @@ def validate_record(name: str, data: dict[str, Any], errors: list[str]) -> None:
                     errors.append(
                         f"{location}: blocked goals require blockerOwner and resumeCondition"
                     )
-            for field in ("narrativePath", "plannedStart", "plannedEnd", "completedAt", "blockerOwner", "resumeCondition", "resultSummary"):
+            for field in ("briefPath", "reportPath", "plannedStart", "plannedEnd", "completedAt", "blockerOwner", "resumeCondition", "resultSummary"):
                 if field in goal and not nonempty(goal[field]):
                     errors.append(f"{location}: {field} must be a non-empty string")
             for field in ("plannedStart", "plannedEnd", "completedAt"):
@@ -288,25 +375,40 @@ def validate_record(name: str, data: dict[str, Any], errors: list[str]) -> None:
                 and goal["plannedEnd"] < goal["plannedStart"]
             ):
                 errors.append(f"{location}: plannedEnd cannot be earlier than plannedStart")
-            if "narrativePath" in goal:
-                narrative = repository_path(
-                    goal["narrativePath"], f"{location}.narrativePath", errors
+            if "briefPath" in goal:
+                scoped_record_path(
+                    goal["briefPath"],
+                    goal["id"],
+                    f"{location}.briefPath",
+                    errors,
+                    expected_name="brief.md",
                 )
-                if narrative is not None and (
-                    narrative.is_symlink() or not narrative.is_file()
+            if "reportPath" in goal:
+                scoped_record_path(
+                    goal["reportPath"],
+                    goal["id"],
+                    f"{location}.reportPath",
+                    errors,
+                    expected_name="report.md",
+                )
+            for index, linked_path in enumerate(goal.get("decisionPaths", [])):
+                scoped_record_path(
+                    linked_path,
+                    goal["id"],
+                    f"{location}.decisionPaths[{index}]",
+                    errors,
+                    name_pattern=r"decision-[a-z0-9]+(?:-[a-z0-9]+)*\.md",
+                )
+            for index, linked_path in enumerate(goal.get("evidencePaths", [])):
+                linked = repository_path(
+                    linked_path, f"{location}.evidencePaths[{index}]", errors
+                )
+                if linked is not None and (
+                    linked.is_symlink() or not linked.is_file()
                 ):
-                    errors.append(f"{location}: narrativePath does not exist")
-            for path_field in ("decisionPaths", "evidencePaths"):
-                for linked_path in goal.get(path_field, []):
-                    linked = repository_path(
-                        linked_path, f"{location}.{path_field}", errors
+                    errors.append(
+                        f"{location}: evidencePaths entry does not exist: {linked_path}"
                     )
-                    if linked is not None and (
-                        linked.is_symlink() or not linked.is_file()
-                    ):
-                        errors.append(
-                            f"{location}: {path_field} entry does not exist: {linked_path}"
-                        )
             if goal.get("status") == "Done":
                 if not iso_date(goal.get("completedAt")):
                     errors.append(f"{location}: Done goals require completedAt")
@@ -327,20 +429,23 @@ def validate_record(name: str, data: dict[str, Any], errors: list[str]) -> None:
                     "objective", "scope", "nonGoals", "affectedSystems",
                     "acceptanceCriteria", "requiredVerification", "expectedEvidence",
                     "risks", "requiredConsultantIds", "assurance",
-                    "blockers", "openDecisions", "narrativePath", "reportPath",
+                    "blockers", "openDecisions", "briefPath", "decisionPaths",
+                    "reportPath", "evidencePaths",
                 },
                 location,
                 errors,
             )
             if re.fullmatch(r"[A-Z][A-Z0-9-]+", ticket["id"]) is None:
                 errors.append(f"{location}: invalid ticket id")
+            elif ticket["id"] == "PROJECT":
+                errors.append(f"{location}: PROJECT is reserved for Project records")
             if ticket.get("status") not in STATUS:
                 errors.append(f"{location}: invalid status")
             if ticket.get("priority") not in PRIORITY:
                 errors.append(f"{location}: invalid priority")
             if not isinstance(ticket.get("dependencies"), list) or not all(nonempty(item) for item in ticket["dependencies"]):
                 errors.append(f"{location}: dependencies must be strings")
-            for field in (*READY_ARRAY_FIELDS, "blockers", "openDecisions"):
+            for field in (*READY_ARRAY_FIELDS, "blockers", "openDecisions", "decisionPaths", "evidencePaths"):
                 value = ticket.get(field, [])
                 if not isinstance(value, list) or not all(nonempty(item) for item in value):
                     errors.append(f"{location}: {field} must be a string array")
@@ -355,15 +460,14 @@ def validate_record(name: str, data: dict[str, Any], errors: list[str]) -> None:
             if isinstance(assurance, dict):
                 reject_extra_keys(
                     assurance,
-                    {"testRigor", "humanReviewStages", "overrideReason"},
+                    {"readinessProtocol", "clearanceProtocol", "overrideReason"},
                     f"{location}.assurance",
                     errors,
                 )
-                if assurance.get("testRigor") not in TEST_RIGOR:
-                    errors.append(f"{location}.assurance: invalid testRigor")
-                stages = assurance.get("humanReviewStages")
-                if not isinstance(stages, list) or not set(stages).issubset(HUMAN_REVIEW_STAGES):
-                    errors.append(f"{location}.assurance: invalid humanReviewStages")
+                if assurance.get("readinessProtocol") not in READINESS_PROTOCOLS:
+                    errors.append(f"{location}.assurance: invalid readinessProtocol")
+                if assurance.get("clearanceProtocol") not in CLEARANCE_PROTOCOLS:
+                    errors.append(f"{location}.assurance: invalid clearanceProtocol")
                 if not isinstance(assurance.get("overrideReason"), str):
                     errors.append(f"{location}.assurance: overrideReason must be a string")
             if ticket.get("status") in EXECUTABLE_STATUS:
@@ -374,17 +478,34 @@ def validate_record(name: str, data: dict[str, Any], errors: list[str]) -> None:
                 for field in READY_ARRAY_FIELDS:
                     if not ticket.get(field):
                         errors.append(f"{location}: executable work requires {field}")
-            for field in ("narrativePath", "reportPath"):
+            for field in ("briefPath", "reportPath"):
                 if field in ticket and not nonempty(ticket[field]):
                     errors.append(f"{location}: {field} must be a non-empty string")
                 elif field in ticket:
-                    candidate = repository_path(
-                        ticket[field], f"{location}.{field}", errors
+                    expected_name = "brief.md" if field == "briefPath" else "report.md"
+                    scoped_record_path(
+                        ticket[field],
+                        ticket["id"],
+                        f"{location}.{field}",
+                        errors,
+                        expected_name=expected_name,
                     )
-                    if field == "narrativePath" and candidate is not None and (
-                        candidate.is_symlink() or not candidate.is_file()
-                    ):
-                        errors.append(f"{location}: narrativePath does not exist")
+            for index, linked_path in enumerate(ticket.get("decisionPaths", [])):
+                scoped_record_path(
+                    linked_path,
+                    ticket["id"],
+                    f"{location}.decisionPaths[{index}]",
+                    errors,
+                    name_pattern=r"decision-[a-z0-9]+(?:-[a-z0-9]+)*\.md",
+                )
+            for index, linked_path in enumerate(ticket.get("evidencePaths", [])):
+                linked = repository_path(
+                    linked_path, f"{location}.evidencePaths[{index}]", errors
+                )
+                if linked is not None and (linked.is_symlink() or not linked.is_file()):
+                    errors.append(
+                        f"{location}: evidencePaths entry does not exist: {linked_path}"
+                    )
     elif name == "ownership":
         for index, item in enumerate(items):
             location = f"{prefix}.ownership[{index}]"
@@ -398,13 +519,20 @@ def validate_record(name: str, data: dict[str, Any], errors: list[str]) -> None:
                 errors.append(f"{location}: scopes must be a non-empty string array")
     else:
         for index, item in enumerate(items):
-            location = f"{prefix}.reviews[{index}]"
-            if not isinstance(item, dict) or not all(nonempty(item.get(key)) for key in ("id", "ticket", "stage", "path")):
-                errors.append(f"{location}: id, ticket, stage, and path are required strings")
+            location = f"{prefix}.clearances[{index}]"
+            if not isinstance(item, dict) or not all(nonempty(item.get(key)) for key in ("id", "stage", "path")):
+                errors.append(f"{location}: id, stage, and path are required strings")
                 continue
-            reject_extra_keys(item, {"id", "ticket", "stage", "status", "path", "reviewer", "recordedAt"}, location, errors)
-            if item.get("stage") not in HUMAN_REVIEW_STAGES:
+            reject_extra_keys(item, {"id", "goal", "ticket", "stage", "status", "path", "reviewer", "recordedAt"}, location, errors)
+            goal_id, ticket_id = item.get("goal"), item.get("ticket")
+            if bool(nonempty(goal_id)) == bool(nonempty(ticket_id)):
+                errors.append(f"{location}: clearance review must target exactly one Goal or Ticket")
+            if item.get("stage") not in CLEARANCE_STAGES:
                 errors.append(f"{location}: invalid stage")
+            if nonempty(goal_id) and item.get("stage") not in {"Readiness", "Release"}:
+                errors.append(f"{location}: Goal Clearance stage must be Readiness or Release")
+            if nonempty(ticket_id) and item.get("stage") not in {"Readiness", "Acceptance"}:
+                errors.append(f"{location}: Ticket Clearance stage must be Readiness or Acceptance")
             if item.get("status") not in REVIEW_STATUS:
                 errors.append(f"{location}: invalid status")
             review_path = repository_path(
@@ -425,16 +553,14 @@ def validate_record(name: str, data: dict[str, Any], errors: list[str]) -> None:
                     errors.append(
                         f"{location}: Approved human review requires reviewer and ISO recordedAt"
                     )
-                packet = PurePosixPath(str(item.get("path", "")))
-                if (
-                    packet.parts[:2] != (".baton", "review-packets")
-                    or packet.name.lower() in {"readme.md", "template.md", "_template.md"}
-                    or "templates" in {part.lower() for part in packet.parts}
-                    or packet.suffix.lower() != ".md"
-                ):
-                    errors.append(
-                        f"{location}: Approved human review requires a dedicated Markdown packet under .baton/review-packets, not a README or template"
-                    )
+                target_id = goal_id if nonempty(goal_id) else ticket_id
+                scoped_record_path(
+                    item.get("path"),
+                    target_id,
+                    f"{location}.path",
+                    errors,
+                    name_pattern=r"review-(?:readiness|acceptance|release)-[a-z0-9]+(?:-[a-z0-9]+)*\.md",
+                )
         consultant_reviews = data.get("consultantReviews")
         if not isinstance(consultant_reviews, list):
             errors.append(f"{prefix}: consultantReviews must be an array")
@@ -486,7 +612,7 @@ def validate_consistency(records: dict[str, dict[str, Any]], errors: list[str]) 
     goals = records["goals"].get("goals", [])
     tickets = records["tickets"].get("tickets", [])
     ownership = records["ownership"].get("ownership", [])
-    reviews = records["reviews"].get("reviews", [])
+    reviews = records["reviews"].get("clearances", [])
     consultant_reviews = records["reviews"].get("consultantReviews", [])
     consultants = records["team"].get("consultants", [])
     consultant_map = {
@@ -563,28 +689,36 @@ def validate_consistency(records: dict[str, dict[str, Any]], errors: list[str]) 
     if duplicates:
         errors.append(".baton/state/tickets.json: duplicate ticket ids: " + ", ".join(sorted(duplicates)))
     known = set(ids)
+    shared_ids = known_goals & known
+    if shared_ids:
+        errors.append(
+            ".baton/state: Goal and Ticket ids must be globally unique: "
+            + ", ".join(sorted(shared_ids))
+        )
     ticket_map = {
         ticket.get("id"): ticket for ticket in tickets if isinstance(ticket, dict)
     }
     ownership_ticket_ids = {
         item.get("ticket") for item in ownership if isinstance(item, dict)
     }
-    human_reviews_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    clearance_reviews_by_key: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for review in reviews:
         if isinstance(review, dict):
-            key = (review.get("ticket"), review.get("stage"))
-            human_reviews_by_key.setdefault(key, []).append(review)
+            target_type = "goal" if review.get("goal") else "ticket"
+            target_id = review.get(target_type)
+            key = (target_type, target_id, review.get("stage"))
+            clearance_reviews_by_key.setdefault(key, []).append(review)
     consultant_reviews_by_key: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for review in consultant_reviews:
         if not isinstance(review, dict):
             continue
         key = (review.get("ticket"), review.get("consultantId"), review.get("stage"))
         consultant_reviews_by_key.setdefault(key, []).append(review)
-    for (ticket_id, stage), grouped in human_reviews_by_key.items():
+    for (target_type, target_id, stage), grouped in clearance_reviews_by_key.items():
         if len(grouped) > 1:
             errors.append(
-                ".baton/state/reviews.json: multiple human review decisions for "
-                f"{ticket_id} {stage}; replace the canonical decision transactionally"
+                ".baton/state/reviews.json: multiple clearance decisions for "
+                f"{target_type} {target_id} {stage}; replace the canonical decision transactionally"
             )
     for (ticket_id, consultant_id, stage), grouped in consultant_reviews_by_key.items():
         if len(grouped) > 1:
@@ -593,7 +727,47 @@ def validate_consistency(records: dict[str, dict[str, Any]], errors: list[str]) 
                 f"{ticket_id} {consultant_id} {stage}; replace the canonical decision transactionally"
             )
     for goal in goals:
-        if not isinstance(goal, dict) or goal.get("status") != "Done":
+        if not isinstance(goal, dict):
+            continue
+        assurance = goal.get("assurance", {})
+        if isinstance(assurance, dict) and isinstance(assurance_defaults, dict):
+            if (
+                assurance.get("clearanceProtocol")
+                != assurance_defaults.get("clearanceProtocol")
+                and not nonempty(assurance.get("overrideReason"))
+            ):
+                errors.append(
+                    f".baton/state/goals.json: {goal.get('id')} clearance differs from project defaults without a human-authorized overrideReason"
+                )
+            clearance_protocol = assurance.get("clearanceProtocol")
+            required_clearances = []
+            if (
+                clearance_protocol == "Continuous Clearance"
+                and goal.get("status") in {"Active", "Review", "Done"}
+            ):
+                required_clearances.append("Readiness")
+            if (
+                clearance_protocol
+                in {"Release Clearance", "Completion Clearance", "Continuous Clearance"}
+                and goal.get("status") == "Done"
+            ):
+                required_clearances.append("Release")
+            missing_clearances = [
+                stage
+                for stage in required_clearances
+                if not any(
+                    review.get("status") == "Approved"
+                    for review in clearance_reviews_by_key.get(
+                        ("goal", goal.get("id"), stage), []
+                    )
+                )
+            ]
+            if missing_clearances:
+                errors.append(
+                    f".baton/state/goals.json: {goal.get('status')} Goal {goal.get('id')} lacks approved Goal Clearance for: "
+                    + ", ".join(missing_clearances)
+                )
+        if goal.get("status") != "Done":
             continue
         linked_tickets = [
             ticket
@@ -635,37 +809,42 @@ def validate_consistency(records: dict[str, dict[str, Any]], errors: list[str]) 
         assurance = ticket.get("assurance", {})
         if isinstance(assurance, dict) and isinstance(assurance_defaults, dict):
             differs_from_default = (
-                assurance.get("testRigor") != assurance_defaults.get("testRigor")
-                or assurance.get("humanReviewStages")
-                != assurance_defaults.get("humanReviewStages")
+                assurance.get("readinessProtocol")
+                != assurance_defaults.get("readinessProtocol")
+                or assurance.get("clearanceProtocol")
+                != assurance_defaults.get("clearanceProtocol")
             )
             if differs_from_default and not nonempty(assurance.get("overrideReason")):
                 errors.append(
                     f".baton/state/tickets.json: {ticket.get('id')} assurance differs from project defaults without a human-authorized overrideReason"
                 )
-            required_human_stages = assurance.get("humanReviewStages", [])
-            if not isinstance(required_human_stages, list):
-                required_human_stages = []
-            stage_gates = []
-            if ticket.get("status") in EXECUTABLE_STATUS:
-                stage_gates.append("Readiness")
-            if ticket.get("status") == "Done":
-                stage_gates.append("Acceptance")
-            missing_human_stages = [
+            required_clearances = []
+            if (
+                assurance.get("clearanceProtocol") == "Continuous Clearance"
+                and ticket.get("status")
+                in {"In Progress", "Blocked", "In Review", "Done"}
+            ):
+                required_clearances.append("Readiness")
+            if (
+                assurance.get("clearanceProtocol")
+                in {"Completion Clearance", "Continuous Clearance"}
+                and ticket.get("status") == "Done"
+            ):
+                required_clearances.append("Acceptance")
+            missing_clearances = [
                 stage
-                for stage in stage_gates
-                if stage in required_human_stages
-                and not any(
+                for stage in required_clearances
+                if not any(
                     review.get("status") == "Approved"
-                    for review in human_reviews_by_key.get(
-                        (ticket.get("id"), stage), []
+                    for review in clearance_reviews_by_key.get(
+                        ("ticket", ticket.get("id"), stage), []
                     )
                 )
             ]
-            if missing_human_stages:
+            if missing_clearances:
                 errors.append(
-                    f".baton/state/tickets.json: {ticket.get('status')} ticket {ticket.get('id')} lacks approved human review for: "
-                    + ", ".join(missing_human_stages)
+                    f".baton/state/tickets.json: {ticket.get('status')} Ticket {ticket.get('id')} lacks approved Ticket Clearance for: "
+                    + ", ".join(missing_clearances)
                 )
         if ticket.get("goal") and ticket.get("goal") not in known_goals:
             errors.append(
@@ -779,8 +958,16 @@ def validate_consistency(records: dict[str, dict[str, Any]], errors: list[str]) 
                         )
                 scopes.append((normalized, str(item.get("ticket"))))
     for item in reviews:
-        if isinstance(item, dict) and item.get("ticket") not in known:
-            errors.append(f".baton/state/reviews.json: unknown ticket {item.get('ticket')!r}")
+        if not isinstance(item, dict):
+            continue
+        if item.get("goal") and item.get("goal") not in known_goals:
+            errors.append(
+                f".baton/state/reviews.json: unknown Goal {item.get('goal')!r}"
+            )
+        if item.get("ticket") and item.get("ticket") not in known:
+            errors.append(
+                f".baton/state/reviews.json: unknown Ticket {item.get('ticket')!r}"
+            )
     review_ids = [
         item.get("id")
         for item in [*reviews, *consultant_reviews]
@@ -1044,40 +1231,43 @@ html{scrollbar-color:var(--phosphor) var(--screen);scrollbar-width:thin}html::-w
 <script id="state-snapshot" type="application/json">__STATE_SNAPSHOT__</script><script>
 const canonical=JSON.parse(document.getElementById('state-snapshot').textContent),q=document.getElementById('dashboard'),previewMode=new URLSearchParams(location.search).get('mock')==='1';
 const mock={
-  project:{project:{name:'Cedar Health — Online booking',outcome:'Let patients book and pay online without calling the clinic.',currentGoal:'BETA-LAUNCH',agentProvider:'codex',phase:'Pilot launch',templateMode:true,lastVerified:'14 July 2026',assuranceDefaults:{testRigor:'Standard',humanReviewStages:[]}},baton:{owner:'Operations',action:'Finish beta testing and prepare the release review',returnTrigger:'The full booking journey passes on mobile and desktop'}},
+  project:{project:{name:'Cedar Health — Online booking',outcome:'Let patients book and pay online without calling the clinic.',currentGoal:'BETA-LAUNCH',agentProvider:'codex',phase:'Pilot launch',templateMode:true,lastVerified:'14 July 2026',assuranceDefaults:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance'}},baton:{owner:'Operations',action:'Finish beta testing and prepare the release review',returnTrigger:'The full booking journey passes on mobile and desktop'}},
   goals:{goals:[
-    {id:'DISCOVERY',title:'Understand why patients still call',status:'Done',priority:'P1',owner:'Product Lead',objective:'Find the biggest obstacles to online booking',context:'Clinic staff logged every booking call for two weeks',dependencies:[],blockers:[],decisionPaths:[],evidencePaths:['.baton/implementation-reports/README.md'],narrativePath:'.baton/prds/README.md',plannedStart:'2026-06-23',plannedEnd:'2026-07-02',resultSummary:'Payment confidence and unclear availability caused most calls',completedAt:'2026-07-02'},
-    {id:'PROTOTYPE',title:'Test the booking prototype',status:'Done',priority:'P1',owner:'Product Lead',objective:'Confirm that patients can complete the proposed flow',context:'Eight patients tested the prototype on their own phones',dependencies:['DISCOVERY'],blockers:[],decisionPaths:[],evidencePaths:['.baton/review-packets/README.md'],narrativePath:'.baton/prds/README.md',plannedStart:'2026-07-03',plannedEnd:'2026-07-08',resultSummary:'Seven of eight patients completed a booking without help',completedAt:'2026-07-08'},
-    {id:'BETA-LAUNCH',title:'Launch online booking to 20 pilot patients',status:'Active',priority:'P1',owner:'Operations',objective:'Allow pilot patients to choose a time, pay, and receive confirmation without staff help.',context:'The beta will run with one clinic and three practitioners before a wider release.',dependencies:['PROTOTYPE'],blockers:[],decisionPaths:['.baton/decisions/README.md'],evidencePaths:[],narrativePath:'.baton/prds/README.md',plannedStart:'2026-07-09',plannedEnd:'2026-07-22'},
-    {id:'MEASURE',title:'Measure whether patients finish booking',status:'Ready',priority:'P1',owner:'Product Lead',objective:'Measure completion, drop-off, and support calls during the pilot',context:'The team needs real usage evidence before expanding access',dependencies:['BETA-LAUNCH'],blockers:[],decisionPaths:[],evidencePaths:[],narrativePath:'.baton/prds/README.md',plannedStart:'2026-07-23',plannedEnd:'2026-08-05'},
-    {id:'RESCHEDULE',title:'Let patients reschedule online',status:'Needs Definition',priority:'P2',owner:'Product Lead',objective:'Remove the most common call after booking',context:'Rescheduling is excluded from the first beta',dependencies:['MEASURE'],blockers:[],decisionPaths:[],evidencePaths:[],narrativePath:'.baton/prds/README.md',plannedStart:'2026-08-06',plannedEnd:'2026-08-20'}
+    {id:'DISCOVERY',title:'Understand why patients still call',status:'Done',priority:'P1',owner:'Product Lead',objective:'Find the biggest obstacles to online booking',context:'Clinic staff logged every booking call for two weeks',dependencies:[],assurance:{clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],decisionPaths:[],evidencePaths:['.baton/records/DISCOVERY/report.md'],briefPath:'.baton/records/DISCOVERY/brief.md',plannedStart:'2026-06-23',plannedEnd:'2026-07-02',resultSummary:'Payment confidence and unclear availability caused most calls',completedAt:'2026-07-02'},
+    {id:'PROTOTYPE',title:'Test the booking prototype',status:'Done',priority:'P1',owner:'Product Lead',objective:'Confirm that patients can complete the proposed flow',context:'Eight patients tested the prototype on their own phones',dependencies:['DISCOVERY'],assurance:{clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],decisionPaths:[],evidencePaths:['.baton/records/PROTOTYPE/review-release-product.md'],briefPath:'.baton/records/PROTOTYPE/brief.md',plannedStart:'2026-07-03',plannedEnd:'2026-07-08',resultSummary:'Seven of eight patients completed a booking without help',completedAt:'2026-07-08'},
+    {id:'BETA-LAUNCH',title:'Launch online booking to 20 pilot patients',status:'Active',priority:'P1',owner:'Operations',objective:'Allow pilot patients to choose a time, pay, and receive confirmation without staff help.',context:'The beta will run with one clinic and three practitioners before a wider release.',dependencies:['PROTOTYPE'],assurance:{clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],decisionPaths:['.baton/records/BETA-LAUNCH/decision-pilot-scope.md'],evidencePaths:[],briefPath:'.baton/records/BETA-LAUNCH/brief.md',plannedStart:'2026-07-09',plannedEnd:'2026-07-22'},
+    {id:'MEASURE',title:'Measure whether patients finish booking',status:'Ready',priority:'P1',owner:'Product Lead',objective:'Measure completion, drop-off, and support calls during the pilot',context:'The team needs real usage evidence before expanding access',dependencies:['BETA-LAUNCH'],assurance:{clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],decisionPaths:[],evidencePaths:[],briefPath:'.baton/records/MEASURE/brief.md',plannedStart:'2026-07-23',plannedEnd:'2026-08-05'},
+    {id:'RESCHEDULE',title:'Let patients reschedule online',status:'Needs Definition',priority:'P2',owner:'Product Lead',objective:'Remove the most common call after booking',context:'Rescheduling is excluded from the first beta',dependencies:['MEASURE'],assurance:{clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],decisionPaths:[],evidencePaths:[],briefPath:'.baton/records/RESCHEDULE/brief.md',plannedStart:'2026-08-06',plannedEnd:'2026-08-20'}
   ]},
   tickets:{tickets:[
-    {id:'DISC-001',title:'Review two weeks of booking calls',status:'Done',priority:'P1',owner:'Noor Ahmed',goal:'DISCOVERY',dependencies:[],acceptanceCriteria:['The main reasons for calling are ranked'],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[]},
-    {id:'PROTO-001',title:'Build a clickable booking prototype',status:'Done',priority:'P1',owner:'Maya Chen',goal:'PROTOTYPE',dependencies:[],acceptanceCriteria:['The full proposed flow can be tested'],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[]},
-    {id:'PROTO-002',title:'Run patient usability sessions',status:'Done',priority:'P1',owner:'Noor Ahmed',goal:'PROTOTYPE',dependencies:['PROTO-001'],acceptanceCriteria:['Eight patients attempt the flow'],assurance:{testRigor:'Thorough',humanReviewStages:[],overrideReason:'User requested full usability evidence'},blockers:[]},
-    {id:'MEASURE-001',title:'Track booking completion and drop-off',status:'Ready',priority:'P1',owner:'Maya Chen',goal:'MEASURE',dependencies:['BOOK-107'],acceptanceCriteria:['The pilot reports completion and drop-off'],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[]},
-    {id:'FUTURE-001',title:'Offer a waitlist when no times are available',status:'Backlog',priority:'P3',owner:'Sarah Morgan',goal:'RESCHEDULE',dependencies:[],objective:'Explore whether a waitlist would reduce calls',scope:[],nonGoals:[],affectedSystems:[],acceptanceCriteria:[],requiredVerification:[],expectedEvidence:[],risks:[],requiredConsultantIds:[],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[],openDecisions:[]},
-    {id:'FAMILY-001',title:'Let families book linked appointments',status:'Backlog',priority:'P2',owner:'Sarah Morgan',goal:'RESCHEDULE',dependencies:[],objective:'Clarify how one person could book for several family members',scope:[],nonGoals:[],affectedSystems:[],acceptanceCriteria:[],requiredVerification:[],expectedEvidence:[],risks:[],requiredConsultantIds:['product-designer'],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[],openDecisions:['Whether each patient needs a separate account']},
-    {id:'RESCHEDULE-001',title:'Define the online rescheduling journey',status:'Backlog',priority:'P2',owner:'Noor Ahmed',goal:'RESCHEDULE',dependencies:[],objective:'Define how patients change an appointment without calling',scope:['Rescheduling journey definition'],nonGoals:['Recurring appointments'],affectedSystems:['Booking web app'],acceptanceCriteria:['The end-to-end journey and edge cases are explicit'],requiredVerification:['Product design review'],expectedEvidence:['Approved PRD'],risks:['Clinic rules differ by practitioner'],requiredConsultantIds:['product-designer'],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[],openDecisions:['How late a patient may reschedule']},
-    {id:'REMIND-001',title:'Send an appointment reminder',status:'Ready',priority:'P2',owner:'Leo Park',goal:'MEASURE',dependencies:['BOOK-104'],objective:'Reduce missed appointments during the pilot',scope:['One reminder before the appointment'],nonGoals:['Reminder preferences'],affectedSystems:['Email'],acceptanceCriteria:['Pilot patients receive the correct reminder'],requiredVerification:['Email preview and delivery test'],expectedEvidence:['Approved preview and passing delivery test'],risks:['Duplicate reminders'],requiredConsultantIds:[],assurance:{testRigor:'Lean',humanReviewStages:[],overrideReason:'User approved focused delivery proof for the pilot'},blockers:[],openDecisions:[]},
-    {id:'BOOK-108',title:'Improve the mobile availability picker',status:'In Progress',priority:'P1',owner:'Maya Chen',goal:'BETA-LAUNCH',dependencies:['BOOK-101'],objective:'Make available times easier to scan on small screens',scope:['Mobile availability picker'],nonGoals:['Calendar redesign'],affectedSystems:['Booking web app'],acceptanceCriteria:['Patients can identify and select a time at the target mobile viewport'],requiredVerification:['Mobile interaction test'],expectedEvidence:['Passing viewport test'],risks:['Dense schedules may still require scrolling'],requiredConsultantIds:['product-designer'],assurance:{testRigor:'Lean',humanReviewStages:[],overrideReason:'User approved focused mobile interaction proof'},blockers:[],openDecisions:[]},
-    {id:'CAL-001',title:'Sync practitioner calendar changes',status:'Blocked',priority:'P1',owner:'Leo Park',goal:'BETA-LAUNCH',dependencies:['BOOK-101'],objective:'Keep online availability aligned with the clinic calendar',scope:['Calendar change synchronization'],nonGoals:['Calendar migration'],affectedSystems:['Booking API','Clinic calendar'],acceptanceCriteria:['Changed clinic availability appears online without double booking'],requiredVerification:['Synchronization and conflict tests'],expectedEvidence:['Passing integration tests'],risks:['Clinic calendar access is not yet approved'],requiredConsultantIds:[],assurance:{testRigor:'Thorough',humanReviewStages:[],overrideReason:'User requested broader synchronization failure coverage'},blockers:['Waiting for clinic calendar API access'],openDecisions:[]},
-    {id:'REPORT-001',title:'Connect booking events to pilot reporting',status:'In Progress',priority:'P1',owner:'Maya Chen',goal:'MEASURE',dependencies:['BOOK-101','BOOK-103','BOOK-104'],objective:'Combine booking, payment, and confirmation events into the pilot report',scope:['Pilot event integration'],nonGoals:['Long-term analytics warehouse'],affectedSystems:['Booking web app','Payments','Email','Pilot reporting'],acceptanceCriteria:['One booking is represented once across the complete event chain'],requiredVerification:['Integrated event replay'],expectedEvidence:['Passing replay report'],risks:['Duplicate events'],requiredConsultantIds:[],assurance:{testRigor:'Thorough',humanReviewStages:[],overrideReason:'User requested complete event-chain regression evidence'},blockers:[],openDecisions:[]},
-    {id:'ACCOUNT-001',title:'Require an account before booking',status:'Cancelled',priority:'P4',owner:'Sarah Morgan',goal:'DISCOVERY',dependencies:[],objective:'Evaluate account creation before appointment selection',scope:['Account-first concept'],nonGoals:['Account implementation'],affectedSystems:['Booking web app'],acceptanceCriteria:['The concept is compared with guest booking'],requiredVerification:['Journey comparison'],expectedEvidence:['Recorded decision'],risks:['Account creation adds avoidable friction'],requiredConsultantIds:['product-designer'],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[],openDecisions:[]},
-    {id:'BOOK-101',title:'Choose a practitioner and time',status:'Done',priority:'P1',owner:'Maya Chen',goal:'BETA-LAUNCH',dependencies:[],objective:'Show real availability and reserve the selected slot',scope:['Availability and slot selection'],nonGoals:['Recurring appointments'],affectedSystems:['Booking web app'],acceptanceCriteria:['A patient can reserve an available slot'],requiredVerification:['Booking flow test'],expectedEvidence:['Passing test'],risks:[],requiredConsultantIds:[],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[],openDecisions:[]},
-    {id:'BOOK-102',title:'Collect patient details',status:'Done',priority:'P1',owner:'Maya Chen',goal:'BETA-LAUNCH',dependencies:['BOOK-101'],objective:'Collect only the information required by the clinic',scope:['Patient details form'],nonGoals:['Full patient account'],affectedSystems:['Booking web app'],acceptanceCriteria:['Required details are saved'],requiredVerification:['Form test'],expectedEvidence:['Passing test'],risks:[],requiredConsultantIds:[],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[],openDecisions:[]},
-    {id:'BOOK-103',title:'Take card payment',status:'Done',priority:'P1',owner:'Leo Park',goal:'BETA-LAUNCH',dependencies:['BOOK-102'],objective:'Collect payment before confirming the appointment',scope:['Card payment'],nonGoals:['Refunds'],affectedSystems:['Payments'],acceptanceCriteria:['Successful payments confirm the booking'],requiredVerification:['Payment test'],expectedEvidence:['Passing test'],risks:['Payment provider failure'],requiredConsultantIds:[],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[],openDecisions:[]},
-    {id:'BOOK-104',title:'Send booking confirmation',status:'Done',priority:'P1',owner:'Noor Ahmed',goal:'BETA-LAUNCH',dependencies:['BOOK-103'],objective:'Send the patient the appointment details immediately',scope:['Confirmation email'],nonGoals:['Reminder sequence'],affectedSystems:['Email'],acceptanceCriteria:['The patient receives the correct appointment details'],requiredVerification:['Email preview'],expectedEvidence:['Approved preview'],risks:[],requiredConsultantIds:[],assurance:{testRigor:'Standard',humanReviewStages:[],overrideReason:''},blockers:[],openDecisions:[]},
-    {id:'BOOK-105',title:'Handle failed payments',status:'In Progress',priority:'P1',owner:'Leo Park',goal:'BETA-LAUNCH',dependencies:['BOOK-103'],objective:'Let patients safely retry without losing their chosen slot',scope:['Failed and cancelled payment states'],nonGoals:['Alternative payment methods'],affectedSystems:['Payments','Booking web app'],acceptanceCriteria:['A failed payment can be retried safely'],requiredVerification:['Failure-path tests'],expectedEvidence:['Passing tests'],risks:['Duplicate bookings'],requiredConsultantIds:[],assurance:{testRigor:'Thorough',humanReviewStages:[],overrideReason:'User requested broader payment failure evidence'},blockers:[],openDecisions:[]},
-    {id:'BOOK-106',title:'Test the complete booking journey',status:'In Progress',priority:'P1',owner:'Maya Chen',goal:'BETA-LAUNCH',dependencies:['BOOK-101','BOOK-102','BOOK-103','BOOK-104'],objective:'Test the full journey on mobile and desktop',scope:['End-to-end beta flow'],nonGoals:['Load testing'],affectedSystems:['Booking web app','Payments','Email'],acceptanceCriteria:['A patient can complete the flow without staff help'],requiredVerification:['Mobile and desktop journey'],expectedEvidence:['Test report'],risks:['Browser-specific failures'],requiredConsultantIds:[],assurance:{testRigor:'Thorough',humanReviewStages:[],overrideReason:'User requested full end-to-end release evidence'},blockers:[],openDecisions:[]},
-    {id:'BOOK-107',title:'Approve the beta release',status:'In Review',priority:'P1',owner:'Sarah Morgan',goal:'BETA-LAUNCH',dependencies:['BOOK-105','BOOK-106'],objective:'Confirm that the beta is safe to open to pilot patients',scope:['Release review'],nonGoals:['Public launch'],affectedSystems:['Pilot release'],acceptanceCriteria:['Clinic owner explicitly approves the beta'],requiredVerification:['Human review'],expectedEvidence:['Recorded approval'],risks:['Launching before failure paths are proven'],requiredConsultantIds:[],assurance:{testRigor:'Standard',humanReviewStages:['Release'],overrideReason:'User requires explicit clinic-owner release approval'},blockers:[],openDecisions:[]}
+    {id:'DISC-001',title:'Review two weeks of booking calls',status:'Done',priority:'P1',owner:'Noor Ahmed',goal:'DISCOVERY',dependencies:[],acceptanceCriteria:['The main reasons for calling are ranked'],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[]},
+    {id:'PROTO-001',title:'Build a clickable booking prototype',status:'Done',priority:'P1',owner:'Maya Chen',goal:'PROTOTYPE',dependencies:[],acceptanceCriteria:['The full proposed flow can be tested'],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[]},
+    {id:'PROTO-002',title:'Run patient usability sessions',status:'Done',priority:'P1',owner:'Noor Ahmed',goal:'PROTOTYPE',dependencies:['PROTO-001'],acceptanceCriteria:['Eight patients attempt the flow'],assurance:{readinessProtocol:'Full Certification',clearanceProtocol:'Release Clearance',overrideReason:'User requested full usability evidence'},blockers:[]},
+    {id:'MEASURE-001',title:'Track booking completion and drop-off',status:'Ready',priority:'P1',owner:'Maya Chen',goal:'MEASURE',dependencies:['BOOK-107'],acceptanceCriteria:['The pilot reports completion and drop-off'],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[]},
+    {id:'FUTURE-001',title:'Offer a waitlist when no times are available',status:'Backlog',priority:'P3',owner:'Sarah Morgan',goal:'RESCHEDULE',dependencies:[],objective:'Explore whether a waitlist would reduce calls',scope:[],nonGoals:[],affectedSystems:[],acceptanceCriteria:[],requiredVerification:[],expectedEvidence:[],risks:[],requiredConsultantIds:[],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],openDecisions:[]},
+    {id:'FAMILY-001',title:'Let families book linked appointments',status:'Backlog',priority:'P2',owner:'Sarah Morgan',goal:'RESCHEDULE',dependencies:[],objective:'Clarify how one person could book for several family members',scope:[],nonGoals:[],affectedSystems:[],acceptanceCriteria:[],requiredVerification:[],expectedEvidence:[],risks:[],requiredConsultantIds:['product-designer'],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],openDecisions:['Whether each patient needs a separate account']},
+    {id:'RESCHEDULE-001',title:'Define the online rescheduling journey',status:'Backlog',priority:'P2',owner:'Noor Ahmed',goal:'RESCHEDULE',dependencies:[],objective:'Define how patients change an appointment without calling',scope:['Rescheduling journey definition'],nonGoals:['Recurring appointments'],affectedSystems:['Booking web app'],acceptanceCriteria:['The end-to-end journey and edge cases are explicit'],requiredVerification:['Product design review'],expectedEvidence:['Approved Brief'],risks:['Clinic rules differ by practitioner'],requiredConsultantIds:['product-designer'],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],openDecisions:['How late a patient may reschedule']},
+    {id:'REMIND-001',title:'Send an appointment reminder',status:'Ready',priority:'P2',owner:'Leo Park',goal:'MEASURE',dependencies:['BOOK-104'],objective:'Reduce missed appointments during the pilot',scope:['One reminder before the appointment'],nonGoals:['Reminder preferences'],affectedSystems:['Email'],acceptanceCriteria:['Pilot patients receive the correct reminder'],requiredVerification:['Email preview and delivery test'],expectedEvidence:['Approved preview and passing delivery test'],risks:['Duplicate reminders'],requiredConsultantIds:[],assurance:{readinessProtocol:'Field Check',clearanceProtocol:'Release Clearance',overrideReason:'User approved focused delivery proof for the pilot'},blockers:[],openDecisions:[]},
+    {id:'BOOK-108',title:'Improve the mobile availability picker',status:'In Progress',priority:'P1',owner:'Maya Chen',goal:'BETA-LAUNCH',dependencies:['BOOK-101'],objective:'Make available times easier to scan on small screens',scope:['Mobile availability picker'],nonGoals:['Calendar redesign'],affectedSystems:['Booking web app'],acceptanceCriteria:['Patients can identify and select a time at the target mobile viewport'],requiredVerification:['Mobile interaction test'],expectedEvidence:['Passing viewport test'],risks:['Dense schedules may still require scrolling'],requiredConsultantIds:['product-designer'],assurance:{readinessProtocol:'Field Check',clearanceProtocol:'Release Clearance',overrideReason:'User approved focused mobile interaction proof'},blockers:[],openDecisions:[]},
+    {id:'CAL-001',title:'Sync practitioner calendar changes',status:'Blocked',priority:'P1',owner:'Leo Park',goal:'BETA-LAUNCH',dependencies:['BOOK-101'],objective:'Keep online availability aligned with the clinic calendar',scope:['Calendar change synchronization'],nonGoals:['Calendar migration'],affectedSystems:['Booking API','Clinic calendar'],acceptanceCriteria:['Changed clinic availability appears online without double booking'],requiredVerification:['Synchronization and conflict tests'],expectedEvidence:['Passing integration tests'],risks:['Clinic calendar access is not yet approved'],requiredConsultantIds:[],assurance:{readinessProtocol:'Full Certification',clearanceProtocol:'Release Clearance',overrideReason:'User requested broader synchronization failure coverage'},blockers:['Waiting for clinic calendar API access'],openDecisions:[]},
+    {id:'REPORT-001',title:'Connect booking events to pilot reporting',status:'In Progress',priority:'P1',owner:'Maya Chen',goal:'MEASURE',dependencies:['BOOK-101','BOOK-103','BOOK-104'],objective:'Combine booking, payment, and confirmation events into the pilot report',scope:['Pilot event integration'],nonGoals:['Long-term analytics warehouse'],affectedSystems:['Booking web app','Payments','Email','Pilot reporting'],acceptanceCriteria:['One booking is represented once across the complete event chain'],requiredVerification:['Integrated event replay'],expectedEvidence:['Passing replay report'],risks:['Duplicate events'],requiredConsultantIds:[],assurance:{readinessProtocol:'Full Certification',clearanceProtocol:'Release Clearance',overrideReason:'User requested complete event-chain regression evidence'},blockers:[],openDecisions:[]},
+    {id:'ACCOUNT-001',title:'Require an account before booking',status:'Cancelled',priority:'P4',owner:'Sarah Morgan',goal:'DISCOVERY',dependencies:[],objective:'Evaluate account creation before appointment selection',scope:['Account-first concept'],nonGoals:['Account implementation'],affectedSystems:['Booking web app'],acceptanceCriteria:['The concept is compared with guest booking'],requiredVerification:['Journey comparison'],expectedEvidence:['Recorded decision'],risks:['Account creation adds avoidable friction'],requiredConsultantIds:['product-designer'],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],openDecisions:[]},
+    {id:'BOOK-101',title:'Choose a practitioner and time',status:'Done',priority:'P1',owner:'Maya Chen',goal:'BETA-LAUNCH',dependencies:[],objective:'Show real availability and reserve the selected slot',scope:['Availability and slot selection'],nonGoals:['Recurring appointments'],affectedSystems:['Booking web app'],acceptanceCriteria:['A patient can reserve an available slot'],requiredVerification:['Booking flow test'],expectedEvidence:['Passing test'],risks:[],requiredConsultantIds:[],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],openDecisions:[]},
+    {id:'BOOK-102',title:'Collect patient details',status:'Done',priority:'P1',owner:'Maya Chen',goal:'BETA-LAUNCH',dependencies:['BOOK-101'],objective:'Collect only the information required by the clinic',scope:['Patient details form'],nonGoals:['Full patient account'],affectedSystems:['Booking web app'],acceptanceCriteria:['Required details are saved'],requiredVerification:['Form test'],expectedEvidence:['Passing test'],risks:[],requiredConsultantIds:[],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],openDecisions:[]},
+    {id:'BOOK-103',title:'Take card payment',status:'Done',priority:'P1',owner:'Leo Park',goal:'BETA-LAUNCH',dependencies:['BOOK-102'],objective:'Collect payment before confirming the appointment',scope:['Card payment'],nonGoals:['Refunds'],affectedSystems:['Payments'],acceptanceCriteria:['Successful payments confirm the booking'],requiredVerification:['Payment test'],expectedEvidence:['Passing test'],risks:['Payment provider failure'],requiredConsultantIds:[],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],openDecisions:[]},
+    {id:'BOOK-104',title:'Send booking confirmation',status:'Done',priority:'P1',owner:'Noor Ahmed',goal:'BETA-LAUNCH',dependencies:['BOOK-103'],objective:'Send the patient the appointment details immediately',scope:['Confirmation email'],nonGoals:['Reminder sequence'],affectedSystems:['Email'],acceptanceCriteria:['The patient receives the correct appointment details'],requiredVerification:['Email preview'],expectedEvidence:['Approved preview'],risks:[],requiredConsultantIds:[],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],openDecisions:[]},
+    {id:'BOOK-105',title:'Handle failed payments',status:'In Progress',priority:'P1',owner:'Leo Park',goal:'BETA-LAUNCH',dependencies:['BOOK-103'],objective:'Let patients safely retry without losing their chosen slot',scope:['Failed and cancelled payment states'],nonGoals:['Alternative payment methods'],affectedSystems:['Payments','Booking web app'],acceptanceCriteria:['A failed payment can be retried safely'],requiredVerification:['Failure-path tests'],expectedEvidence:['Passing tests'],risks:['Duplicate bookings'],requiredConsultantIds:[],assurance:{readinessProtocol:'Full Certification',clearanceProtocol:'Release Clearance',overrideReason:'User requested broader payment failure evidence'},blockers:[],openDecisions:[]},
+    {id:'BOOK-106',title:'Test the complete booking journey',status:'In Progress',priority:'P1',owner:'Maya Chen',goal:'BETA-LAUNCH',dependencies:['BOOK-101','BOOK-102','BOOK-103','BOOK-104'],objective:'Test the full journey on mobile and desktop',scope:['End-to-end beta flow'],nonGoals:['Load testing'],affectedSystems:['Booking web app','Payments','Email'],acceptanceCriteria:['A patient can complete the flow without staff help'],requiredVerification:['Mobile and desktop journey'],expectedEvidence:['Test report'],risks:['Browser-specific failures'],requiredConsultantIds:[],assurance:{readinessProtocol:'Full Certification',clearanceProtocol:'Release Clearance',overrideReason:'User requested full end-to-end release evidence'},blockers:[],openDecisions:[]},
+    {id:'BOOK-107',title:'Prepare the beta release candidate',status:'In Review',priority:'P1',owner:'Sarah Morgan',goal:'BETA-LAUNCH',dependencies:['BOOK-105','BOOK-106'],objective:'Assemble the evidence needed to decide whether the beta is safe to open to pilot patients',scope:['Release evidence'],nonGoals:['Public launch','Goal Release Clearance'],affectedSystems:['Pilot release'],acceptanceCriteria:['The Goal Release Clearance packet contains the required verification evidence'],requiredVerification:['Evidence completeness check'],expectedEvidence:['Complete Goal Release Clearance packet'],risks:['Launching before failure paths are proven'],requiredConsultantIds:[],assurance:{readinessProtocol:'Standard Protocol',clearanceProtocol:'Release Clearance',overrideReason:''},blockers:[],openDecisions:[]}
   ]},
   ownership:{ownership:[
     {ticket:'BOOK-105',owner:'Leo Park',scopes:['failed payment states'],status:'Building',returnDestination:'Operations'},
     {ticket:'BOOK-106',owner:'Maya Chen',scopes:['mobile and desktop journey testing'],status:'Verifying',returnDestination:'Operations'}
   ]},
-  reviews:{reviews:[{id:'BOOK-107-approval',ticket:'BOOK-107',stage:'Release',status:'Pending',path:'.baton/review-packets/README.md',reviewer:'Sarah Morgan'}]},
+  reviews:{clearances:[
+    {id:'DISCOVERY-release',goal:'DISCOVERY',stage:'Release',status:'Approved',path:'.baton/records/DISCOVERY/review-release-product.md',reviewer:'Sarah Morgan',recordedAt:'2026-07-02'},
+    {id:'PROTOTYPE-release',goal:'PROTOTYPE',stage:'Release',status:'Approved',path:'.baton/records/PROTOTYPE/review-release-product.md',reviewer:'Sarah Morgan',recordedAt:'2026-07-08'}
+  ]},
   workforceProfiles:{
     'Maya Chen':{name:'Maya Chen',category:'Contractor',title:'Product Engineer'},
     'Leo Park':{name:'Leo Park',category:'Contractor',title:'Payments Engineer'},
@@ -1090,18 +1280,20 @@ const e=x=>String(x??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt
 const values=x=>Array.isArray(x)&&x.length?x.join(' · '):'None';
 const pathLink=(path,label='Open record')=>path?`<a href="../${e(path)}">${e(label)}</a>`:'';
 const pathLinks=(paths,label)=>paths?.length?paths.map((path,index)=>pathLink(path,paths.length===1?label:`${label} ${index+1}`)).join(' · '):'None';
-const p=s.project.project,b=s.project.baton,g=s.goals.goals,t=s.tickets.tickets,o=s.ownership.ownership,r=s.reviews.reviews,team=s.team||canonical.team,memory=s.memory||canonical.memory,memoryPeople=memory?.personnel||[],memoryEvents=memory?.chronology||[];
+const p=s.project.project,b=s.project.baton,g=s.goals.goals,t=s.tickets.tickets,o=s.ownership.ownership,r=s.reviews.clearances,team=s.team||canonical.team,memory=s.memory||canonical.memory,memoryPeople=memory?.personnel||[],memoryEvents=memory?.chronology||[];
 const priority={P0:0,P1:1,P2:2,P3:3,P4:4},goalMap=Object.fromEntries(g.map(x=>[x.id,x])),ticketMap=Object.fromEntries(t.map(x=>[x.id,x]));
 const current=goalMap[p.currentGoal]||null,history=g.filter(x=>x.status==='Done').sort((a,b)=>String(a.completedAt).localeCompare(String(b.completedAt))),pipeline=g.filter(x=>x.id!==p.currentGoal&&x.status!=='Done').sort((a,b)=>(priority[a.priority]-priority[b.priority])||g.indexOf(a)-g.indexOf(b));
-const currentTickets=current?t.filter(x=>x.goal===current.id):[],currentTicketIds=new Set(currentTickets.map(x=>x.id)),currentOwnership=o.filter(x=>currentTicketIds.has(x.ticket)),currentReviews=r.filter(x=>currentTicketIds.has(x.ticket));
+const currentTickets=current?t.filter(x=>x.goal===current.id):[],currentTicketIds=new Set(currentTickets.map(x=>x.id)),currentOwnership=o.filter(x=>currentTicketIds.has(x.ticket)),currentReviews=r.filter(x=>x.goal===current?.id||currentTicketIds.has(x.ticket));
 const terminal=new Set(['Done','Cancelled']),doneTickets=currentTickets.filter(x=>terminal.has(x.status)),remainingTickets=currentTickets.filter(x=>!terminal.has(x.status)),progress=currentTickets.length?Math.round(doneTickets.length/currentTickets.length*100):0;
 const simpleStatus=status=>status;
 const statusDescriptions={Backlog:'The work is not ready to start yet.',Ready:'The work is defined, approved, and available to start.','In Progress':'The team is actively delivering or validating the work.',Blocked:'A named dependency or decision prevents progress.','In Review':'The completed work is waiting for acceptance.',Done:'The work and required evidence have been accepted.',Cancelled:'The work was intentionally stopped and will not continue.'};
 const statusTone=status=>status==='Done'?'success':status==='Cancelled'?'abandoned':status==='Blocked'?'danger':status==='Ready'?'ready':status==='In Review'?'review':status==='In Progress'?'active':'neutral';
 const statusPill=status=>{const label=simpleStatus(status),description=statusDescriptions[status]||`${label} status`;return `<span class="status-pill status-${statusTone(status)}" data-tooltip="${e(`${label} · ${description}`)}" data-tooltip-static="true" aria-label="${e(`${label}: ${description}`)}">${e(label)}</span>`};
-const assuranceFor=ticket=>ticket.assurance||{testRigor:p.assuranceDefaults?.testRigor||'Standard',humanReviewStages:p.assuranceDefaults?.humanReviewStages||[],overrideReason:''};
-const humanReviewSummary=ticket=>{const stages=assuranceFor(ticket).humanReviewStages||[];return stages.length?stages.map(stage=>{const review=r.find(item=>item.ticket===ticket.id&&item.stage===stage);return `${stage}: ${review?.status||'Required'}`}).join(' · '):'None'};
-const assuranceSummary=ticket=>{const assurance=assuranceFor(ticket),stages=assurance.humanReviewStages||[];return `${assurance.testRigor} · Human ${stages.length?stages.join('/'):'none'}`};
+const ticketAssuranceFor=ticket=>ticket.assurance||{readinessProtocol:p.assuranceDefaults?.readinessProtocol||'Standard Protocol',clearanceProtocol:p.assuranceDefaults?.clearanceProtocol||'Release Clearance',overrideReason:''};
+const goalAssuranceFor=goal=>goal.assurance||{clearanceProtocol:p.assuranceDefaults?.clearanceProtocol||'Release Clearance',overrideReason:''};
+const clearanceStages=(target,type)=>{const protocol=(type==='goal'?goalAssuranceFor(target):ticketAssuranceFor(target)).clearanceProtocol;if(protocol==='Autonomous')return[];if(type==='goal')return protocol==='Continuous Clearance'?['Readiness','Release']:['Release'];if(protocol==='Continuous Clearance')return['Readiness','Acceptance'];return protocol==='Completion Clearance'?['Acceptance']:[]};
+const clearanceSummary=(target,type)=>{const assurance=type==='goal'?goalAssuranceFor(target):ticketAssuranceFor(target),stages=clearanceStages(target,type),decisions=stages.map(stage=>{const review=r.find(item=>item[type]===target.id&&item.stage===stage);return `${stage}: ${review?.status||'Required'}`});return `${assurance.clearanceProtocol}${decisions.length?` · ${decisions.join(' · ')}`:''}`};
+const assuranceSummary=ticket=>{const assurance=ticketAssuranceFor(ticket);return `${assurance.readinessProtocol} · ${assurance.clearanceProtocol}`};
 const initials=name=>String(name||'?').split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
 document.getElementById('project-name').textContent=p.name;
 document.getElementById('project-summary').textContent=p.outcome||'Define the result this project should create.';
@@ -1124,7 +1316,7 @@ const laneFor=goal=>goal.blockers?.length?'blocked':goal.status==='Done'?'done':
 const orderedGoals=[...g].sort((a,b)=>String(a.plannedStart||'9999').localeCompare(String(b.plannedStart||'9999'))||(priority[a.priority]-priority[b.priority]));
 const ticks=Array.from({length:Math.ceil(dayCount/7)},(_,index)=>{const date=addDays(rangeStart,index*7);return `<span class="date-tick" style="--left:${index*7*DAY_WIDTH}px">${e(dateLabel(date))}</span>`}).join('');
 const ganttRows=orderedGoals.map((goal,index)=>{const schedule=scheduleFor(goal,index),lane=laneFor(goal),stats=goalProgress(goal),barLabel=schedule.unscheduled?'Dates needed':goal.title,scheduleLabel=schedule.unscheduled?'Dates needed':`${fullDate(schedule.start)} – ${fullDate(schedule.end)}`,tooltip=`${goal.title} · ${scheduleLabel}`;return `<div class="gantt-label"><button type="button" class="gantt-goal-button" data-goal="${e(goal.id)}" aria-pressed="false"><strong>${e(goal.title)}</strong>${statusPill(goal.status)}<small>${e(goal.context||goal.objective)}</small></button></div><div class="gantt-track" style="--week-width:${7*DAY_WIDTH}px"><span class="today-line" style="--left:${todayLeft}px" aria-hidden="true"></span><button type="button" class="gantt-bar gantt-bar-${lane}${schedule.unscheduled?' gantt-bar-unscheduled':''}" style="--left:${schedule.left}px;--width:${schedule.width}px" data-goal="${e(goal.id)}" data-tooltip="${e(tooltip)}" data-tooltip-static="true" aria-label="${e(tooltip)}" aria-pressed="false">${e(barLabel)}${lane==='current'&&stats.items.length?` · ${stats.percent}%`:''}</button></div>`}).join('');
-const gantt=orderedGoals.length?`<div class="gantt-viewport" id="gantt-viewport"><div class="gantt-grid" style="--timeline-width:${timelineWidth}px"><div class="gantt-corner">Goals and PRD extracts</div><div class="gantt-dates"><span class="today-head" style="--left:${todayLeft}px">Today</span>${ticks}</div>${ganttRows}</div></div>`:`<div class="empty-goal"><h2>No goals yet</h2><p>Choose the first meaningful project result before assigning work.</p><a class="preview-link" href="?mock=1">See an example project</a></div>`;
+const gantt=orderedGoals.length?`<div class="gantt-viewport" id="gantt-viewport"><div class="gantt-grid" style="--timeline-width:${timelineWidth}px"><div class="gantt-corner">Goals and Brief extracts</div><div class="gantt-dates"><span class="today-head" style="--left:${todayLeft}px">Today</span>${ticks}</div>${ganttRows}</div></div>`:`<div class="empty-goal"><h2>No goals yet</h2><p>Choose the first meaningful Project result before assigning work.</p><a class="preview-link" href="?mock=1">See an example Project</a></div>`;
 const ticketRowsMarkup=items=>items.length?items.map(ticket=>`<button type="button" class="ticket-table-row" data-ticket-id="${e(ticket.id)}" data-ticket-goal="${e(ticket.goal||'')}"><span class="ticket-name"><small>${e(ticket.id)} · ${e(assuranceSummary(ticket))}</small><strong>${e(ticket.title)}</strong></span><span>${e(goalMap[ticket.goal]?.title||ticket.goal||'No goal')}</span><span>${e(ticket.owner)}</span>${statusPill(ticket.status)}</button>`).join(''):'<p class="ticket-empty">No tasks match this search.</p>';
 const ticketStatusOrder=['Backlog','Ready','In Progress','Blocked','In Review','Done','Cancelled'],ticketStatusLabels=[...new Set(t.map(ticket=>simpleStatus(ticket.status)))].sort((a,b)=>{const ai=ticketStatusOrder.indexOf(a),bi=ticketStatusOrder.indexOf(b);return (ai<0?99:ai)-(bi<0?99:bi)||a.localeCompare(b)}),ticketStatusOptions=ticketStatusLabels.map(status=>`<button type="button" class="ticket-filter-option" role="option" aria-selected="false" data-status="${e(status)}">${statusPill(status)}</button>`).join('');
 const activeConsultants=(team?.consultants||[]).filter(item=>item.status==='active');
@@ -1144,7 +1336,7 @@ const orgPerson=person=>`<li><article class="org-person"><small>${e(person.categ
 const workforceIdentity=person=>`${person.category} · ${person.title}`,workforceRows=workforcePeople.map(person=>`<li class="workforce-row"><div class="workforce-person"><strong>${e(person.name)}</strong><span>${e(workforceIdentity(person))}</span><small>${person.total?`${person.total} assigned · ${person.done} done · ${person.total-person.done} open`:'No assigned work'}</small></div><b aria-label="${person.total} assignments">${person.total||'—'}</b></li>`).join('');
 const workforceSection=document.createElement('section');workforceSection.className='company-workforce';workforceSection.setAttribute('aria-labelledby','workforce-title');workforceSection.innerHTML=`<div class="company-subheading"><div><h2 id="workforce-title">Workload</h2><p>Current assignment context, ordered by role and name.</p></div><span class="count">${workforcePeople.length} people · ${workforceTotal} assignments</span></div><div class="workforce-layout"><article class="workforce-panel"><h3>Assignments by person</h3><ol class="workforce-bars">${workforceRows}</ol></article></div><p class="workforce-note">Counts describe current work only. They are not a performance score or ranking.</p>`;
 const safeEvidencePath=value=>typeof value==='string'&&value&&!value.startsWith('/')&&!value.includes('..')&&!/^[a-z][a-z0-9+.-]*:/i.test(value)?`../../${value.split('/').map(encodeURIComponent).join('/')}`:'',evidenceLinks=paths=>{const links=(Array.isArray(paths)?paths:[]).map(path=>[path,safeEvidencePath(path)]).filter(([,href])=>href).map(([path,href])=>`<a href="${e(href)}" target="_blank" rel="noopener">${e(path)}</a>`).join('');return links?`<div class="memory-evidence" aria-label="Evidence links">${links}</div>`:''},sourceLabel=source=>source==='self-reflection'?'Self Reflection · Unverified':titleCase(source||'source not recorded'),styleSummary=style=>style?Object.values(style).map(titleCase).join(' · '):'Working style not recorded',memoryDossiers=memoryPeople.map(person=>{const assignments=person.assignmentTypes?.length?person.assignmentTypes.map(titleCase).join(' · '):'No reviewed assignment types yet',outcomes=(person.recentOutcomes||[]).map(outcome=>`<li class="memory-outcome"><b>${e(titleCase(outcome.assignmentType))}</b> · ${e(outcome.outcome)}<small class="memory-source" data-unverified="${outcome.sourceClass==='self-reflection'}">${e(sourceLabel(outcome.sourceClass))} · ${e(outcome.verificationQuality)}</small>${evidenceLinks(outcome.evidencePaths)}</li>`).join(''),summaries=(person.performanceSummaries||[]).map(summary=>{const sources=summary.sourceClasses?.length?summary.sourceClasses.map(sourceLabel).join(' · '):'Source not recorded',unverified=summary.sourceClasses?.includes('self-reflection');return `<li class="memory-outcome"><b>${e(titleCase(summary.assignmentType))}</b> · ${e(summary.observation)}<small class="memory-source" data-unverified="${unverified}">${e(sources)} · ${e(summary.reviewIds?.length||0)} linked reviews</small>${evidenceLinks(summary.evidencePaths)}</li>`}).join('');return `<li class="memory-person"><strong>${e(person.name)}</strong><span>${e(person.role)} · ${e(person.specialty||person.seat)}</span><small>${e(person.employmentStatus)} · ${e(person.taskStatus)} · ${e(styleSummary(person.workingStyle))}</small><span>Assignment types: ${e(assignments)}</span>${outcomes||summaries?`<ol class="memory-outcomes" aria-label="Observable outcomes">${outcomes}${summaries}</ol>`:''}</li>`}).join(''),memoryHistory=[...memoryEvents].slice(-12).reverse().map(event=>`<li class="memory-event"><strong>${e(titleCase(event.operation))} · ${e(titleCase(event.result))}</strong><span>${e(event.actor)}${event.personnelIds?.length?` · ${event.personnelIds.length} coworker${event.personnelIds.length===1?'':'s'}`:''}</span><small class="memory-source" data-unverified="${event.sourceClass==='self-reflection'}">${e(sourceLabel(event.sourceClass))} · ${e(event.timestamp||'Time not recorded')}</small>${evidenceLinks(event.references)}</li>`).join('');
-const memorySection=document.createElement('section');memorySection.className='company-memory';memorySection.setAttribute('aria-labelledby','memory-title');memorySection.innerHTML=`<div class="company-subheading"><div><h2 id="memory-title">Company memory</h2><p>Privacy-filtered personnel dossiers and recent company history.</p></div><span class="count">Revision ${e(memory.revision||0)} · ${e(titleCase(memory.bootstrap?.status||'not initialized'))}</span></div><div class="memory-layout"><article class="memory-panel"><h3>Personnel dossiers</h3>${memoryDossiers?`<ol class="memory-list">${memoryDossiers}</ol>`:'<p class="memory-empty">Run $bootstrap-baton to create named coworker dossiers.</p>'}</article><article class="memory-panel"><h3>Recent history</h3>${memoryHistory?`<ol class="memory-list">${memoryHistory}</ol>`:'<p class="memory-empty">No company history has been recorded yet.</p>'}</article></div>`;
+const memorySection=document.createElement('section');memorySection.className='company-memory';memorySection.setAttribute('aria-labelledby','memory-title');memorySection.innerHTML=`<div class="company-subheading"><div><h2 id="memory-title">Company memory</h2><p>Privacy-filtered personnel dossiers and recent company history.</p></div><span class="count">Revision ${e(memory.revision||0)} · ${e(titleCase(memory.bootstrap?.status||'not initialized'))}</span></div><div class="memory-layout"><article class="memory-panel"><h3>Personnel dossiers</h3>${memoryDossiers?`<ol class="memory-list">${memoryDossiers}</ol>`:'<p class="memory-empty">Run $boot to create named coworker dossiers.</p>'}</article><article class="memory-panel"><h3>Recent history</h3>${memoryHistory?`<ol class="memory-list">${memoryHistory}</ol>`:'<p class="memory-empty">No company history has been recorded yet.</p>'}</article></div>`;
 const planSection=document.getElementById('plan-title').closest('section'),teamSection=document.getElementById('team-title').closest('section'),ticketSection=document.querySelector('.ticket-section');teamSection.classList.add('company-surface');const projectView=document.createElement('div');projectView.id='project-view';projectView.className='dashboard-view';projectView.dataset.dashboardView='project';const companyView=document.createElement('div');companyView.id='company-view';companyView.className='dashboard-view';companyView.dataset.dashboardView='company';companyView.hidden=true;q.insertBefore(projectView,planSection);q.insertBefore(companyView,planSection);projectView.append(planSection,ticketSection);companyView.append(teamSection,workforceSection,memorySection);
 const hud=document.createElement('footer');hud.className='pip-hud';hud.setAttribute('aria-label','Project status summary');hud.innerHTML=`<div class="hud-cell hud-phase"><span>Phase</span><strong>${e(p.phase||'Not set')}</strong></div><div class="hud-cell hud-goal"><span>Active goal</span><strong>${e(current?.title||'No active goal')}</strong><div class="hud-progress-track" role="progressbar" aria-label="Active goal progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i style="--value:${progress}%"></i></div></div><div class="hud-cell hud-work"><span>Tasks</span><strong>${remainingTickets.length} open</strong></div><div class="hud-cell hud-review"><span>Review</span><strong>${currentReviews.filter(item=>item.status==='Pending').length} pending</strong></div>`;document.body.appendChild(hud);
 const pipTooltip=document.createElement('div');pipTooltip.id='pip-tooltip';pipTooltip.className='pip-tooltip';pipTooltip.setAttribute('role','tooltip');pipTooltip.hidden=true;document.body.appendChild(pipTooltip);let activeTooltipTarget=null;
@@ -1169,8 +1361,8 @@ sheetContent.addEventListener('click',event=>{const ticketControl=event.target.c
 function showGoal(goal){if(!goal)return;sheetKicker.textContent='Goal details';prepareSheet();openGoal(goal)}
 const sheetList=(items,empty='Nothing recorded')=>items?.length?`<ul class="sheet-detail-list">${items.map(item=>`<li>${e(item)}</li>`).join('')}</ul>`:`<p class="sheet-empty">${e(empty)}</p>`;
 const sheetSection=(title,items,empty)=>`<section class="sheet-section"><h3>${e(title)}</h3>${sheetList(items,empty)}</section>`;
-function openTicket(ticket){const goal=goalMap[ticket.goal],profile=workforceProfileFor(ticket.owner),dependencies=(ticket.dependencies||[]).map(id=>ticketMap[id]).filter(Boolean),consultants=(ticket.requiredConsultantIds||[]).map(id=>(team?.consultants||[]).find(item=>item.id===id)).filter(Boolean),assurance=assuranceFor(ticket);sheetKicker.textContent='Task details';sheetContent.innerHTML=`${goal?`<div class="sheet-actions"><button type="button" class="sheet-back-button" data-sheet-goal="${e(goal.id)}" data-tooltip="${e(`Back to goal: ${goal.title}`)}" data-tooltip-static="true" aria-label="${e(`Back to goal: ${goal.title}`)}"></button></div>`:''}<p class="ticket-sheet-id">${e(ticket.id)} · ${e(ticket.priority||'No priority')}</p><div class="sheet-title-row"><h2 id="sheet-title">${e(ticket.title)}</h2>${statusPill(ticket.status)}</div><p class="sheet-objective">${e(ticket.objective||'No objective recorded.')}</p><dl class="sheet-properties"><div class="sheet-property"><dt>Owner</dt><dd>${e(profile.name)} · ${e(profile.category)} · ${e(profile.title)}</dd></div><div class="sheet-property"><dt>Goal</dt><dd>${goal?`<button type="button" class="sheet-record-button" data-sheet-goal="${e(goal.id)}">${e(goal.title)}</button>`:'No goal linked'}</dd></div><div class="sheet-property"><dt>Priority</dt><dd>${e(ticket.priority||'Not set')}</dd></div><div class="sheet-property"><dt>Test rigor</dt><dd>${e(assurance.testRigor)}</dd></div><div class="sheet-property"><dt>Human review</dt><dd>${e(humanReviewSummary(ticket))}</dd></div>${assurance.overrideReason?`<div class="sheet-property"><dt>Override</dt><dd>${e(assurance.overrideReason)}</dd></div>`:''}</dl>${sheetSection('Scope',ticket.scope,'No scope recorded')}${sheetSection('Acceptance criteria',ticket.acceptanceCriteria,'No acceptance criteria recorded')}${sheetSection('Required checks',ticket.requiredVerification,'No required checks recorded')}${ticket.nonGoals?.length?sheetSection('Not included',ticket.nonGoals):''}${dependencies.length?`<section class="sheet-section"><h3>Dependencies</h3><div class="sheet-record-list">${dependencies.map(item=>`<button type="button" class="sheet-record-button" data-ticket-id="${e(item.id)}">${e(item.id)} · ${e(item.title)}</button>`).join('')}</div></section>`:''}${consultants.length?sheetSection('Required consultants',consultants.map(item=>item.title)):''}${ticket.blockers?.length?sheetSection('Blockers',ticket.blockers):''}`;sheet.classList.add('is-open');backdrop.classList.add('is-open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('sheet-open');q.querySelectorAll('[data-goal]').forEach(button=>button.setAttribute('aria-pressed','false'));closeButton.focus()}
-function openGoal(goal){if(!goal)return;const stats=goalProgress(goal),scheduleStart=parseDay(goal.plannedStart),scheduleEnd=parseDay(goal.plannedEnd),goalOwnership=o.filter(item=>stats.items.some(ticket=>ticket.id===item.ticket)),people=goalOwnership.length?`<section class="sheet-section"><h3>Working now</h3>${goalOwnership.map(item=>{const ticket=ticketMap[item.ticket]||{};return `<div class="sheet-person"><span class="avatar">${e(initials(item.owner))}</span><div><strong>${e(item.owner)}</strong><span>${e(ticket.title||item.ticket)}</span></div></div>`}).join('')}</section>`:'',briefText=goalBriefFor(goal),result=goal.status==='Done'&&goal.resultSummary?`<p class="sheet-context">${e(goal.resultSummary)}</p>`:'';sheetContent.innerHTML=`<div class="sheet-title-row"><h2 id="sheet-title">${e(goal.title)}</h2>${statusPill(goal.status)}</div><p class="sheet-objective">${e(goal.objective)}</p>${result}<dl class="sheet-properties"><div class="sheet-property"><dt>Owner</dt><dd>${e(goal.owner)}</dd></div><div class="sheet-property"><dt>Schedule</dt><dd>${scheduleStart&&scheduleEnd?`${e(fullDate(scheduleStart))} – ${e(fullDate(scheduleEnd))}`:'Dates not set'}</dd></div><div class="sheet-property"><dt>Progress</dt><dd>${stats.items.length?`${stats.done.length} of ${stats.items.length} tasks done`:'No tasks yet'}</dd></div><div class="sheet-property"><dt>Goal brief</dt><dd><div class="goal-brief" data-goal-brief><p class="goal-brief-text" data-goal-brief-text>${e(briefText)}</p><button type="button" class="goal-brief-toggle" data-goal-brief-toggle aria-expanded="false" hidden>Show more</button></div></dd></div></dl>${people}<section class="sheet-section"><h3>Related tasks</h3>${ticketListFor(goal)}</section>`;sheet.classList.add('is-open');backdrop.classList.add('is-open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('sheet-open');q.querySelectorAll('[data-goal]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.goal===goal.id)));closeButton.focus();syncGoalBrief()}
+function openTicket(ticket){const goal=goalMap[ticket.goal],profile=workforceProfileFor(ticket.owner),dependencies=(ticket.dependencies||[]).map(id=>ticketMap[id]).filter(Boolean),consultants=(ticket.requiredConsultantIds||[]).map(id=>(team?.consultants||[]).find(item=>item.id===id)).filter(Boolean),assurance=ticketAssuranceFor(ticket);sheetKicker.textContent='Task details';sheetContent.innerHTML=`${goal?`<div class="sheet-actions"><button type="button" class="sheet-back-button" data-sheet-goal="${e(goal.id)}" data-tooltip="${e(`Back to goal: ${goal.title}`)}" data-tooltip-static="true" aria-label="${e(`Back to goal: ${goal.title}`)}"></button></div>`:''}<p class="ticket-sheet-id">${e(ticket.id)} · ${e(ticket.priority||'No priority')}</p><div class="sheet-title-row"><h2 id="sheet-title">${e(ticket.title)}</h2>${statusPill(ticket.status)}</div><p class="sheet-objective">${e(ticket.objective||'No objective recorded.')}</p><dl class="sheet-properties"><div class="sheet-property"><dt>Owner</dt><dd>${e(profile.name)} · ${e(profile.category)} · ${e(profile.title)}</dd></div><div class="sheet-property"><dt>Goal</dt><dd>${goal?`<button type="button" class="sheet-record-button" data-sheet-goal="${e(goal.id)}">${e(goal.title)}</button>`:'No goal linked'}</dd></div><div class="sheet-property"><dt>Priority</dt><dd>${e(ticket.priority||'Not set')}</dd></div><div class="sheet-property"><dt>Readiness Protocol</dt><dd>${e(assurance.readinessProtocol)}</dd></div><div class="sheet-property"><dt>Ticket Clearance</dt><dd>${e(clearanceSummary(ticket,'ticket'))}</dd></div>${assurance.overrideReason?`<div class="sheet-property"><dt>Override</dt><dd>${e(assurance.overrideReason)}</dd></div>`:''}</dl>${sheetSection('Scope',ticket.scope,'No scope recorded')}${sheetSection('Acceptance criteria',ticket.acceptanceCriteria,'No acceptance criteria recorded')}${sheetSection('Required checks',ticket.requiredVerification,'No required checks recorded')}${ticket.nonGoals?.length?sheetSection('Not included',ticket.nonGoals):''}${dependencies.length?`<section class="sheet-section"><h3>Dependencies</h3><div class="sheet-record-list">${dependencies.map(item=>`<button type="button" class="sheet-record-button" data-ticket-id="${e(item.id)}">${e(item.id)} · ${e(item.title)}</button>`).join('')}</div></section>`:''}${consultants.length?sheetSection('Required consultants',consultants.map(item=>item.title)):''}${ticket.blockers?.length?sheetSection('Blockers',ticket.blockers):''}`;sheet.classList.add('is-open');backdrop.classList.add('is-open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('sheet-open');q.querySelectorAll('[data-goal]').forEach(button=>button.setAttribute('aria-pressed','false'));closeButton.focus()}
+function openGoal(goal){if(!goal)return;const stats=goalProgress(goal),scheduleStart=parseDay(goal.plannedStart),scheduleEnd=parseDay(goal.plannedEnd),goalOwnership=o.filter(item=>stats.items.some(ticket=>ticket.id===item.ticket)),people=goalOwnership.length?`<section class="sheet-section"><h3>Working now</h3>${goalOwnership.map(item=>{const ticket=ticketMap[item.ticket]||{};return `<div class="sheet-person"><span class="avatar">${e(initials(item.owner))}</span><div><strong>${e(item.owner)}</strong><span>${e(ticket.title||item.ticket)}</span></div></div>`}).join('')}</section>`:'',briefText=goalBriefFor(goal),result=goal.status==='Done'&&goal.resultSummary?`<p class="sheet-context">${e(goal.resultSummary)}</p>`:'';sheetContent.innerHTML=`<div class="sheet-title-row"><h2 id="sheet-title">${e(goal.title)}</h2>${statusPill(goal.status)}</div><p class="sheet-objective">${e(goal.objective)}</p>${result}<dl class="sheet-properties"><div class="sheet-property"><dt>Owner</dt><dd>${e(goal.owner)}</dd></div><div class="sheet-property"><dt>Goal Clearance</dt><dd>${e(clearanceSummary(goal,'goal'))}</dd></div><div class="sheet-property"><dt>Schedule</dt><dd>${scheduleStart&&scheduleEnd?`${e(fullDate(scheduleStart))} – ${e(fullDate(scheduleEnd))}`:'Dates not set'}</dd></div><div class="sheet-property"><dt>Progress</dt><dd>${stats.items.length?`${stats.done.length} of ${stats.items.length} tasks done`:'No tasks yet'}</dd></div><div class="sheet-property"><dt>Goal brief</dt><dd><div class="goal-brief" data-goal-brief><p class="goal-brief-text" data-goal-brief-text>${e(briefText)}</p><button type="button" class="goal-brief-toggle" data-goal-brief-toggle aria-expanded="false" hidden>Show more</button></div></dd></div></dl>${people}<section class="sheet-section"><h3>Related tasks</h3>${ticketListFor(goal)}</section>`;sheet.classList.add('is-open');backdrop.classList.add('is-open');sheet.setAttribute('aria-hidden','false');document.body.classList.add('sheet-open');q.querySelectorAll('[data-goal]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.goal===goal.id)));closeButton.focus();syncGoalBrief()}
 function closeGoal(){sheet.classList.remove('is-open');backdrop.classList.remove('is-open');sheet.setAttribute('aria-hidden','true');sheet.inert=true;document.body.classList.remove('sheet-open');q.querySelectorAll('[data-goal]').forEach(button=>button.setAttribute('aria-pressed','false'));if(lastFocused?.isConnected)lastFocused.focus()}
 function centerToday(){if(viewport){const corner=document.querySelector('.gantt-corner'),stickyWidth=corner&&getComputedStyle(corner).display!=='none'?corner.getBoundingClientRect().width:0;viewport.scrollLeft=Math.max(0,todayLeft-(viewport.clientWidth-stickyWidth)/2)}}
 function bindTicketRows(){ticketRowsContainer.querySelectorAll('[data-ticket-id]').forEach(button=>button.addEventListener('click',()=>showTicket(ticketMap[button.dataset.ticketId])))}
@@ -1219,9 +1411,16 @@ def emit(payload: dict[str, Any], as_json: bool) -> None:
     if as_json:
         print(json.dumps(payload, sort_keys=True))
     elif payload["ok"]:
-        print("OK: canonical state and dashboard are valid")
+        print("\nBaton / control")
+        print("Canonical State and the generated control room are valid.")
+        print("Next: return to the Project task.")
     else:
-        print("ERROR: " + "\nERROR: ".join(payload["errors"]), file=sys.stderr)
+        print("\nBaton / control", file=sys.stderr)
+        print(
+            "Attention required: "
+            + "\nAttention required: ".join(payload["errors"]),
+            file=sys.stderr,
+        )
 
 
 def command_check(as_json: bool) -> int:
@@ -1236,7 +1435,7 @@ def command_check(as_json: bool) -> int:
         != render_dashboard(records, memory_projection)
     ):
         errors.append(
-            ".baton/dashboard/index.html: dashboard drift; run a valid state, team, or memory transaction"
+            ".baton/views/dashboard.html: dashboard drift; run a valid state, team, or memory transaction"
         )
     emit(result(not errors, errors), as_json)
     return 0 if not errors else 1
@@ -1266,7 +1465,7 @@ def command_apply(operation_path: Path, as_json: bool) -> int:
     changes = operation.get("records", {}) if isinstance(operation, dict) else {}
     if not changes or not set(changes).issubset(OPERATION_RECORD_NAMES):
         errors.append(
-            "operation: records must contain one or more operational record names; team changes require $hire-consultant or $fire-consultant"
+            "operation: records must contain one or more operational record names; team changes require $roster"
         )
     proposed = dict(current)
     if isinstance(changes, dict):
@@ -1287,14 +1486,14 @@ def command_apply(operation_path: Path, as_json: bool) -> int:
     if metadata_path.is_file():
         metadata = read_json(metadata_path, errors)
         managed = metadata.get("managedFiles") if isinstance(metadata, dict) else None
-        dashboard_record = managed.get(".baton/dashboard/index.html") if isinstance(managed, dict) else None
+        dashboard_record = managed.get(".baton/views/dashboard.html") if isinstance(managed, dict) else None
         if dashboard_record is not None:
             if (
                 not isinstance(dashboard_record, dict)
                 or dashboard_record.get("ownership") != "generated-config"
             ):
                 errors.append(
-                    ".baton/metadata.json: .baton/dashboard/index.html baseline must be generated-config"
+                    ".baton/metadata.json: .baton/views/dashboard.html baseline must be generated-config"
                 )
             else:
                 dashboard_record["baselineSha256"] = hashlib.sha256(

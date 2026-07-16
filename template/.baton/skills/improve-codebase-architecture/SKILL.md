@@ -1,57 +1,30 @@
 ---
 name: improve-codebase-architecture
-description: Scan a project for evidence-backed opportunities to deepen shallow modules, present at most three candidates in a disposable visual report, and help Management select and define a safe next action without refactoring. Use when the user invokes $improve-codebase-architecture or asks to review architecture, improve testability or navigability, reduce cross-file orchestration, find leaking seams, or evaluate a recurring code hotspot.
+description: Inspect a codebase for evidence-backed opportunities to deepen modules and improve locality. Use when the user asks for architecture improvement, refactoring candidates, or module-boundary review.
 ---
 
-# Improve Codebase Architecture
+# Improve codebase architecture
 
-Run this as a Management architecture-discovery workflow. Produce evidence and decisions, not implementation. Keep system-level architecture approval with Management and implementation design, Contractor dispatch, integration, and verification with Operations.
+Perform read-only discovery first. Do not propose an interface or edit production code until the user selects a candidate.
 
-## Ground the review
+## Find candidates
 
-1. Follow `AGENTS.md`; read the Management role, applicable design rules, accepted architecture ADRs, relevant PRDs/tickets/reports, active work, and repository status.
-2. Use the exact architecture vocabulary from the applicable design rule: **module**, **interface**, **implementation**, **depth**, **seam**, **adapter**, **leverage**, and **locality**. Use **boundary** only for package, authority, ownership, or task-scope limits.
-3. If the user names a module, subsystem, or pain point, keep that scope. Otherwise inspect history, recent reports, roadmap pressure, and recurring changed paths to select a narrow hotspot before scanning.
-4. Treat recent change as evidence of future pressure, not proof that refactoring is valuable. Exclude generated/vendor code and avoid scanning the whole repository without a concrete reason.
-5. Mark overlap with registered active work. Do not inspect uncommitted work as a refactoring target, edit reserved files, or interrupt an active ticket. A broad investigation beyond bounded read-only discovery must be scoped and routed through Operations.
-6. Use targeted path, symbol, caller, and test searches after the mandatory startup read. Stop when evidence supports at most three candidates. If the first pass cannot establish a narrow scope, ask one scoping question or propose a bounded investigation instead of widening repeatedly.
+Follow `AGENTS.md`, validate state, inspect direction, accepted decisions, ownership, current Git state, relevant architecture, callers, tests, and recent pressure. Respect a user-supplied scope; otherwise select one narrow hotspot from recurring change or defects. Exclude generated/vendor code and uncommitted owned work.
 
-## Find deepening candidates
+Stop at three candidates. Look for scattered policy, caller knowledge, shallow pass-through interfaces, coupled seams, tests forced through internals, or repeated defects around one orchestration path. Apply the deletion test from `rules/design.md`. Reject aesthetics, file count, novelty, and hypothetical reuse.
 
-Inspect callers, tests, runtime adapters, package seams, and boundary-audit evidence organically. Look for:
+For each candidate record exact files, callers, tests, current interface, observed friction, hidden-complexity failure, expected depth/locality gain, dependency category, accepted-decision relationship, ownership/readiness, and strength: `Strong`, `Worth exploring`, or `Speculative`.
 
-- one concept requiring navigation through many small modules;
-- an interface nearly as complex as its implementation;
-- orchestration or policy leaking into several callers;
-- pure helpers extracted for tests while integration bugs lack locality;
-- coupled modules leaking knowledge across a seam;
-- behavior that cannot be tested through the same interface callers use; and
-- repeated change or defects concentrated around the same orchestration path.
+## Report
 
-Apply the deletion test: deleting a shallow module merely moves its complexity; deleting a deep module spreads meaningful policy and orchestration back into callers. Reject candidates supported only by aesthetics, file count, novelty, or hypothetical reuse.
+Write one timestamped standalone HTML report under `${TMPDIR:-/tmp}` and return its absolute path. Escape repository text. Use inline CSS; use Mermaid from a CDN only when a graph materially helps. State the repository, date, scope, Git reference, and that proposed directions are unapproved.
 
-For each surviving candidate, verify concrete files, callers, tests, observed friction, current interface, complexity it fails to hide, expected gains in depth/leverage/locality and behavior-level testing, dependency category (`in-process`, `locally substitutable`, `remote-but-owned`, or `truly external`), ADR support or conflict, active ownership/dependency/safe-checkpoint constraints, and recommendation strength: `Strong`, `Worth exploring`, or `Speculative`.
+Each of at most three cards includes the evidence above plus clearly labelled **Current** and **Proposed direction — not approved** visuals. End with one evidence-backed recommendation and its safe checkpoint or blocker. The report never authorizes refactoring.
 
-Do not propose a replacement interface or edit production code during this scan.
+Ask exactly one question: which candidate, if any, should be explored?
 
-## Present the review
+## Explore and record
 
-Read [references/report-format.md](references/report-format.md). Write one timestamped HTML report under `${TMPDIR:-/tmp}`; never place it in the repository. Escape all repository-derived text before inserting it into HTML. Return its absolute path and open it only when the environment and user intent support doing so.
+For the selected candidate, use the Brainstorm skill one decision at a time. Resolve constraints, callers, invariants, errors, ordering, performance, dependencies, migration, tests, runtime proof, and non-goals. Consequential or uncertain interfaces require a bounded Ready investigation and contrasting independent Operations-dispatched proposals.
 
-Show three or fewer high-signal candidates. Each card must include files, evidence, problem, proposed deepening direction, gains, dependency category, ADR relationship, ownership/readiness state, recommendation strength, and clearly labelled before/proposed-after visuals. End with one evidence-backed top recommendation.
-
-Then ask exactly one question: which candidate, if any, the user wants to explore.
-
-## Explore the selected candidate
-
-After selection, follow the one-decision-at-a-time discipline in [the Brainstorm skill](../brainstorm/SKILL.md): recommend an answer, explain the main trade-off, and wait. Resolve constraints, callers, invariants, errors, ordering, performance, dependencies, migration, preserved tests, runtime proof, and non-goals before suggesting execution.
-
-For a consequential, long-lived, high-fan-out, or uncertain interface, do not design it alone. Have Management prepare a bounded investigation or ticket; once it is Ready and non-overlapping, Operations registers ownership and dispatches at least three independent design Contractors with contrasting constraints when the applicable design rule requires it.
-
-## Record the outcome
-
-- Offer an ADR only when a rejected candidate reflects a durable, non-obvious trade-off meeting the repository's normal threshold.
-- If the user accepts further work, classify it against active work and record it transactionally as `Backlog`, `Blocked`, or `Ready` according to normal gates.
-- Do not wake Operations for a report, an unselected candidate, or unresolved architecture intent.
-- Do not change an accepted architecture ADR, production interface, or test boundary until the owning decision and execution workflow authorize it.
-- End with the selected outcome, durable paths changed if any, next owner, and exact return trigger.
+Offer an ADR only for a costly-to-reverse, non-obvious trade-off. Record accepted further work as `Backlog`, `Blocked`, or `Ready` under normal gates. Do not wake Operations for an unselected report or unresolved intent.

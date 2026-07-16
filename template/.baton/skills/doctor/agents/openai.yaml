@@ -1,0 +1,4 @@
+interface:
+  display_name: "Doctor"
+  short_description: "Diagnose Baton and recover transactions"
+  default_prompt: "Use $doctor to state Baton's health, diagnose the exact failing layer, and recover only recognized interrupted transactions."

@@ -3,22 +3,40 @@
   "recordType": "project",
   "project": {
     "name": "Baton",
-    "outcome": "Give teams a self-contained, updateable multi-agent project control plane without taking ownership of the surrounding repository.",
-    "phase": "Release candidate review",
+    "purpose": "Provide a concise repository-local control plane for teams of AI agents.",
+    "users": [
+      "Teams coordinating AI agents in a repository"
+    ],
+    "outcome": "Make authority, readiness, execution, and evidence explicit without owning the Repository.",
+    "constraints": [
+      "Keep consumer behavior provider-neutral",
+      "Preserve human authority"
+    ],
+    "nonGoals": [
+      "Own the Repository",
+      "Publish outside the selected Clearance Protocol"
+    ],
+    "principles": [
+      "Canonical state over messages",
+      "Load only relevant context",
+      "Evidence before completion"
+    ],
+    "openQuestions": [],
     "currentGoal": "",
-    "lastVerified": "2026-07-16",
     "agentProvider": "codex",
+    "phase": "Active",
     "templateMode": false,
+    "lastVerified": "2026-07-16",
+    "decisionPaths": [],
+    "evidencePaths": [],
     "assuranceDefaults": {
-      "testRigor": "Thorough",
-      "humanReviewStages": [
-        "Release"
-      ]
+      "readinessProtocol": "Standard Protocol",
+      "clearanceProtocol": "Release Clearance"
     }
   },
   "baton": {
     "owner": "Management",
-    "action": "Review the unpublished Baton v0.7.0 candidate and decide whether to authorize Release",
-    "returnTrigger": "Explicit human Release instruction"
+    "action": "Define the next Goal and Ticket",
+    "returnTrigger": "A bounded Ready Ticket is recorded"
   }
 }

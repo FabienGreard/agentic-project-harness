@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://baton.dev/schemas/live-trace.schema.json",
+  "title": "Baton verification live trace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "traceId",
+    "harnessRevision",
+    "events"
+  ],
+  "properties": {
+    "traceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "harnessRevision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    }
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "eventId",
+        "type"
+      ],
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "change",
+            "gate",
+            "review"
+          ]
+        },
+        "layer": {
+          "enum": [
+            "unit",
+            "contract",
+            "integration",
+            "smoke",
+            "feature-e2e",
+            "certification-e2e",
+            "broad-suite",
+            "human-review"
+          ]
+        },
+        "purpose": {
+          "enum": [
+            "iteration",
+            "checkpoint",
+            "certification"
+          ]
+        },
+        "lowerLayerAvailable": {
+          "type": "boolean"
+        },
+        "durationSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail",
+            "skipped"
+          ]
+        },
+        "candidateFingerprint": {
+          "type": "string"
+        },
+        "relevantSourceFingerprint": {
+          "type": "string"
+        },
+        "methodIdentity": {
+          "type": "string"
+        },
+        "acceptanceIdentity": {
+          "type": "string"
+        },
+        "coveredRisks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "reusedArtifact": {
+          "type": "boolean"
+        },
+        "artifactIdentity": {
+          "type": "string"
+        },
+        "artifactCandidateFingerprint": {
+          "type": "string"
+        },
+        "artifactRelevantSourceFingerprint": {
+          "type": "string"
+        },
+        "artifactMethodIdentity": {
+          "type": "string"
+        },
+        "artifactAcceptanceIdentity": {
+          "type": "string"
+        },
+        "artifactCoveredRisks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "artifactInvalidated": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

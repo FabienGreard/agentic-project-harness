@@ -1,19 +1,12 @@
-# DECISION-ID — Decision title
+# DECISION-ID — Title
 
 Status: Proposed / Accepted / Superseded / Rejected
 Date: YYYY-MM-DD
-Owners:
+Scope: PROJECT / GOAL-ID / TICKET-ID
+Owner:
 
-## Context
+## Context and options
 
-## Options considered
+## Decision and rationale
 
-## Decision
-
-## Rationale
-
-## Consequences
-
-## Evidence
-
-## Systems or processes affected
+## Consequences and evidence

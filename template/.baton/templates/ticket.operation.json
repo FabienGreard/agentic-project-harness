@@ -7,20 +7,28 @@
       "recordType": "project",
       "project": {
         "name": "Project name",
+        "purpose": "Replace with why the project exists",
+        "users": ["Replace with the people served"],
         "outcome": "Replace with the durable stakeholder-visible outcome",
+        "constraints": [],
+        "nonGoals": [],
+        "principles": [],
+        "openQuestions": [],
         "currentGoal": "GOAL-001",
         "agentProvider": "codex",
         "phase": "Needs Definition",
         "templateMode": true,
         "lastVerified": "",
+        "decisionPaths": [],
+        "evidencePaths": [],
         "assuranceDefaults": {
-          "testRigor": "Standard",
-          "humanReviewStages": []
+          "readinessProtocol": "Standard Protocol",
+          "clearanceProtocol": "Release Clearance"
         }
       },
       "baton": {
         "owner": "Management",
-        "action": "Define GOAL-001 and its first bounded ticket",
+        "action": "Define GOAL-001 and its first bounded Ticket",
         "returnTrigger": "GOAL-001 and its execution scope are Ready"
       }
     },
@@ -37,6 +45,10 @@
           "objective": "Replace with the stakeholder-visible result",
           "context": "Replace with the concise reason this goal matters now",
           "dependencies": [],
+          "assurance": {
+            "clearanceProtocol": "Release Clearance",
+            "overrideReason": ""
+          },
           "blockers": [],
           "decisionPaths": [],
           "evidencePaths": []
@@ -65,12 +77,14 @@
           "risks": [],
           "requiredConsultantIds": [],
           "assurance": {
-            "testRigor": "Standard",
-            "humanReviewStages": [],
+            "readinessProtocol": "Standard Protocol",
+            "clearanceProtocol": "Release Clearance",
             "overrideReason": ""
           },
           "blockers": [],
-          "openDecisions": []
+          "openDecisions": [],
+          "decisionPaths": [],
+          "evidencePaths": []
         }
       ]
     }

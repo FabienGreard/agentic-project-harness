@@ -26,7 +26,7 @@ from baton_memory import (
     MemoryError,
     inspect as inspect_memory,
     prepare_under_lock as prepare_memory_under_lock,
-    render_thread_registry,
+    render_team_tasks,
 )
 
 try:
@@ -42,6 +42,7 @@ CATALOG_NAME = ".baton/team-presets.json"
 TEAM_NAME = ".baton/state/team.json"
 METADATA_NAME = ".baton/metadata.json"
 AGENTS_DIR = ".baton/agents"
+CODEX_PROPOSAL_ARTIFACT = "proposals/codex-config.toml"
 REASONING_LEVELS = {
     "inherit", "none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"
 }
@@ -353,11 +354,10 @@ def consultant_config(consultant: dict[str, Any], reasoning: str) -> str:
         reasoning=reasoning,
         instructions=f"""
 You are a Consultant serving as {consultant['title']} for the configured {consultant['domain']} domain.
-Read AGENTS.md, every applicable .baton/rules/ file, .baton/state/team.json, and .baton/roles/consultant.md completely before acting.
+Follow the startup order in .baton/AGENTS.md, including every mandatory rule, validated state, and .baton/roles/consultant.md.
 Define readiness and accept or reject evidence only inside this approved domain. Readiness: {readiness} Evidence: {evidence} Authority: {consultant['acceptanceAuthority']}
 You do not own {non_authorities}. Return execution requirements and revisions to Operations; never dispatch or steer Contractors directly.
-On each valid wake, request only the bounded Consultant and assignment briefing available through hidden `_memory` context selection. Never load full memory, candidates, or history.
-This is a permanent top-level task with an event-driven run-to-idle lifecycle. Only a new message to this exact task is a wake; never create, resume, recreate, or attach a persistent goal. A legacy automatic continuation is a non-wake event: do no work and report it for removal. If .baton/state/team.json marks this Consultant inactive, perform no project work and report the stale task or config for cleanup.
+Request only bounded assignment memory. Act only after a new message to this task; if the seat is inactive or the host auto-continues without one, do no project work.
 """,
     )
 
@@ -377,10 +377,8 @@ def fixed_configs(
             reasoning=reasoning["management"],
             instructions=f"""
 You are Management, serving as {management['title']}. {management['headline']}
-Read AGENTS.md, every applicable .baton/rules/ file, .baton/state/team.json, and .baton/roles/management.md completely before acting.
-Own outcomes, priority, scope, readiness, durable decisions, publication, and human-review gates. Commission active Consultants for their configured domains and route executable work to Operations. Never dispatch or steer Contractors directly.
-On each valid wake, request only the bounded Management and assignment briefing available through hidden `_memory` context selection. Never load full memory, candidates, or history.
-This is a permanent top-level task with an event-driven run-to-idle lifecycle. Only a new message to this exact task is a wake; never create, resume, recreate, or attach a persistent goal. A legacy automatic continuation is a non-wake event: do no work and report it for removal.
+Follow the startup order in .baton/AGENTS.md, including every mandatory rule, validated state, and .baton/roles/management.md.
+Request only bounded assignment memory. Act only after a new message to this task; never use a persistent goal as role identity or lifecycle.
 """,
         ),
         "operations.toml": role_config(
@@ -389,10 +387,8 @@ This is a permanent top-level task with an event-driven run-to-idle lifecycle. O
             reasoning=reasoning["operations"],
             instructions=f"""
 You are Operations, serving as {operations['title']}. {operations['headline']}
-Read AGENTS.md, every applicable .baton/rules/ file, .baton/state/team.json, and .baton/roles/operations.md completely before acting.
-Own executable planning, exclusive ownership, Contractor dispatch, integration, verification, and completion evidence. Route missing outcome intent to Management and missing expert requirements to the active Consultant for that domain.
-On each valid wake, request only the bounded Operations and assignment briefing available through hidden `_memory` context selection. Never load full memory, candidates, or history.
-This is a permanent top-level task with an event-driven run-to-idle lifecycle. Only a new message to this exact task is a wake; never create, resume, recreate, or attach a persistent goal. A legacy automatic continuation is a non-wake event: do no work and report it for removal.
+Follow the startup order in .baton/AGENTS.md, including every mandatory rule, validated state, and .baton/roles/operations.md.
+Request only bounded assignment memory. Act only after a new message to this task; never use a persistent goal as role identity or lifecycle.
 """,
         ),
         "contractor.toml": role_config(
@@ -401,9 +397,8 @@ This is a permanent top-level task with an event-driven run-to-idle lifecycle. O
             reasoning=reasoning["contractors"],
             instructions=f"""
 You are a disposable Contractor selected by Operations for one bounded assignment. The available preset capabilities are: {bench}
-Read AGENTS.md, every applicable .baton/rules/ file, .baton/state/team.json, .baton/roles/contractor.md, and the complete assignment before acting.
-Request only the bounded Contractor briefing authorized by the assignment through hidden `_memory` context selection. Never load full memory, candidates, or history.
-Stay inside exclusive scope, do not invent intent or acceptance, verify proportionally, return exact evidence to Operations, and stop. The capability labels are routing hints, not job titles you must perform in conversation.
+Follow the startup order in .baton/AGENTS.md, including every mandatory rule, validated state, .baton/roles/contractor.md, and the complete assignment.
+Stay inside exclusive scope, request only authorized bounded memory, verify proportionally, return exact evidence to Operations, and stop.
 """,
         ),
         "internal-audit.toml": role_config(
@@ -412,10 +407,9 @@ Stay inside exclusive scope, do not invent intent or acceptance, verify proporti
             reasoning=reasoning["internalAudit"],
             read_only=True,
             instructions="""
-You are Internal Audit, a disposable independent evaluator of Baton rather than a member of the project team.
-Read AGENTS.md, applicable .baton/rules/ files, .baton/state/team.json, .baton/roles/internal-audit.md, and the exact evaluation contract.
-Use hidden `_memory` context selection only when memory is inside the authorized evaluation boundary, and pass that boundary explicitly with the request; never load full memory, candidates, or history.
-Audit only the bounded orchestration evidence. Do not perform project QA, mutate state, fix findings, message permanent roles, dispatch, accept project work, or publish. Return the report and stop.
+You are disposable, read-only Internal Audit, not project personnel or QA.
+Follow the startup order in .baton/AGENTS.md, including every mandatory rule, validated state, .baton/roles/internal-audit.md, and the exact evaluation contract.
+Load only authorized evidence and bounded read-only memory. Return the independent report without mutating work, then stop.
 """,
         ),
     }
@@ -590,9 +584,29 @@ def codex_agent_names(team: dict[str, Any]) -> list[str]:
     return names
 
 
+def render_source_codex_config(team: dict[str, Any]) -> str:
+    """Render Baton's own source-repository registry without consumer copy drift."""
+    descriptions = {
+        "management": "Own Baton product outcomes, priority, scope, readiness, and release decisions.",
+        "operations": "Own Baton delivery, Contractor dispatch, integration, and verification.",
+        "contractor": "Execute one bounded Baton assignment for Operations.",
+        "internal_audit": "Independently evaluate Baton without joining its product team.",
+    }
+    descriptions.update(
+        {
+            f"consultant_{item['id'].replace('-', '_')}": (
+                f"Provide recurring {item['domain']} readiness and acceptance."
+            )
+            for item in team["consultants"]
+            if item["status"] == "active"
+        }
+    )
+    return render_codex_config(codex_agent_names(team), descriptions=descriptions)
+
+
 def reconcile_codex_config(
     *, root: Path, team: dict[str, Any], metadata: dict[str, Any], transaction_id: str
-) -> tuple[dict[str, bytes], dict[str, Any], list[str]]:
+) -> tuple[dict[str, bytes], dict[str, Any], list[str], dict[str, bytes]]:
     updated = json.loads(json.dumps(metadata))
     managed = updated.get("managedFiles")
     if not isinstance(managed, dict):
@@ -601,6 +615,7 @@ def reconcile_codex_config(
     digest = sha256_bytes(desired)
     writes: dict[str, bytes] = {}
     manual: list[str] = []
+    external: dict[str, bytes] = {}
 
     def preserve(relative: str) -> None:
         managed.pop(relative, None)
@@ -617,40 +632,30 @@ def reconcile_codex_config(
             writes[root_path] = desired
             root_record["ownership"] = "integration-link"
             root_record["baselineSha256"] = digest
-            return writes, updated, manual
+            return writes, updated, manual, external
         preserve(root_path)
         manual.append(
-            "Preserved the modified .codex/config.toml as project-owned; merge the generated Baton proposal to register the current Consultant team."
+            "Preserved the modified .codex/config.toml as project-owned."
         )
 
-    integration_path = ".baton/integration/codex-config.toml"
-    integration_record = managed.get(integration_path)
-    integration = inside(root, integration_path)
-    actual = entry_digest(integration)
-    if isinstance(integration_record, dict) and actual == integration_record.get("baselineSha256"):
-        writes[integration_path] = desired
-        integration_record["ownership"] = "generated-config"
-        integration_record["baselineSha256"] = digest
-    elif integration_record is None and actual in {None, digest}:
-        if actual is None:
-            writes[integration_path] = desired
-        managed[integration_path] = {
-            "ownership": "generated-config",
-            "baselineSha256": digest,
-        }
-    else:
-        if integration_record is not None:
-            preserve(integration_path)
-        proposed = f".baton/integration/codex-config.{transaction_id}.toml"
-        writes[proposed] = desired
-        managed[proposed] = {
-            "ownership": "generated-config",
-            "baselineSha256": digest,
-        }
-        manual.append(
-            f"Preserved the modified {integration_path}; merge {proposed} manually to register the current Consultant team."
-        )
-    return writes, updated, manual
+    migration_path = ".baton/migration/codex-config.toml"
+    migration_record = managed.get(migration_path)
+    migration = inside(root, migration_path)
+    actual = entry_digest(migration)
+    if isinstance(migration_record, dict):
+        preserve(migration_path)
+        if actual != migration_record.get("baselineSha256"):
+            manual.append(
+                f"Preserved the modified {migration_path} as project-owned."
+            )
+
+    proposal = transaction_directory(root, transaction_id) / CODEX_PROPOSAL_ARTIFACT
+    external[CODEX_PROPOSAL_ARTIFACT] = desired
+    manual.append(
+        f"Merge the external Roster proposal {proposal} into .codex/config.toml "
+        "to register the current Consultant team."
+    )
+    return writes, updated, manual, external
 
 
 def initialize_team(
@@ -720,8 +725,60 @@ def transaction_directory(root: Path, transaction_id: str) -> Path:
     return transaction
 
 
+def external_codex_proposal(root: Path, metadata: dict[str, Any]) -> Path:
+    transaction_id = metadata.get("lastTeamTransactionId")
+    if not isinstance(transaction_id, str) or not transaction_id:
+        raise TeamError(
+            "installed Baton state has neither a managed Codex config nor an external Roster proposal"
+        )
+    transaction = transaction_directory(root, transaction_id)
+    report_path = transaction / "team-report.json"
+    if report_path.is_symlink() or not report_path.is_file():
+        raise TeamError("external Roster proposal report is missing or unsafe")
+    try:
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise TeamError("external Roster proposal report is unreadable") from error
+    if report.get("result") not in {
+        "applied",
+        "applied-needs-manual-cleanup",
+        "committed-recovered",
+    }:
+        raise TeamError("external Roster proposal does not belong to a committed transaction")
+    artifacts = report.get("externalArtifacts")
+    record = (
+        artifacts.get(CODEX_PROPOSAL_ARTIFACT)
+        if isinstance(artifacts, dict)
+        else None
+    )
+    expected = transaction / CODEX_PROPOSAL_ARTIFACT
+    if not isinstance(record, dict) or record.get("path") != str(expected):
+        raise TeamError("external Roster proposal evidence is incomplete")
+    proposal = Path(record["path"])
+    digest = record.get("sha256")
+    if (
+        proposal != expected
+        or proposal.is_symlink()
+        or not proposal.is_file()
+        or not isinstance(digest, str)
+        or sha256_file(proposal) != digest
+    ):
+        raise TeamError("external Roster proposal evidence is missing, unsafe, or modified")
+    return proposal
+
+
 def load_dashboard_module(root: Path):
-    path = inside(root, ".baton/lib/harness_state.py")
+    runtime = root / ".baton/lib"
+    if runtime.is_symlink():
+        expected = (root / "template/.baton/lib").resolve(strict=False)
+        if runtime.resolve(strict=False) != expected:
+            raise TeamError("project state renderer uses an untrusted runtime link")
+        runtime = expected
+    else:
+        runtime = runtime.resolve(strict=False)
+    path = runtime / "harness_state.py"
+    if path.is_symlink() or not path.is_file():
+        raise TeamError("could not load the project state renderer")
     spec = importlib.util.spec_from_file_location("aph_project_harness_state", path)
     if spec is None or spec.loader is None:
         raise TeamError("could not load the project state renderer")
@@ -752,7 +809,9 @@ def prepare_consultant_memory(
     memory_path = inside(root, ".baton/memory/memory.json")
     history_path = inside(root, ".baton/memory/history.jsonl")
     if not memory_path.is_file() and not history_path.is_file():
-        return None
+        raise TeamError(
+            "project preset reconfiguration requires initialized company memory and a bound bootstrap task"
+        )
     if (
         memory_path.is_symlink()
         or history_path.is_symlink()
@@ -832,16 +891,86 @@ def prepare_consultant_memory(
         raise TeamError("Consultant lifecycle could not update company memory: %s" % error) from error
 
 
-def generated_registry(
+def prepare_preset_memory(
+    *,
+    root: Path,
+    preset_id: str,
+    consultant_ids: list[str],
+    now: str,
+    invocation_task_id: str,
+) -> dict[str, Any] | None:
+    """Record the user's bootstrap-time preset choice in the same team transaction."""
+    memory_path = inside(root, ".baton/memory/memory.json")
+    history_path = inside(root, ".baton/memory/history.jsonl")
+    if not memory_path.is_file() and not history_path.is_file():
+        return None
+    if (
+        memory_path.is_symlink()
+        or history_path.is_symlink()
+        or not memory_path.is_file()
+        or not history_path.is_file()
+    ):
+        raise TeamError("active company memory is incomplete or unsafe")
+    memory = read_project_record(root, ".baton/memory/memory.json")
+    coordinator = (
+        memory.get("bootstrap", {})
+        .get("provisionalProject", {})
+        .get("coordinatorTaskId", "")
+    )
+    if not isinstance(coordinator, str) or not coordinator:
+        raise TeamError(
+            "project preset reconfiguration requires bootstrap to be bound to its original invoking task first"
+        )
+    if invocation_task_id != coordinator:
+        raise TeamError(
+            "project preset reconfiguration must come from its original invoking task"
+        )
+    if memory.get("bootstrap", {}).get("confirmedAt"):
+        raise TeamError(
+            "project preset reconfiguration is limited to unconfirmed bootstrap; use normal project governance after onboarding"
+        )
+    for person in memory.get("personnel", []):
+        if (
+            person.get("role") in {"Operations", "Consultant"}
+            and person.get("task", {}).get("status") == "online"
+        ):
+            raise TeamError(
+                "project preset cannot change after another permanent coworker task is online"
+            )
+    command = {
+        "operation": "bootstrap",
+        "action": "project-preset",
+        "actor": "Management",
+        "actorId": "bootstrap-management",
+        "expectedRevision": memory.get("revision"),
+        "idempotencyKey": "bootstrap-project-preset:%s:%s:%s"
+        % (memory.get("revision"), preset_id, ",".join(consultant_ids)),
+        "timestamp": now,
+        "sourceClass": "explicit-user",
+        "references": [TEAM_NAME],
+        "userApproved": True,
+        "preset": preset_id,
+        "consultantSeats": consultant_ids,
+    }
+    command["invocationTaskId"] = invocation_task_id
+    try:
+        return prepare_memory_under_lock(root, command)
+    except MemoryError as error:
+        raise TeamError(
+            "project preset could not update bootstrap memory: %s" % error
+        ) from error
+
+
+def generated_team_tasks(
     *, root: Path, metadata: dict[str, Any], team: dict[str, Any], memory: dict[str, Any]
 ) -> str | None:
     managed = metadata.get("managedFiles")
-    record = managed.get(".baton/thread-registry.md") if isinstance(managed, dict) else None
+    record = managed.get(".baton/views/team-tasks.md") if isinstance(managed, dict) else None
     if record is None:
         return None
     if not isinstance(record, dict) or record.get("ownership") != "generated-config":
-        raise TeamError("thread registry baseline is not a generated Baton view")
-    return render_thread_registry(memory, team)
+        raise TeamError("team task baseline is not a generated Baton view")
+    return render_team_tasks(memory, team)
 
 
 def _atomic_write(path: Path, content: bytes) -> None:
@@ -920,7 +1049,7 @@ def _validate_transaction_state(
             raise TeamError(
                 "team transaction committed invalid team state: " + "; ".join(errors)
             )
-        dashboard_path = inside(root, ".baton/dashboard/index.html")
+        dashboard_path = inside(root, ".baton/views/dashboard.html")
         if dashboard_path.is_file():
             expected_dashboard = dashboard_for(root, team).encode("utf-8")
             if dashboard_path.read_bytes() != expected_dashboard:
@@ -929,10 +1058,11 @@ def _validate_transaction_state(
                 )
 
 
-def recover_interrupted_team_transactions(root: Path) -> None:
+def recover_interrupted_team_transactions(root: Path) -> list[dict[str, str]]:
     base = transaction_directory(root, "recovery").parent
     if not base.is_dir():
-        return
+        return []
+    recovered: list[dict[str, str]] = []
     for transaction in sorted(base.iterdir()):
         report_path = transaction / "team-report.json"
         if not report_path.exists():
@@ -992,16 +1122,56 @@ def recover_interrupted_team_transactions(root: Path) -> None:
                 "unrecognized interrupted team transaction; inspect external recovery evidence"
             )
         _write_team_report(report_path, report)
+        recovered.append(
+            {
+                "transactionId": str(report.get("transactionId", transaction.name)),
+                "result": str(report["result"]),
+                "reportPath": str(report_path),
+            }
+        )
+    return recovered
+
+
+def recover_team_transactions(root: Path) -> dict[str, Any]:
+    """Recover fully recognized interrupted team transactions under the shared lock."""
+    try:
+        with mutation_lock(root, "team-recover"):
+            recovered = recover_interrupted_team_transactions(root)
+    except MutationLockError as error:
+        raise TeamError(str(error)) from error
+    return {
+        "ok": True,
+        "recovered": recovered,
+        "recoveredCount": len(recovered),
+    }
 
 
 def transaction_write(
-    *, root: Path, writes: dict[str, bytes], removes: list[str], report: dict[str, Any]
+    *,
+    root: Path,
+    writes: dict[str, bytes],
+    removes: list[str],
+    report: dict[str, Any],
+    external_writes: dict[str, bytes] | None = None,
 ) -> Path:
     transaction_id = report["transactionId"]
     transaction = transaction_directory(root, transaction_id)
     backup = transaction / "backup"
     transaction.mkdir(parents=True, exist_ok=False)
     backup.mkdir(parents=True, exist_ok=False)
+    external_writes = dict(external_writes or {})
+    external_artifacts: dict[str, dict[str, str]] = {}
+    for relative, content in external_writes.items():
+        normalized = safe_relative(relative)
+        if not normalized.startswith("proposals/"):
+            raise TeamError(
+                f"team transaction external artifact must be under proposals/: {relative}"
+            )
+        path = transaction.joinpath(*PurePosixPath(normalized).parts)
+        external_artifacts[normalized] = {
+            "path": str(path),
+            "sha256": sha256_bytes(content),
+        }
     affected = sorted(set(writes) | set(removes))
     previous: dict[str, bytes | None] = {}
     for relative in affected:
@@ -1030,6 +1200,13 @@ def transaction_write(
     report_path = transaction / "team-report.json"
     final_result = str(report.get("result", "applied"))
     try:
+        for relative, content in external_writes.items():
+            path = Path(external_artifacts[relative]["path"])
+            if path.exists() or path.is_symlink():
+                raise TeamError(
+                    f"team transaction external artifact already exists: {relative}"
+                )
+            _atomic_write(path, content)
         for relative, content in writes.items():
             path = inside(root, relative)
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -1047,6 +1224,7 @@ def transaction_write(
                 "rollbackLocation": str(backup),
                 "reportPath": str(report_path),
                 "artifacts": artifacts,
+                "externalArtifacts": external_artifacts,
                 "commitMarker": (
                     ".baton/memory/memory.json"
                     if ".baton/memory/memory.json" in writes
@@ -1097,6 +1275,7 @@ def transaction_write(
                 "rollbackLocation": str(backup),
                 "reportPath": str(report_path),
                 "artifacts": artifacts,
+                "externalArtifacts": external_artifacts,
             }
         )
         _write_team_report(report_path, rollback)
@@ -1209,7 +1388,7 @@ def hire_consultant(
         metadata=metadata,
         add={"path": config_path, "sha256": consultant["configBaselineSha256"]},
         refresh={
-            "path": ".baton/dashboard/index.html",
+            "path": ".baton/views/dashboard.html",
             "sha256": sha256_bytes(dashboard.encode("utf-8")),
         },
         transaction_id=transaction_id,
@@ -1222,7 +1401,7 @@ def hire_consultant(
         else None
     )
     registry = (
-        generated_registry(
+        generated_team_tasks(
             root=root,
             metadata=updated_metadata,
             team=updated_team,
@@ -1232,14 +1411,19 @@ def hire_consultant(
         else None
     )
     if registry is not None:
-        updated_metadata["managedFiles"][".baton/thread-registry.md"][
+        updated_metadata["managedFiles"][".baton/views/team-tasks.md"][
             "baselineSha256"
         ] = sha256_bytes(registry.encode("utf-8"))
-    codex_writes, updated_metadata, codex_actions = reconcile_codex_config(
+    codex_writes, updated_metadata, codex_actions, codex_external = reconcile_codex_config(
         root=root,
         team=updated_team,
         metadata=updated_metadata,
         transaction_id=transaction_id,
+    )
+    proposal_path = (
+        str(transaction_directory(root, transaction_id) / CODEX_PROPOSAL_ARTIFACT)
+        if codex_external
+        else None
     )
     report = {
         "result": "applied",
@@ -1249,8 +1433,8 @@ def hire_consultant(
         "writes": [
             config_path,
             TEAM_NAME,
-            ".baton/dashboard/index.html",
-            *([".baton/thread-registry.md"] if registry is not None else []),
+            ".baton/views/dashboard.html",
+            *([".baton/views/team-tasks.md"] if registry is not None else []),
             *(
                 [".baton/memory/memory.json", ".baton/memory/history.jsonl"]
                 if memory_update
@@ -1261,13 +1445,14 @@ def hire_consultant(
         ],
         "removes": [],
         "manualActions": codex_actions,
+        "proposalPath": proposal_path,
     }
     writes = {
         config_path: config.encode("utf-8"),
         TEAM_NAME: write_json_text(updated_team).encode("utf-8"),
-        ".baton/dashboard/index.html": dashboard.encode("utf-8"),
+        ".baton/views/dashboard.html": dashboard.encode("utf-8"),
         **(
-            {".baton/thread-registry.md": registry.encode("utf-8")}
+            {".baton/views/team-tasks.md": registry.encode("utf-8")}
             if registry is not None
             else {}
         ),
@@ -1287,12 +1472,14 @@ def hire_consultant(
         writes=writes,
         removes=[],
         report=report,
+        external_writes=codex_external,
     )
     return {
         "ok": True,
         "action": "hire",
         "consultant": report["consultant"],
         "manualActions": codex_actions,
+        "proposalPath": proposal_path,
         "memoryRevision": (
             memory_update["snapshot"]["revision"] if memory_update else None
         ),
@@ -1358,7 +1545,7 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
             else None
         ),
         refresh={
-            "path": ".baton/dashboard/index.html",
+            "path": ".baton/views/dashboard.html",
             "sha256": sha256_bytes(dashboard.encode("utf-8")),
         },
         transaction_id=transaction_id,
@@ -1371,7 +1558,7 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
         else None
     )
     registry = (
-        generated_registry(
+        generated_team_tasks(
             root=root,
             metadata=updated_metadata,
             team=updated_team,
@@ -1381,14 +1568,19 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
         else None
     )
     if registry is not None:
-        updated_metadata["managedFiles"][".baton/thread-registry.md"][
+        updated_metadata["managedFiles"][".baton/views/team-tasks.md"][
             "baselineSha256"
         ] = sha256_bytes(registry.encode("utf-8"))
-    codex_writes, updated_metadata, codex_actions = reconcile_codex_config(
+    codex_writes, updated_metadata, codex_actions, codex_external = reconcile_codex_config(
         root=root,
         team=updated_team,
         metadata=updated_metadata,
         transaction_id=transaction_id,
+    )
+    proposal_path = (
+        str(transaction_directory(root, transaction_id) / CODEX_PROPOSAL_ARTIFACT)
+        if codex_external
+        else None
     )
     removes = [config_path] if unchanged else []
     manual_actions = [record["manualAction"]] if record["manualAction"] else []
@@ -1400,8 +1592,8 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
         "consultant": {"id": consultant_id, "title": consultant["title"], "source": consultant["source"]},
         "writes": [
             TEAM_NAME,
-            ".baton/dashboard/index.html",
-            *([".baton/thread-registry.md"] if registry is not None else []),
+            ".baton/views/dashboard.html",
+            *([".baton/views/team-tasks.md"] if registry is not None else []),
             *(
                 [".baton/memory/memory.json", ".baton/memory/history.jsonl"]
                 if memory_update
@@ -1414,14 +1606,15 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
         "reconciledMissingFiles": [config_path] if config_missing else [],
         "preservedFiles": [config_path] if record["preservedConfig"] else [],
         "manualActions": manual_actions,
+        "proposalPath": proposal_path,
     }
     transaction = transaction_write(
         root=root,
         writes={
             TEAM_NAME: write_json_text(updated_team).encode("utf-8"),
-            ".baton/dashboard/index.html": dashboard.encode("utf-8"),
+            ".baton/views/dashboard.html": dashboard.encode("utf-8"),
             **(
-                {".baton/thread-registry.md": registry.encode("utf-8")}
+                {".baton/views/team-tasks.md": registry.encode("utf-8")}
                 if registry is not None
                 else {}
             ),
@@ -1438,6 +1631,7 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
         },
         removes=removes,
         report=report,
+        external_writes=codex_external,
     )
     return {
         "ok": True,
@@ -1447,10 +1641,281 @@ def fire_consultant(*, project_root: Path, consultant_id: str) -> dict[str, Any]
         "preservedFiles": report["preservedFiles"],
         "reconciledMissingFiles": report["reconciledMissingFiles"],
         "manualActions": manual_actions,
+        "proposalPath": proposal_path,
         "memoryRevision": (
             memory_update["snapshot"]["revision"] if memory_update else None
         ),
         "personnelIds": memory_update["personnelIds"] if memory_update else [],
+        "transactionId": transaction_id,
+        "backupPath": str(transaction / "backup"),
+        "rollbackLocation": str(transaction / "backup"),
+        "reportPath": str(transaction / "team-report.json"),
+    }
+
+
+@locked_team_mutation
+def reconfigure_preset(
+    *,
+    project_root: Path,
+    preset_id: str,
+    selected: Iterable[str] | None,
+    invocation_task_id: str | None = None,
+) -> dict[str, Any]:
+    """Change the unconfirmed bootstrap preset without replacing user-owned files."""
+    if not isinstance(invocation_task_id, str) or not invocation_task_id.strip():
+        raise TeamError(
+            "project preset reconfiguration requires the original invoking task ID"
+        )
+    invocation_task_id = invocation_task_id.strip()
+    root = project_root.resolve()
+    catalog = load_catalog(root)
+    current = read_project_record(root, TEAM_NAME)
+    metadata = read_project_record(root, METADATA_NAME)
+    errors = validate_team(current, catalog)
+    if errors:
+        raise TeamError("; ".join(errors))
+    preset = preset_definition(catalog, preset_id)
+    current_active = [
+        item["id"] for item in current["consultants"] if item["status"] == "active"
+    ]
+    if selected is None:
+        selected_ids = (
+            current_active
+            if preset_id == current["preset"]
+            else list(preset["defaultConsultants"])
+        )
+    else:
+        selected_ids = list(selected)
+    if len(selected_ids) != len(set(selected_ids)):
+        raise TeamError("Consultant selection contains a duplicate")
+
+    now = utc_now()
+    updated_team = team_record(
+        catalog=catalog,
+        preset_id=preset_id,
+        selected=selected_ids,
+        reasoning=current["reasoning"],
+    )
+    current_configs = render_team_configs(team=current, catalog=catalog)
+    desired_configs = render_team_configs(team=updated_team, catalog=catalog)
+    source_repository = metadata.get("installationStatus") == "Source Repository"
+    source_codex_writes: dict[str, bytes] = {}
+    if source_repository:
+        source_config = inside(root, ".codex/config.toml")
+        if source_config.is_symlink() or not source_config.is_file():
+            raise TeamError(
+                "source Codex config is missing or unsafe; no changes made: .codex/config.toml"
+            )
+        expected_source = render_source_codex_config(current).encode("utf-8")
+        if source_config.read_bytes() != expected_source:
+            raise TeamError(
+                "modified source Codex config must be reviewed manually; no changes made: .codex/config.toml"
+            )
+        source_codex_writes[".codex/config.toml"] = render_source_codex_config(
+            updated_team
+        ).encode("utf-8")
+    removes: list[str] = []
+    preserved: list[str] = []
+
+    for filename, expected in current_configs.items():
+        relative = f"{AGENTS_DIR}/{filename}"
+        path = inside(root, relative)
+        if path.is_symlink() or not path.is_file():
+            raise TeamError(
+                f"generated role config is missing or unsafe; no changes made: {relative}"
+            )
+        if path.read_text(encoding="utf-8") != expected:
+            raise TeamError(
+                f"modified generated role config must be reviewed manually; no changes made: {relative}"
+            )
+        if filename not in desired_configs:
+            removes.append(relative)
+
+    for filename in desired_configs:
+        relative = f"{AGENTS_DIR}/{filename}"
+        path = inside(root, relative)
+        if filename not in current_configs and (path.exists() or path.is_symlink()):
+            raise TeamError(
+                f"new preset role config collides with an existing path; no changes made: {relative}"
+            )
+
+    desired_ids = {
+        item["id"] for item in updated_team["consultants"] if item["status"] == "active"
+    }
+    for old in current["consultants"]:
+        if old["id"] in desired_ids:
+            continue
+        record = json.loads(json.dumps(old))
+        record["status"] = "inactive"
+        record["firedAt"] = now
+        record["preservedConfig"] = record["configPath"] in preserved
+        record["manualAction"] = (
+            "Review and manually archive or remove the preserved modified Codex agent config after explicit human approval."
+            if record["preservedConfig"]
+            else ""
+        )
+        updated_team["consultants"].append(record)
+
+    for consultant in updated_team["consultants"]:
+        if consultant["status"] != "active":
+            continue
+        filename = Path(consultant["configPath"]).name
+        consultant["configBaselineSha256"] = sha256_bytes(
+            desired_configs[filename].encode("utf-8")
+        )
+    updated_team["updatedAt"] = now
+    errors = validate_team(updated_team, catalog)
+    if errors:
+        raise TeamError("preset reconfiguration would create invalid team state: " + "; ".join(errors))
+
+    memory_update = prepare_preset_memory(
+        root=root,
+        preset_id=preset_id,
+        consultant_ids=selected_ids,
+        now=now,
+        invocation_task_id=invocation_task_id,
+    )
+    dashboard = dashboard_for(
+        root,
+        updated_team,
+        memory_update["projection"] if memory_update else None,
+    )
+    transaction_id = (
+        f"reconfigure-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-"
+        f"{uuid.uuid4().hex[:8]}"
+    )
+    updated_metadata = json.loads(json.dumps(metadata))
+    updated_metadata["projectType"] = preset_id
+    updated_metadata["updatedAt"] = now
+    updated_metadata["lastTransactionId"] = transaction_id
+    updated_metadata["lastTeamTransactionId"] = transaction_id
+    managed = updated_metadata.get("managedFiles")
+    if not isinstance(managed, dict):
+        raise TeamError("installed Baton metadata has no managed-file map")
+    project_owned = updated_metadata.setdefault("projectOwnedFiles", [])
+    installed = updated_metadata.get("installationStatus") == "Installed"
+    for relative in removes:
+        managed.pop(relative, None)
+    for relative in preserved:
+        managed.pop(relative, None)
+        if relative not in project_owned:
+            project_owned.append(relative)
+    if installed:
+        for filename, content in desired_configs.items():
+            relative = f"{AGENTS_DIR}/{filename}"
+            managed[relative] = {
+                "ownership": "generated-config",
+                "baselineSha256": sha256_bytes(content.encode("utf-8")),
+            }
+    project_owned.sort()
+    dashboard_record = managed.get(".baton/views/dashboard.html")
+    if dashboard_record is not None:
+        if (
+            not isinstance(dashboard_record, dict)
+            or dashboard_record.get("ownership") != "generated-config"
+        ):
+            raise TeamError("dashboard baseline is not a generated Baton view")
+        dashboard_record["baselineSha256"] = sha256_bytes(
+            dashboard.encode("utf-8")
+        )
+
+    memory_snapshot = (
+        memory_update["snapshot"]
+        if memory_update
+        else read_project_record(root, ".baton/memory/memory.json")
+        if inside(root, ".baton/memory/memory.json").is_file()
+        else None
+    )
+    registry = (
+        generated_team_tasks(
+            root=root,
+            metadata=updated_metadata,
+            team=updated_team,
+            memory=memory_snapshot,
+        )
+        if memory_snapshot is not None
+        else None
+    )
+    if registry is not None:
+        updated_metadata["managedFiles"][".baton/views/team-tasks.md"][
+            "baselineSha256"
+        ] = sha256_bytes(registry.encode("utf-8"))
+
+    if installed:
+        codex_writes, updated_metadata, codex_actions, codex_external = reconcile_codex_config(
+            root=root,
+            team=updated_team,
+            metadata=updated_metadata,
+            transaction_id=transaction_id,
+        )
+    elif source_repository:
+        codex_writes, codex_actions, codex_external = source_codex_writes, [], {}
+    else:
+        codex_writes, codex_actions, codex_external = {}, [], {}
+    proposal_path = (
+        str(transaction_directory(root, transaction_id) / CODEX_PROPOSAL_ARTIFACT)
+        if codex_external
+        else None
+    )
+    manual_actions = [
+        record["manualAction"]
+        for record in updated_team["consultants"]
+        if record["manualAction"]
+    ]
+    manual_actions.extend(codex_actions)
+    writes = {
+        **{
+            f"{AGENTS_DIR}/{filename}": content.encode("utf-8")
+            for filename, content in desired_configs.items()
+        },
+        TEAM_NAME: write_json_text(updated_team).encode("utf-8"),
+        ".baton/views/dashboard.html": dashboard.encode("utf-8"),
+        **(
+            {".baton/views/team-tasks.md": registry.encode("utf-8")}
+            if registry is not None
+            else {}
+        ),
+        **(
+            {
+                ".baton/memory/memory.json": memory_update["memoryAfter"],
+                ".baton/memory/history.jsonl": memory_update["historyAfter"],
+            }
+            if memory_update
+            else {}
+        ),
+        METADATA_NAME: write_json_text(updated_metadata).encode("utf-8"),
+        **codex_writes,
+    }
+    report = {
+        "result": "applied-needs-manual-cleanup" if manual_actions else "applied",
+        "action": "reconfigure",
+        "transactionId": transaction_id,
+        "preset": preset_id,
+        "consultants": selected_ids,
+        "writes": sorted(writes),
+        "removes": sorted(removes),
+        "preservedFiles": sorted(preserved),
+        "manualActions": manual_actions,
+        "proposalPath": proposal_path,
+    }
+    transaction = transaction_write(
+        root=root,
+        writes=writes,
+        removes=removes,
+        report=report,
+        external_writes=codex_external,
+    )
+    return {
+        "ok": True,
+        "action": "reconfigure",
+        "preset": preset_id,
+        "consultants": selected_ids,
+        "manualActions": manual_actions,
+        "proposalPath": proposal_path,
+        "preservedFiles": sorted(preserved),
+        "memoryRevision": (
+            memory_update["snapshot"]["revision"] if memory_update else None
+        ),
         "transactionId": transaction_id,
         "backupPath": str(transaction / "backup"),
         "rollbackLocation": str(transaction / "backup"),
@@ -1471,10 +1936,11 @@ def confirm(action: str, title: str, assume_yes: bool) -> None:
 def choose(items: list[tuple[str, str, str]], prompt: str) -> str:
     if not sys.stdin.isatty():
         raise TeamError("interactive selection requires a terminal")
-    print(f"\n╭─ {prompt}")
+    print("\nBaton / roster")
+    print(prompt)
     for index, (_, title, headline) in enumerate(items, start=1):
-        print(f"│  {index}. {title} — {headline}")
-    print("╰─ Enter a number")
+        print(f"  {index}. {title} — {headline}")
+    print("Choose one listed number.")
     while True:
         answer = input("› ").strip()
         if answer.isdigit() and 1 <= int(answer) <= len(items):
@@ -1487,23 +1953,48 @@ def emit(payload: dict[str, Any], as_json: bool) -> None:
         print(json.dumps(payload, ensure_ascii=False))
         return
     if not payload.get("ok"):
-        print(f"Error: {payload.get('error', 'operation failed')}", file=sys.stderr)
+        print("\nBaton / roster", file=sys.stderr)
+        print(
+            f"Attention required: {payload.get('error', 'operation failed')}",
+            file=sys.stderr,
+        )
         return
+    print("\nBaton / roster")
     if payload.get("action") == "hire":
         consultant = payload["consultant"]
-        print(f"\nWELCOME ABOARD // {consultant['title']}")
+        print(f"{consultant['title']} joined the permanent team.")
+        print("  State: awaiting task")
         print(f"  Consultant ID: {consultant['id']}")
         print(f"  Transaction: {payload['transactionId']}")
+        if payload.get("manualActions"):
+            print(f"  Manual actions: {len(payload['manualActions'])}")
+            print("Next: review the preserved external task or configuration action.")
+        else:
+            print("Next: review whether the external permanent task needs an authorized update.")
     elif payload.get("action") == "fire":
         consultant = payload["consultant"]
-        print(f"\nEXIT INTERVIEW COMPLETE // {consultant['title']}")
+        print(f"{consultant['title']} left the active roster; history was preserved.")
+        print("  State: inactive")
         print(f"  Consultant ID: {consultant['id']}")
         print(f"  Transaction: {payload['transactionId']}")
         if payload["manualCleanupRequired"]:
             print("  Manual cleanup required; the modified config was preserved.")
             print(f"  Report: {payload['reportPath']}")
+            print("Next: review the preserved configuration manually.")
+        else:
+            print("Next: review whether the external permanent task needs an authorized update.")
+    elif payload.get("action") == "reconfigure":
+        print("The unconfirmed Project roster changed.")
+        print(f"  Preset: {payload['preset']}")
+        print(f"  Consultants: {len(payload.get('consultants', []))}")
+        print("Next: continue the same onboarding conversation.")
+    elif payload.get("action") == "recover":
+        print(
+            f"Recovered {payload.get('recoveredCount', 0)} interrupted team transactions."
+        )
     else:
-        print("OK: team catalog and state are valid")
+        print("Team State and generated configurations are valid.")
+        print("Next: return to the Project task.")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -1516,6 +2007,9 @@ def parser() -> argparse.ArgumentParser:
     check = sub.add_parser("check", help="validate team state and generated configs")
     check.add_argument("--project-root", type=Path, default=ROOT)
     check.add_argument("--json", action="store_true")
+    recover = sub.add_parser("recover", help="recover recognized interrupted team transactions")
+    recover.add_argument("--project-root", type=Path, default=ROOT)
+    recover.add_argument("--json", action="store_true")
     hire = sub.add_parser("hire", help="hire a curated or custom Consultant")
     hire.add_argument("--project-root", type=Path, default=ROOT)
     hire.add_argument("--consultant")
@@ -1527,6 +2021,16 @@ def parser() -> argparse.ArgumentParser:
     fire.add_argument("--consultant")
     fire.add_argument("--yes", action="store_true")
     fire.add_argument("--json", action="store_true")
+    reconfigure = sub.add_parser(
+        "reconfigure", help="change the project preset during unconfirmed bootstrap"
+    )
+    reconfigure.add_argument("--project-root", type=Path, default=ROOT)
+    reconfigure.add_argument("--preset", required=True)
+    reconfigure.add_argument("--consultant", action="append", dest="consultants")
+    reconfigure.add_argument("--no-consultants", action="store_true")
+    reconfigure.add_argument("--invocation-task-id")
+    reconfigure.add_argument("--yes", action="store_true")
+    reconfigure.add_argument("--json", action="store_true")
     return result
 
 
@@ -1552,13 +2056,31 @@ def main() -> int:
             if args.json:
                 print(json.dumps(payload, ensure_ascii=False))
             else:
+                print("\nBaton / catalog")
+                print(
+                    "Available Project presets."
+                    if args.field == "presets"
+                    else f"Available {args.field} for {args.preset}."
+                )
                 for item in payload:
                     if isinstance(item, str):
-                        print(item)
+                        print(f"  {item}")
                     else:
-                        print("\t".join((item["id"], item.get("label", item.get("title", "")), item["headline"])))
+                        print(
+                            f"  {item['id']} — "
+                            f"{item.get('label', item.get('title', ''))}: "
+                            f"{item['headline']}"
+                        )
+                print("Next: choose one listed value or return to the Project task.")
             return 0
         root = args.project_root.resolve()
+        if args.command == "recover":
+            payload = recover_team_transactions(root)
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False))
+            else:
+                print(f"Recovered {payload['recoveredCount']} interrupted team transactions.")
+            return 0
         if args.command == "check":
             catalog = load_catalog(root)
             team = read_project_record(root, TEAM_NAME)
@@ -1623,13 +2145,15 @@ def main() -> int:
                             relative
                             for relative in (
                                 ".codex/config.toml",
-                                ".baton/integration/codex-config.toml",
+                                ".baton/migration/codex-config.toml",
                             )
                             if isinstance(managed.get(relative), dict)
                         ]
-                        if len(codex_targets) != 1:
-                            errors.append("installed Baton state must own exactly one current Codex config or integration proposal")
-                        else:
+                        if len(codex_targets) > 1:
+                            errors.append(
+                                "installed Baton state owns multiple current Codex configs"
+                            )
+                        elif len(codex_targets) == 1:
                             target = inside(root, codex_targets[0])
                             if target.is_symlink() or not target.is_file():
                                 errors.append(f"managed Codex config is not a regular file: {codex_targets[0]}")
@@ -1638,6 +2162,16 @@ def main() -> int:
                                     assert_codex_config(target, codex_agent_names(team))
                                 except (AssertionError, OSError, ValueError) as error:
                                     errors.append(f"managed Codex config differs from active team: {error}")
+                        else:
+                            try:
+                                proposal = external_codex_proposal(root, metadata)
+                                assert_codex_config(
+                                    proposal, codex_agent_names(team)
+                                )
+                            except (AssertionError, OSError, ValueError, TeamError) as error:
+                                errors.append(
+                                    f"external Roster Codex proposal differs from active team: {error}"
+                                )
             payload = {"ok": not errors, "errors": errors}
             emit(payload, args.json)
             return 0 if not errors else 1
@@ -1653,11 +2187,25 @@ def main() -> int:
                 ]
                 if not options:
                     raise TeamError("every curated Consultant for this preset is already active; use --custom FILE")
-                args.consultant = choose(options, "OPEN CONSULTANT REQUISITION")
+                args.consultant = choose(options, "Choose a recurring Consultant to add.")
             title = args.consultant or args.custom.name
-            confirm("Hire", title, args.yes)
+            confirm("Add to the permanent team:", title, args.yes)
             payload = hire_consultant(
                 project_root=root, consultant_id=args.consultant, custom_path=args.custom
+            )
+            emit(payload, args.json)
+            return 0
+        if args.command == "reconfigure":
+            if args.no_consultants and args.consultants:
+                raise TeamError(
+                    "choose --no-consultants or one or more --consultant values, not both"
+                )
+            confirm("Change the unconfirmed Project preset to", args.preset, args.yes)
+            payload = reconfigure_preset(
+                project_root=root,
+                preset_id=args.preset,
+                selected=[] if args.no_consultants else args.consultants,
+                invocation_task_id=args.invocation_task_id,
             )
             emit(payload, args.json)
             return 0
@@ -1669,13 +2217,13 @@ def main() -> int:
             ]
             if not options:
                 raise TeamError("there are no active Consultants to fire")
-            args.consultant = choose(options, "SELECT CONSULTANT FOR OFFBOARDING")
+            args.consultant = choose(options, "Choose an active Consultant to offboard.")
         team = read_project_record(root, TEAM_NAME)
         title = next(
             (item["title"] for item in team["consultants"] if item["id"] == args.consultant),
             args.consultant,
         )
-        confirm("Fire", title, args.yes)
+        confirm("Offboard while preserving history:", title, args.yes)
         payload = fire_consultant(project_root=root, consultant_id=args.consultant)
         emit(payload, args.json)
         return 0

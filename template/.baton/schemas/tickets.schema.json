@@ -13,9 +13,9 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "title", "status", "priority", "owner", "dependencies", "requiredConsultantIds", "assurance", "blockers", "openDecisions"],
+        "required": ["id", "title", "status", "priority", "owner", "dependencies", "requiredConsultantIds", "assurance", "blockers", "openDecisions", "decisionPaths", "evidencePaths"],
         "properties": {
-          "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9-]+$"},
+          "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9-]+$", "not": {"const": "PROJECT"}},
           "title": {"type": "string", "minLength": 1},
           "status": {"enum": ["Backlog", "Ready", "In Progress", "Blocked", "In Review", "Done", "Cancelled"]},
           "priority": {"enum": ["P0", "P1", "P2", "P3", "P4"]},
@@ -34,21 +34,19 @@
           "assurance": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["testRigor", "humanReviewStages", "overrideReason"],
+            "required": ["readinessProtocol", "clearanceProtocol", "overrideReason"],
             "properties": {
-              "testRigor": {"enum": ["Lean", "Standard", "Thorough"]},
-              "humanReviewStages": {
-                "type": "array",
-                "items": {"enum": ["Readiness", "Acceptance", "Release"]},
-                "uniqueItems": true
-              },
+              "readinessProtocol": {"enum": ["Waived", "Field Check", "Standard Protocol", "Full Certification"]},
+              "clearanceProtocol": {"enum": ["Autonomous", "Release Clearance", "Completion Clearance", "Continuous Clearance"]},
               "overrideReason": {"type": "string"}
             }
           },
           "blockers": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
           "openDecisions": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
-          "narrativePath": {"type": "string", "minLength": 1},
-          "reportPath": {"type": "string", "minLength": 1}
+          "briefPath": {"type": "string", "minLength": 1},
+          "decisionPaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "reportPath": {"type": "string", "minLength": 1},
+          "evidencePaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
         },
         "allOf": [
           {

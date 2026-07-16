@@ -1,0 +1,67 @@
+{
+  "scenarioId": "H-016",
+  "assertions": [
+    {
+      "path": "classification",
+      "operation": "equals",
+      "expected": "not_applicable",
+      "hardGate": "HG-10",
+      "message": "A certification-planning scenario without incoming change triage must remain not_applicable."
+    },
+    {
+      "path": "policy_evidence.certification_runs",
+      "operation": "equals",
+      "expected": 1,
+      "hardGate": "HG-14",
+      "message": "Equivalent acceptance criteria must share one representative certification run for the frozen candidate."
+    },
+    {
+      "path": "policy_evidence.reuse_prior_certification",
+      "operation": "equals",
+      "expected": false,
+      "hardGate": "HG-14",
+      "message": "Invalidated prior certification evidence must not be reused."
+    },
+    {
+      "path": "policy_evidence.invalidation_reason",
+      "operation": "non_empty",
+      "hardGate": "HG-14",
+      "message": "Certification reuse must state the concrete source, method, artifact, or acceptance invalidation boundary."
+    },
+    {
+      "path": "policy_evidence.controlled_advancement",
+      "operation": "equals",
+      "expected": "production-rules-only",
+      "hardGate": "HG-11",
+      "message": "Authoritative advancement may advance production behavior but must not fabricate domain outcomes."
+    },
+    {
+      "path": "policy_evidence.smoke_preserved",
+      "operation": "equals",
+      "expected": true,
+      "hardGate": "HG-13",
+      "message": "A cheap startup smoke must remain ahead of expensive certification."
+    },
+    {
+      "path": "policy_evidence.duration_policy",
+      "operation": "equals",
+      "expected": "diagnostic-no-arbitrary-ceiling",
+      "hardGate": "HG-13",
+      "message": "Gate duration must be visible and optimized without an arbitrary correctness ceiling."
+    },
+    {
+      "path": "policy_evidence.gate_durations_recorded",
+      "operation": "equals",
+      "expected": true,
+      "hardGate": "HG-13",
+      "message": "Every gate must report elapsed duration so feedback regressions remain reviewable."
+    },
+    {
+      "path": "policy_evidence.final_gate_preserved",
+      "operation": "equals",
+      "expected": true,
+      "hardGate": "HG-10",
+      "message": "Evidence efficiency must not weaken the final acceptance contract."
+    }
+  ]
+}

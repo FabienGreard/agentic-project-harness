@@ -1,0 +1,4 @@
+interface:
+  display_name: "Terminal"
+  short_description: "Inspect status and open Baton's HTML view"
+  default_prompt: "Use $terminal to state Baton's current status and inspect or open its generated HTML control room."
