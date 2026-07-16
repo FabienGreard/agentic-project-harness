@@ -1,37 +1,35 @@
 # Getting started
 
-## 1. Verify the installation
+Start here after installing a stable Baton release. Installations come from stable release assets, never a source checkout.
 
-```sh
-./install.sh status --json
-python3 tools/harness_team.py check --json
-python3 tools/harness_state.py check --json
+## 1. Invoke `$boot`
+
+Open the repository in your LLM coding agent and enter:
+
+```text
+$boot
 ```
 
-Confirm the installed version/provenance, selected preset, professional Management and Operations personas, and active Consultants. Resolve any Adoption cleanup prompt before implementation.
+`$boot` reads the installed instructions, checks Baton, and chooses new-Project onboarding or mature-repository adoption.
 
-## 2. Open the first Management task
+## 2. Follow the guided setup
 
-Copy the complete **First project prompt** from the generated repository `README.md`. Management owns project outcomes, priority, scope, readiness, publication, and human-review gates. Its professional persona is recorded in `docs/state/team.json`.
+`$boot` asks one question at a time. You confirm the team preset, your name, Project intent, and the default Readiness and Clearance Protocols.
 
-During project definition, confirm the default assurance policy: generated projects start with `Standard` test rigor and no universal human review stage. Every ticket records its resolved rigor and any human review required at `Readiness`, `Acceptance`, or `Release`; user-authorized overrides record why they differ from the project default.
+For a mature repository, starter State stays quarantined under `.baton/migration/` until you approve a reviewed proposal. Activation never authorizes cleanup or deletion.
 
-## 3. Establish direction and the company
+## 3. Start the team
 
-Management verifies live repository truth, records approved direction, and confirms whether the starting Consultants match the project’s recurring acceptance domains. Use `$hire-consultant` and `$fire-consultant` for team changes; never hand-edit team state or generated configs.
+After you confirm the summary, `$boot` registers Management, Operations, and active Consultants. If the LLM cannot create those tasks safely, it gives you one copy-ready action.
 
-## 4. Create bounded work
+## 4. Start Ready work
 
-Record the durable outcome in `docs/direction.md`, observable goals in `docs/state/goals.json`, decisions under `docs/decisions/`, requirements under `docs/prds/`, bounded tickets in `docs/state/tickets.json`, and results under `docs/implementation-reports/`. Every executable ticket links to a goal.
+Management defines outcomes. Operations plans, assigns, integrates, and verifies work. Consultants decide only inside their domains.
 
-## 5. Synchronize state
+Permanent roles work when their registered task receives a new message. They record the next owner and action, then pause without polling.
 
-Prepare a schema-valid operation and run `python3 tools/harness_state.py apply`. Then run state/team checks and the evaluator. Open `docs/index.html` for the generated timeline, goal details, ticket search, and company directory.
+## If something is wrong
 
-## 6. Hand Ready work to Operations
+Invoke `$doctor` to diagnose Baton. Invoke `$terminal` to inspect status or open the control room.
 
-Operations owns Contractor dispatch, exclusive ownership, integration, verification, and completion evidence. Management and Consultants never steer Contractors directly. Applicable Consultant acceptance, human gates, and publication authority remain separate.
-
-## 7. Run to delegated idle
-
-Management, Operations, and active Consultants are permanent top-level tasks. Each active run drains safe actionable work, records the next owner/action/return trigger, sends one handoff, and pauses without polling when no meaningful action remains.
+Use the [CLI reference](cli.md) only for exact commands, JSON, or automation. See [Installation](installation.md) for lifecycle details and [Customization](customization.md) for Project changes.

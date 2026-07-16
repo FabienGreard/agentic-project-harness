@@ -1,0 +1,4 @@
+interface:
+  display_name: "Roster"
+  short_description: "Manage Baton's permanent team roster"
+  default_prompt: "Use $roster to show the permanent team first, then safely add, offboard, or reconfigure one approved seat."

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "recordType": "project",
+  "project": {
+    "name": "Baton",
+    "purpose": "Provide a concise repository-local control plane for teams of AI agents.",
+    "users": [
+      "Teams coordinating AI agents in a repository"
+    ],
+    "outcome": "Make authority, readiness, execution, and evidence explicit without owning the Repository.",
+    "constraints": [
+      "Keep consumer behavior provider-neutral",
+      "Preserve human authority"
+    ],
+    "nonGoals": [
+      "Own the Repository",
+      "Publish outside the selected Clearance Protocol"
+    ],
+    "principles": [
+      "Canonical state over messages",
+      "Load only relevant context",
+      "Evidence before completion"
+    ],
+    "openQuestions": [],
+    "currentGoal": "BATON-V060",
+    "agentProvider": "codex",
+    "phase": "Release certification",
+    "templateMode": false,
+    "lastVerified": "2026-07-16",
+    "decisionPaths": [],
+    "evidencePaths": [
+      ".baton/records/BATON-V060/report.md"
+    ],
+    "assuranceDefaults": {
+      "readinessProtocol": "Standard Protocol",
+      "clearanceProtocol": "Release Clearance"
+    }
+  },
+  "baton": {
+    "owner": "Management",
+    "action": "Review the frozen v0.6.0 release packet and decide exact-candidate Release clearance",
+    "returnTrigger": "A fresh human decision names the final full commit and validated asset set"
+  }
+}

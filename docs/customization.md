@@ -1,46 +1,69 @@
-# Customize without breaking the operating layer
+# Customization
 
-## Keep common names stable
+Change Project intent and team choices without forking Baton.
 
-Users and repository rules speak about Management, Operations, Consultants, Contractors, and Internal Audit. The selected preset supplies professional context—such as Game Director or Product Manager—but does not create a second vocabulary or change authority.
+## Ownership layers
 
-Do not rename generated common-role files by hand. If project prose uses a professional title, include its common name at the first mention: “Game Director (Management)” or “Producer (Operations).” Contractor capability labels are routing hints, not mandatory conversational names.
+| Layer | Examples | Change with |
+| --- | --- | --- |
+| Baton-managed | runtime, rules, schemas, shared roles and skills | `$upgrade` |
+| Generated | role config, dashboard, team task view | Baton skills |
+| Project-owned | State, scoped Records, Memory | `$control` and the Project workflow |
+| Host integration | marked `AGENTS.md` block, provider config, skill links | Installer/activation plus collision review |
+| Repository | source, root docs, versioning, CI, license, releases | Project owners |
 
-## Choose a preset, then hire expertise
+`.baton/metadata.json` records path ownership and baselines. Never hand-edit it or a generated view to make validation pass.
 
-The supported project presets are exactly Game Development, Software Product, Business Operations, and Research. They are deliberately opinionated; there is no generic Other/custom preset.
+## Team
 
-Consultants are the extension point. Invoke `$hire-consultant` for a recurring domain that defines readiness or accepts evidence. Prefer the preset catalog. If none fits, the skill prepares a JSON definition matching `docs/schemas/consultant.schema.json` and passes it to the internal deterministic team engine. Do not invoke the mutation engine directly from user workflows.
+Stable authority names are Management, Operations, Consultants, Contractors, and Internal Audit. Presets add professional context, not authority.
 
-A custom Consultant must use lowercase hyphen-case for its ID and define title, headline, domain, non-empty readiness requirements, non-empty evidence requirements, and acceptance authority. It automatically inherits the fixed exclusions: no overall priority, Contractor dispatch, technical integration, or publication authority.
+Use:
 
-Do not hire a permanent Consultant for one bounded implementation or one-off question; Operations can dispatch a disposable Contractor. Any number of Consultants may be active when their domains are distinct.
-
-Invoke `$fire-consultant` to offboard an active Consultant. Never delete its state record or config manually. The skill uses the same engine to preserve history and modified configs and remove only an unchanged generated config.
-
-## State and dashboard
-
-Keep `.agent-harness.json` as installation/provenance metadata, canonical JSON under `docs/state/` as operational state, Markdown as narrative context, and generated `docs/index.html` as a view. Do not add another updater or maintenance-state hierarchy.
-
-Prepare schema-valid operations for `python3 tools/harness_state.py apply`; do not hand-edit the dashboard. `docs/state/team.json` is updated only by installation and the deterministic team engine. Run both checks after a material change:
-
-```sh
-python3 tools/harness_team.py check --json
-python3 tools/harness_state.py check --json
+```text
+$roster
 ```
 
-For dashboard design review only, open `docs/index.html?mock=1`. Mock data is illustrative and never project evidence.
+`$roster` shows the current team before making changes. Add a Consultant only for recurring expertise and acceptance. Use a disposable Contractor for bounded work. Custom Consultants must satisfy `.baton/schemas/consultant.schema.json` and never gain Management or Operations authority.
 
-## Balance pace and assurance
+Offboarding preserves history and removes only an unchanged generated config. Modified files remain for human review.
 
-Set the project default in `project.assuranceDefaults`, then resolve `assurance` explicitly on every ticket. The generated default is `Standard` test rigor with no universal human review stage. Use `Lean` for a smaller focused proof boundary and `Thorough` for broader failure-path and operational evidence.
+## State and protocols
 
-Human review timing is an explicit list: `Readiness`, `Acceptance`, and/or `Release`. An empty list means explicitly none. A ticket may differ from project defaults only with a human-authorized `overrideReason`; separately governing safety, legal, compliance, irreversible-action, and publication approvals remain mandatory. Apply changes transactionally through a schema-valid state operation, then use the dashboard to inspect each ticket's resolved rigor and review timing.
+Approved direction and coordination live under `.baton/state/`. Project-wide Records use `.baton/records/PROJECT/`; Goal and Ticket Records use `.baton/records/<GOAL-ID>/` and `.baton/records/<TICKET-ID>/`.
 
-This structure is LLM-first and human-governed. Optimize IDs, schemas, commands, reports, and links for reliable machine use while retaining human authority for intent, ambiguity, destructive actions, external commitments, security/compliance, and release or publication.
+Invoke `$control` to inspect or change Project controls. It shows the current values and validates any human-approved update.
 
-## Rules, skills, and Codex settings
+Each Ticket selects one Readiness Protocol:
 
-`AGENTS.md` remains a navigation map. Put normative instructions in `.agents/rules/` using the shared template. Project skills live once under `.agents/skills/` and are discovered through the relative `.codex/skills` symlink. Preserve attribution when adapting skill material.
+- `Waived`: explicitly unverified;
+- `Field Check`: focused proof of the change;
+- `Standard Protocol`: Field Check plus affected regression and runtime proof; or
+- `Full Certification`: broader regression, failure-path, and operational proof.
 
-Keep the project-scoped `.codex/config.toml` semantic contract unless an approved governance change replaces it: on-request approvals, automatic approval review, workspace-write sandboxing, network access, `max_threads = 4`, and `max_depth = 1`. Four threads is a ceiling; depth one preserves the shallow Operations dispatch topology. App or workspace policy can still restrict Auto-review, and already-running conversations can retain their selected permission mode.
+Each Goal and Ticket also selects one Clearance Protocol:
+
+- `Autonomous`: no routine Clearance;
+- `Release Clearance`: approve the completed Goal before release;
+- `Completion Clearance`: also approve each completed Ticket; or
+- `Continuous Clearance`: also approve Goal and Ticket readiness.
+
+An override needs human authority and a reason. See [language](../template/.baton/language.md) and [workflow](../template/.baton/workflow.md) for exact rules.
+
+## Company Memory
+
+Memory is an internal service used by `$boot`, `$roster`, and role workflows. It has no public skill. Do not edit Memory files or create another store. Advanced users can use the privacy-filtered commands in the [CLI reference](cli.md).
+
+Automatic briefings contain only confirmed, relevant claims: at most 10 claims and 1,800 UTF-8 bytes. Memory can link to State, Records, and Evidence but never replaces them. Forgetting cannot erase Git history, remotes, clones, caches, or backups.
+
+## Host integration
+
+Baton owns only its marked block in root `AGENTS.md`. Surrounding instructions and nested maps remain project-owned.
+
+During mature adoption, Baton may place a provider-config proposal under `.baton/migration/`. Later `$roster` conflicts preserve the Repository config and return a checksummed proposal. Skill links are created only when every target path is free; a collision stops the change.
+
+## Contributing to Baton
+
+Consumer runtime source belongs only under `template/.baton/`. Root `.baton/` is Baton's own control plane and is never shipped. Public docs, scripts, tests, evaluator material, and release tooling stay source-only.
+
+Next: [Architecture](architecture.md).

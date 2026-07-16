@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "discovery": ".agents/skills/<name> -> .baton/skills/<name>",
+  "skills": [
+    "boot",
+    "control",
+    "roster",
+    "terminal",
+    "upgrade",
+    "doctor",
+    "scrap",
+    "brainstorm",
+    "improve-codebase-architecture",
+    "code-review"
+  ],
+  "invocation": "explicit"
+}

@@ -8,3 +8,23 @@ max_depth = 1
 
 [sandbox_workspace_write]
 network_access = true
+
+[agents.management]
+description = "Own Baton product outcomes, priority, scope, readiness, and release decisions."
+config_file = "../.baton/agents/management.toml"
+
+[agents.operations]
+description = "Own Baton delivery, Contractor dispatch, integration, and verification."
+config_file = "../.baton/agents/operations.toml"
+
+[agents.contractor]
+description = "Execute one bounded Baton assignment for Operations."
+config_file = "../.baton/agents/contractor.toml"
+
+[agents.internal_audit]
+description = "Independently evaluate Baton without joining its product team."
+config_file = "../.baton/agents/internal-audit.toml"
+
+[agents.consultant_product_designer]
+description = "Provide recurring product and interaction design readiness and acceptance."
+config_file = "../.baton/agents/consultant-product-designer.toml"

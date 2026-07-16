@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "recordType": "tickets",
+  "tickets": [
+    {
+      "id": "BATON-V060-REL",
+      "title": "Certify and publish the exact v0.6.0 candidate",
+      "status": "In Review",
+      "priority": "P0",
+      "owner": "Operations",
+      "goal": "BATON-V060",
+      "dependencies": [],
+      "objective": "Freeze one exact v0.6.0 commit, prove its source, migration, assets, reviews, and remote install, then publish and clean up branches.",
+      "scope": [
+        "v0.6.0 source and release metadata",
+        "v0.5-to-v0.6 supported adoption",
+        "exact-candidate verification and review",
+        "GitHub pull request, tag, release assets, remote smoke, and branch cleanup"
+      ],
+      "nonGoals": [
+        "Unrelated feature expansion",
+        "Automatic deletion of consumer-owned or quarantined legacy files"
+      ],
+      "affectedSystems": [
+        "Baton source and template",
+        "Lifecycle installer and updater",
+        "Release assets and GitHub publication",
+        "Repository branches and tags"
+      ],
+      "acceptanceCriteria": [
+        "All version and release surfaces agree on 0.6.0",
+        "The exact candidate passes the required source and smoke matrix",
+        "Authentic public v0.5 adoption is preserved and fail-closed",
+        "Two independent reviews approve and Internal Audit passes",
+        "The exact commit and complete asset set are published and remotely verified",
+        "The superseded v0.6 branch is deleted and the checkout ends clean on main"
+      ],
+      "requiredVerification": [
+        "Strict evaluator 19 of 19",
+        "Complete Python 3.13 and Python 3.9 smoke suites",
+        "Shell syntax and git diff checks",
+        "Authentic public v0.5 adoption and activation boundary",
+        "Release bundle validation and asset checksums",
+        "Two independent code reviews and disposable Internal Audit",
+        "Immutable remote install smoke"
+      ],
+      "expectedEvidence": [
+        "Exact commit SHA and clean tree",
+        "Passing command results",
+        "Review and audit decisions",
+        "Validated asset digests",
+        "GitHub pull request, tag, release, and remote smoke proof",
+        "Final main-branch and branch-deletion proof"
+      ],
+      "risks": [
+        "A stable v0.5 consumer cannot adopt v0.6",
+        "The published tag or assets do not match the reviewed commit",
+        "Verification is duplicated or run against a stale candidate",
+        "Branch cleanup occurs before release proof"
+      ],
+      "requiredConsultantIds": [],
+      "assurance": {
+        "readinessProtocol": "Standard Protocol",
+        "clearanceProtocol": "Release Clearance",
+        "overrideReason": ""
+      },
+      "blockers": [],
+      "openDecisions": [],
+      "briefPath": ".baton/records/BATON-V060-REL/brief.md",
+      "decisionPaths": [],
+      "reportPath": ".baton/records/BATON-V060-REL/report.md",
+      "evidencePaths": [
+        ".baton/records/BATON-V060-REL/report.md"
+      ]
+    }
+  ]
+}

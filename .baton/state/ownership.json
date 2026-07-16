@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "recordType": "ownership",
+  "ownership": [
+    {
+      "ticket": "BATON-V060-REL",
+      "owner": "Operations",
+      "scopes": [
+        "Release source and records",
+        "Verification and review coordination",
+        "GitHub publication and branch cleanup"
+      ],
+      "status": "Awaiting Review",
+      "returnDestination": "Management at BATON-V060 Goal completion"
+    }
+  ]
+}

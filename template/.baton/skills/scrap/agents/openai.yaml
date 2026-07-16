@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scrap"
+  short_description: "Preview and safely remove Baton"
+  default_prompt: "Use $scrap to preview the exact removal boundary, state that no changes were made, and apply only the approved unchanged plan."

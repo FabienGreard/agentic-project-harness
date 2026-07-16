@@ -1,0 +1,4 @@
+interface:
+  display_name: "Control"
+  short_description: "Manage Project controls and protocols"
+  default_prompt: "Use $control to show the current Project controls first, then apply only the approved change."

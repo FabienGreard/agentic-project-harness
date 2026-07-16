@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "recordType": "goals",
+  "goals": [
+    {
+      "id": "BATON-V060",
+      "title": "Release Baton v0.6.0",
+      "status": "Review",
+      "priority": "P0",
+      "owner": "Management",
+      "objective": "Publish the approved current Baton implementation as the stable v0.6.0 release and finish clean on main.",
+      "context": "The user selected this implementation for v0.6.0 and authorized replacement of the older pending branch; material audit repairs require fresh exact-candidate Release clearance.",
+      "dependencies": [],
+      "assurance": {
+        "clearanceProtocol": "Release Clearance",
+        "overrideReason": ""
+      },
+      "blockers": [
+        "Fresh Goal Release clearance for the final full commit and validated asset set"
+      ],
+      "blockerOwner": "Management",
+      "resumeCondition": "The user explicitly approves the frozen full commit after reviewing its release packet",
+      "briefPath": ".baton/records/BATON-V060/brief.md",
+      "decisionPaths": [],
+      "reportPath": ".baton/records/BATON-V060/report.md",
+      "evidencePaths": [
+        ".baton/records/BATON-V060/report.md",
+        ".baton/records/BATON-V060/review-release-management.md"
+      ],
+      "plannedStart": "2026-07-16",
+      "plannedEnd": "2026-07-16"
+    }
+  ]
+}

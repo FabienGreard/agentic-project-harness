@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/FabienGreard/baton/blob/main/template/.baton/schemas/memory.schema.json",
+  "title": "Baton project-local company memory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "recordType",
+    "revision",
+    "historyHead",
+    "claims",
+    "personnel",
+    "bootstrap",
+    "settings",
+    "idempotencyKeys",
+    "updatedAt"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "recordType": {"const": "memory"},
+    "revision": {"type": "integer", "minimum": 0},
+    "historyHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "eventId", "sha256"],
+      "properties": {
+        "revision": {"type": "integer", "minimum": 0},
+        "eventId": {"type": "string"},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "claims": {"type": "array", "items": {"$ref": "#/$defs/claim"}},
+    "personnel": {"type": "array", "items": {"$ref": "#/$defs/person"}},
+    "bootstrap": {"$ref": "#/$defs/bootstrap"},
+    "settings": {"$ref": "#/$defs/settings"},
+    "idempotencyKeys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 200}
+    },
+    "updatedAt": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "actor", "actorId", "reference"],
+      "properties": {
+        "class": {
+          "enum": [
+            "explicit-user",
+            "personal-inference",
+            "verified-company",
+            "verified-personnel",
+            "management-assessment",
+            "operational-evidence",
+            "consultant-observation",
+            "self-reflection",
+            "system"
+          ]
+        },
+        "actor": {"enum": ["User", "Management", "Operations", "Consultant", "Contractor"]},
+        "actorId": {"type": "string"},
+        "reference": {"type": "string"}
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "category",
+        "subject",
+        "statement",
+        "status",
+        "source",
+        "importance",
+        "roleRelevance",
+        "assignmentTypes",
+        "createdAt",
+        "updatedAt",
+        "supersedesClaimId"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^claim-[a-f0-9]{24}$"},
+        "category": {"enum": ["company", "user", "personnel", "working-style", "preference"]},
+        "subject": {"type": "string", "minLength": 1, "maxLength": 160},
+        "statement": {"type": "string", "minLength": 1, "maxLength": 1200},
+        "status": {"enum": ["confirmed", "pending-confirmation", "superseded"]},
+        "source": {"$ref": "#/$defs/source"},
+        "importance": {"type": "integer", "minimum": 1, "maximum": 5},
+        "roleRelevance": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"enum": ["Management", "Operations", "Consultant", "Contractor"]}
+        },
+        "assignmentTypes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 100}
+        },
+        "createdAt": {"type": "string", "format": "date-time"},
+        "updatedAt": {"type": "string", "format": "date-time"},
+        "supersedesClaimId": {"type": "string"}
+      }
+    },
+    "style": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["planning", "communication", "exploration", "risk", "design"],
+      "properties": {
+        "planning": {"enum": ["plan-first", "prototype-first"]},
+        "communication": {"enum": ["concise", "explanatory"]},
+        "exploration": {"enum": ["broad", "narrow"]},
+        "risk": {"enum": ["risk-first", "opportunity-first"]},
+        "design": {"enum": ["simplification", "extensibility"]}
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "taskId", "wakePath", "prompt", "registeredAt"],
+      "properties": {
+        "status": {"enum": ["unregistered", "awaiting-task", "create-pending", "created", "cleanup-required", "registered", "online", "inactive"]},
+        "taskId": {"type": "string"},
+        "wakePath": {"type": "string"},
+        "prompt": {"type": "string"},
+        "registeredAt": {"type": "string"},
+        "expectedTitle": {"type": "string"},
+        "title": {"type": "string"},
+        "titleVerifiedAt": {"type": "string"},
+        "wokenAt": {"type": "string"},
+        "attemptId": {"type": "string"},
+        "cleanupReason": {"type": "string"}
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "assignmentType", "outcome", "revisionCause", "verificationQuality", "workingStyleImpact", "sourceClass", "reviewers", "evidencePaths", "recordedAt"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^review-[a-f0-9]{24}$"},
+        "assignmentType": {"type": "string", "minLength": 1},
+        "outcome": {"type": "string", "minLength": 1},
+        "revisionCause": {"type": "string"},
+        "verificationQuality": {"type": "string", "minLength": 1},
+        "workingStyleImpact": {"type": "string"},
+        "sourceClass": {"enum": ["explicit-user", "management-assessment", "operational-evidence", "consultant-observation", "self-reflection"]},
+        "reviewers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "evidencePaths": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "recordedAt": {"type": "string", "format": "date-time"}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assignmentType", "observation", "reviewIds", "updatedAt"],
+      "properties": {
+        "assignmentType": {"type": "string", "minLength": 1},
+        "observation": {"type": "string", "minLength": 1},
+        "reviewIds": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "pattern": "^review-[a-f0-9]{24}$"}},
+        "updatedAt": {"type": "string", "format": "date-time"}
+      }
+    },
+    "person": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "role", "seat", "specialty", "seed", "workingStyle", "employmentStatus", "task", "assignmentReferences", "reviews", "performanceSummaries", "createdAt", "updatedAt"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^person-[a-f0-9]{24}$"},
+        "name": {"type": "string", "minLength": 1},
+        "role": {"enum": ["Management", "Operations", "Consultant", "Contractor"]},
+        "seat": {"type": "string", "minLength": 1},
+        "specialty": {"type": "string"},
+        "seed": {"type": "string", "minLength": 1},
+        "workingStyle": {"$ref": "#/$defs/style"},
+        "employmentStatus": {"enum": ["active", "awaiting-task", "former", "retired", "replaced", "rehired"]},
+        "task": {"$ref": "#/$defs/task"},
+        "assignmentReferences": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "reviews": {"type": "array", "items": {"$ref": "#/$defs/review"}},
+        "performanceSummaries": {"type": "array", "items": {"$ref": "#/$defs/summary"}},
+        "createdAt": {"type": "string", "format": "date-time"},
+        "updatedAt": {"type": "string", "format": "date-time"}
+      }
+    },
+    "bootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "seed", "roster", "provisionalProject", "confirmedAt"],
+      "properties": {
+        "status": {"enum": ["not-started", "in-progress", "ready-for-confirmation", "complete", "needs-integration"]},
+        "seed": {"type": "string"},
+        "roster": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^person-[a-f0-9]{24}$"}},
+        "provisionalProject": {"type": "object"},
+        "cleanupTasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["personnelId", "taskId", "wakePath", "title", "status"],
+            "properties": {
+              "personnelId": {"type": "string", "pattern": "^person-[a-f0-9]{24}$"},
+              "taskId": {"type": "string", "minLength": 1},
+              "wakePath": {"type": "string"},
+              "title": {"type": "string"},
+              "status": {"const": "archive-required"}
+            }
+          }
+        },
+        "confirmedAt": {"type": "string"}
+      }
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automaticContextMaxClaims", "automaticContextMaxUtf8Bytes", "automaticContextMaxEstimatedTokens", "allowSensitiveMemory", "historyCompaction"],
+      "properties": {
+        "automaticContextMaxClaims": {"const": 10},
+        "automaticContextMaxUtf8Bytes": {"const": 1800},
+        "automaticContextMaxEstimatedTokens": {"const": 600},
+        "allowSensitiveMemory": {"const": false},
+        "historyCompaction": {"const": false}
+      }
+    }
+  }
+}

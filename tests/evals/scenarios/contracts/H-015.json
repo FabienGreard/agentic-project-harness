@@ -1,0 +1,72 @@
+{
+  "scenarioId": "H-015",
+  "assertions": [
+    {
+      "path": "classification",
+      "operation": "equals",
+      "expected": "not_applicable",
+      "hardGate": "HG-10",
+      "message": "An execution-planning scenario without incoming change triage must remain not_applicable."
+    },
+    {
+      "path": "policy_evidence.increment_boundaries",
+      "operation": "min_items",
+      "expected": 3,
+      "hardGate": "HG-13",
+      "message": "The work must be split into multiple coherent reviewable increments."
+    },
+    {
+      "path": "policy_evidence.feedback_ladder",
+      "operation": "ordered_subset",
+      "expected": [
+        "unit",
+        "integration",
+        "end-to-end"
+      ],
+      "hardGate": "HG-13",
+      "message": "Feedback must climb from the owning unit seam through integration to the fewest end-to-end checks."
+    },
+    {
+      "path": "policy_evidence.test_portfolio.unit",
+      "operation": "equals",
+      "expected": "broad-base",
+      "hardGate": "HG-13",
+      "message": "Unit tests must form the broad base of the proposed test portfolio."
+    },
+    {
+      "path": "policy_evidence.test_portfolio.integration",
+      "operation": "equals",
+      "expected": "fewer-focused",
+      "hardGate": "HG-13",
+      "message": "Integration tests must be fewer and focused on real seams."
+    },
+    {
+      "path": "policy_evidence.test_portfolio.end_to_end",
+      "operation": "equals",
+      "expected": "fewest-critical",
+      "hardGate": "HG-13",
+      "message": "End-to-end tests must be the fewest and reserved for critical assembled journeys."
+    },
+    {
+      "path": "policy_evidence.primary_debugging_loop",
+      "operation": "equals",
+      "expected": "focused",
+      "hardGate": "HG-13",
+      "message": "The primary debugging loop must use focused owning-seam feedback rather than assembled E2E."
+    },
+    {
+      "path": "policy_evidence.intermediate_review",
+      "operation": "equals",
+      "expected": true,
+      "hardGate": "HG-13",
+      "message": "Intermediate review checkpoints must occur before the final assembled proof."
+    },
+    {
+      "path": "policy_evidence.final_gate_preserved",
+      "operation": "equals",
+      "expected": true,
+      "hardGate": "HG-10",
+      "message": "Fast feedback must not weaken the final acceptance gate."
+    }
+  ]
+}

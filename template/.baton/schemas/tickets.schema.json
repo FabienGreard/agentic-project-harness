@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/FabienGreard/baton/blob/main/template/.baton/schemas/tickets.schema.json",
+  "title": "Baton canonical tickets record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "recordType", "tickets"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "recordType": {"const": "tickets"},
+    "tickets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "status", "priority", "owner", "dependencies", "requiredConsultantIds", "assurance", "blockers", "openDecisions", "decisionPaths", "evidencePaths"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9-]+$", "not": {"const": "PROJECT"}},
+          "title": {"type": "string", "minLength": 1},
+          "status": {"enum": ["Backlog", "Ready", "In Progress", "Blocked", "In Review", "Done", "Cancelled"]},
+          "priority": {"enum": ["P0", "P1", "P2", "P3", "P4"]},
+          "owner": {"type": "string", "minLength": 1},
+          "goal": {"type": "string", "minLength": 1},
+          "dependencies": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "objective": {"type": "string"},
+          "scope": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "nonGoals": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "affectedSystems": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "acceptanceCriteria": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "requiredVerification": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "expectedEvidence": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "risks": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "requiredConsultantIds": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"}, "uniqueItems": true},
+          "assurance": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["readinessProtocol", "clearanceProtocol", "overrideReason"],
+            "properties": {
+              "readinessProtocol": {"enum": ["Waived", "Field Check", "Standard Protocol", "Full Certification"]},
+              "clearanceProtocol": {"enum": ["Autonomous", "Release Clearance", "Completion Clearance", "Continuous Clearance"]},
+              "overrideReason": {"type": "string"}
+            }
+          },
+          "blockers": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "openDecisions": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "briefPath": {"type": "string", "minLength": 1},
+          "decisionPaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "reportPath": {"type": "string", "minLength": 1},
+          "evidencePaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {"enum": ["Ready", "In Progress", "Blocked", "In Review", "Done"]}
+              }
+            },
+            "then": {
+              "required": ["goal", "objective", "scope", "nonGoals", "affectedSystems", "acceptanceCriteria", "requiredVerification", "expectedEvidence", "risks"],
+              "properties": {
+                "objective": {"type": "string", "minLength": 1},
+                "scope": {"minItems": 1},
+                "nonGoals": {"minItems": 1},
+                "affectedSystems": {"minItems": 1},
+                "acceptanceCriteria": {"minItems": 1},
+                "requiredVerification": {"minItems": 1},
+                "expectedEvidence": {"minItems": 1},
+                "risks": {"minItems": 1}
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

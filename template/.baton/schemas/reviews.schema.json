@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/FabienGreard/baton/blob/main/template/.baton/schemas/reviews.schema.json",
+  "title": "Baton canonical clearances and Consultant reviews record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "recordType", "clearances", "consultantReviews"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "recordType": {"const": "reviews"},
+    "clearances": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "stage", "status", "path"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "goal": {"type": "string", "minLength": 1},
+          "ticket": {"type": "string", "minLength": 1},
+          "stage": {"enum": ["Readiness", "Acceptance", "Release"]},
+          "status": {"enum": ["Pending", "Approved", "Revision Requested", "Rejected"]},
+          "path": {"type": "string", "minLength": 1},
+          "reviewer": {"type": "string", "minLength": 1},
+          "recordedAt": {"type": "string", "minLength": 1, "format": "date"}
+        },
+        "allOf": [
+          {
+            "oneOf": [
+              {
+                "required": ["goal"],
+                "not": {"required": ["ticket"]},
+                "properties": {"stage": {"enum": ["Readiness", "Release"]}}
+              },
+              {
+                "required": ["ticket"],
+                "not": {"required": ["goal"]},
+                "properties": {"stage": {"enum": ["Readiness", "Acceptance"]}}
+              }
+            ]
+          },
+          {
+            "if": {"properties": {"status": {"const": "Approved"}}},
+            "then": {"required": ["reviewer", "recordedAt"]}
+          }
+        ]
+      }
+    },
+    "consultantReviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "ticket", "consultantId", "stage", "status", "evidencePaths"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "ticket": {"type": "string", "minLength": 1},
+          "consultantId": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"},
+          "stage": {"enum": ["Readiness", "Acceptance"]},
+          "status": {"enum": ["Pending", "Approved", "Revision Requested", "Rejected"]},
+          "evidencePaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "reviewer": {"type": "string", "minLength": 1},
+          "recordedAt": {"type": "string", "minLength": 1, "format": "date"}
+        }
+      }
+    }
+  }
+}

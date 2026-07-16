@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 3,
+  "batonVersion": "0.6.0",
+  "stateSchemaVersion": 2,
+  "memorySchemaVersion": 1,
+  "provider": "codex",
+  "installationStatus": "Source Repository",
+  "projectName": "Baton",
+  "repositoryVersion": null,
+  "projectType": "software-product",
+  "reasoningPreset": "medium",
+  "reasoning": {
+    "management": "high",
+    "operations": "high",
+    "consultants": "high",
+    "contractors": "medium",
+    "internalAudit": "xhigh"
+  },
+  "source": {
+    "repository": "FabienGreard/baton",
+    "channel": "local-development",
+    "tag": null,
+    "commit": null,
+    "manifestSha256": null
+  },
+  "managedFiles": {},
+  "managedBlocks": {},
+  "projectOwnedFiles": [
+    ".baton/memory/history.jsonl",
+    ".baton/memory/memory.json",
+    ".baton/state/goals.json",
+    ".baton/state/ownership.json",
+    ".baton/state/project.json",
+    ".baton/state/reviews.json",
+    ".baton/state/team.json",
+    ".baton/state/tickets.json",
+    ".baton/records/README.md"
+  ],
+  "legacyCleanupCandidates": [],
+  "pendingIntegration": [],
+  "lastTransactionId": null
+}

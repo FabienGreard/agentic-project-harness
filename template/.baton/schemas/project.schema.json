@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/FabienGreard/baton/blob/main/template/.baton/schemas/project.schema.json",
+  "title": "Baton canonical project record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "recordType", "project", "baton"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "recordType": {"const": "project"},
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "outcome", "currentGoal", "agentProvider", "phase", "templateMode", "lastVerified", "decisionPaths", "evidencePaths", "assuranceDefaults"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "purpose": {"type": "string"},
+        "users": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "outcome": {"type": "string"},
+        "constraints": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "nonGoals": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "principles": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "openQuestions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "currentGoal": {"type": "string"},
+        "agentProvider": {"type": "string", "minLength": 1},
+        "phase": {"type": "string", "minLength": 1},
+        "templateMode": {"type": "boolean"},
+        "lastVerified": {"type": "string"},
+        "decisionPaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "evidencePaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "assuranceDefaults": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["readinessProtocol", "clearanceProtocol"],
+          "properties": {
+            "readinessProtocol": {"enum": ["Waived", "Field Check", "Standard Protocol", "Full Certification"]},
+            "clearanceProtocol": {"enum": ["Autonomous", "Release Clearance", "Completion Clearance", "Continuous Clearance"]}
+          }
+        }
+      }
+    },
+    "baton": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner", "action", "returnTrigger"],
+      "properties": {
+        "owner": {"type": "string", "minLength": 1},
+        "action": {"type": "string", "minLength": 1},
+        "returnTrigger": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

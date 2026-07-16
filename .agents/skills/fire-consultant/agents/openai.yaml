@@ -1,6 +1,0 @@
-interface:
-  display_name: "Fire a Consultant"
-  short_description: "Safely offboard a project Consultant"
-  default_prompt: "Use $fire-consultant to safely fire a Consultant from this project."
-policy:
-  allow_implicit_invocation: false
