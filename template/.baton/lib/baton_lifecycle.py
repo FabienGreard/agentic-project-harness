@@ -78,6 +78,12 @@ SKILL_NAMES = (
     "terminal",
     "upgrade",
 )
+LEGACY_SKILL_DISCOVERY_ACTION = (
+    "Authenticated verified v0.5 skill discovery was preserved and no v0.6 links were created. "
+    "After explicit legacy-cleanup approval, remove the obsolete .codex/skills alias and replace "
+    "the complete legacy .agents/skills discovery set with the ten exact links in "
+    ".baton/migration/skill-discovery.md before activation."
+)
 AGENTS_START = "<!-- BATON:START -->"
 AGENTS_END = "<!-- BATON:END -->"
 MANAGED_OWNERSHIP = {"baton-managed", "generated-config", "integration-link"}
@@ -372,8 +378,120 @@ def merge_agents(existing: str | None, status: str) -> tuple[str, bool]:
     return existing[:start] + block + existing[end:], existing[start:end] != block
 
 
+def verified_v05_skill_discovery(project_root: Path, manifest: dict[str, Any]) -> bool:
+    try:
+        metadata = read_project_json(project_root, LEGACY_METADATA_PATH)
+    except LifecycleError:
+        return False
+    source = metadata.get("source")
+    origin = manifest.get("supportedUpgradeOrigins", {}).get("v0.5.0")
+    if (
+        metadata.get("schemaVersion") != 2
+        or metadata.get("harnessVersion") != "0.5.0"
+        or metadata.get("stateSchemaVersion") != 1
+        or not isinstance(source, dict)
+        or source.get("repository") != "FabienGreard/agentic-project-harness"
+        or source.get("channel") != "stable"
+        or source.get("tag") != "v0.5.0"
+        or not isinstance(origin, dict)
+        or origin.get("sourceCommit") != source.get("commit")
+        or origin.get("manifestSha256") != source.get("manifestSha256")
+    ):
+        return False
+    managed = metadata.get("managedFiles")
+    if not isinstance(managed, dict):
+        return False
+    prefix = ".agents/skills/"
+    managed_skills = {
+        relative: record
+        for relative, record in managed.items()
+        if isinstance(relative, str) and relative.startswith(prefix)
+    }
+    skills_root = project_root / ".agents/skills"
+    if not managed_skills or skills_root.is_symlink() or not skills_root.is_dir():
+        return False
+    codex_discovery = managed.get(".codex/skills")
+    codex_path = project_root / ".codex/skills"
+    if (
+        not isinstance(codex_discovery, dict)
+        or codex_discovery.get("ownership") != "harness-managed"
+        or not is_sha256(codex_discovery.get("baselineSha256"))
+        or not codex_path.is_symlink()
+        or os.readlink(codex_path) != "../.agents/skills"
+        or entry_digest(codex_path) != codex_discovery["baselineSha256"]
+    ):
+        return False
+    actual_files: set[str] = set()
+    actual_directories: set[str] = set()
+    for path in skills_root.rglob("*"):
+        if path.is_symlink():
+            return False
+        relative = path.relative_to(project_root).as_posix()
+        if path.is_dir():
+            actual_directories.add(relative)
+        elif path.is_file():
+            actual_files.add(relative)
+        else:
+            return False
+    if actual_files != set(managed_skills):
+        return False
+    expected_directories: set[str] = set()
+    for relative, record in managed_skills.items():
+        if (
+            not isinstance(record, dict)
+            or record.get("ownership") != "harness-managed"
+            or not is_sha256(record.get("baselineSha256"))
+            or entry_digest(inside(project_root, relative)) != record["baselineSha256"]
+        ):
+            return False
+        parent = PurePosixPath(relative).parent
+        while parent.as_posix() != ".agents/skills":
+            expected_directories.add(parent.as_posix())
+            parent = parent.parent
+    return actual_directories == expected_directories
+
+
+def write_skill_discovery_plan(prepared: Path) -> str:
+    relative = ".baton/migration/skill-discovery.md"
+    rows = "\n".join(
+        f"| `.agents/skills/{name}` | `../../.baton/skills/{name}` |"
+        for name in SKILL_NAMES
+    )
+    content = f"""# Verified v0.5 skill-discovery migration
+
+The complete unchanged v0.5 discovery tree and its obsolete `.codex/skills` alias matched stable manifest provenance and per-file baselines. Baton preserved them and created no v0.6 discovery links.
+
+Activation remains blocked until a human approves cleanup of the legacy discovery candidates recorded in `.baton/metadata.json`, removes `.codex/skills` and the complete legacy `.agents/skills/` set, and creates every exact link below as one operation. Project-owned skill names not listed as cleanup candidates remain outside Baton ownership.
+
+| Link | Target |
+| --- | --- |
+{rows}
+
+After the exact links exist, run the reviewed activation. Activation records all ten links as Baton-managed integration links and fails closed if any legacy discovery candidate remains.
+"""
+    path = prepared / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return relative
+
+
+def exact_skill_discovery_links(project_root: Path) -> bool:
+    codex_skills = project_root / ".codex/skills"
+    if codex_skills.exists() or codex_skills.is_symlink():
+        return False
+    for name in SKILL_NAMES:
+        path = project_root / f".agents/skills/{name}"
+        if not path.is_symlink() or os.readlink(path) != f"../../.baton/skills/{name}":
+            return False
+    return True
+
+
 def integration_plan(
-    prepared: Path, project_root: Path, status: str, agent_names: list[str]
+    prepared: Path,
+    project_root: Path,
+    status: str,
+    agent_names: list[str],
+    manifest: dict[str, Any],
 ) -> tuple[list[str], list[str], list[str]]:
     managed: list[str] = []
     generated: list[str] = []
@@ -419,21 +537,30 @@ def integration_plan(
         desired.write_text(desired_config, encoding="utf-8")
         generated.append(".baton/migration/codex-config.toml")
 
+    collisions: list[str] = []
     for name in SKILL_NAMES:
         relative = f".agents/skills/{name}"
         current = project_root / relative
         target = f"../../.baton/skills/{name}"
-        if not current.exists() and not current.is_symlink():
+        if current.is_symlink() and os.readlink(current) == target:
+            continue
+        if current.exists() or current.is_symlink():
+            collisions.append(relative)
+    if collisions:
+        if status != "Needs Integration" or not verified_v05_skill_discovery(project_root, manifest):
+            raise LifecycleError(
+                f"skill-discovery collision at {collisions[0]}; Baton did not guess, replace, or partially install its public skills"
+            )
+        generated.append(write_skill_discovery_plan(prepared))
+        manual.append(LEGACY_SKILL_DISCOVERY_ACTION)
+    else:
+        for name in SKILL_NAMES:
+            relative = f".agents/skills/{name}"
+            target = f"../../.baton/skills/{name}"
             path = prepared / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.symlink_to(target)
             managed.append(relative)
-        elif current.is_symlink() and os.readlink(current) == target:
-            continue
-        else:
-            raise LifecycleError(
-                f"skill-discovery collision at {relative}; Baton did not guess, replace, or partially install its public skills"
-            )
     return managed, generated, manual
 
 
@@ -1131,7 +1258,7 @@ def install_or_adopt(
                 project_owned = []
                 status = "Needs Integration"
             integration_paths, integration_generated, manual_actions = integration_plan(
-                prepared, root, status, agent_names
+                prepared, root, status, agent_names, manifest
             )
             generated.extend(integration_generated)
             if payload == "adoption":
@@ -1667,6 +1794,36 @@ def activate_adoption(
         integrity = inspect_status(root)
         if not integrity["ok"]:
             raise LifecycleError("cannot activate because Baton-managed files differ from their baselines")
+        pending_actions = metadata.get("pendingIntegration", [])
+        legacy_skill_pending = (
+            isinstance(pending_actions, list)
+            and LEGACY_SKILL_DISCOVERY_ACTION in pending_actions
+        )
+        resolved_legacy_skill_candidates: set[str] = set()
+        if legacy_skill_pending:
+            if not exact_skill_discovery_links(root):
+                raise LifecycleError(
+                    "activation requires completing the verified v0.5 skill discovery plan with all ten exact links and no .codex/skills alias"
+                )
+            for raw in metadata.get("legacyCleanupCandidates", []):
+                relative = safe_relative(raw)
+                if relative == ".codex/skills" or relative.startswith(".agents/skills/"):
+                    resolved_legacy_skill_candidates.add(relative)
+            unresolved: list[str] = []
+            for relative in sorted(resolved_legacy_skill_candidates):
+                if relative.startswith(".agents/skills/"):
+                    suffix = relative.removeprefix(".agents/skills/")
+                    top = suffix.split("/", 1)[0]
+                    if top in SKILL_NAMES:
+                        continue
+                path = root.joinpath(*PurePosixPath(relative).parts)
+                if path.exists() or path.is_symlink():
+                    unresolved.append(relative)
+            if unresolved:
+                raise LifecycleError(
+                    "activation requires approved cleanup of every verified v0.5 skill discovery candidate: "
+                    + ", ".join(unresolved)
+                )
         with tempfile.TemporaryDirectory(prefix="baton-activation-") as raw:
             prepared = Path(raw) / "project"
             active_project_owned: list[str] = []
@@ -1724,6 +1881,18 @@ def activate_adoption(
             if not isinstance(managed, dict):
                 raise LifecycleError("installed Baton metadata has no managed-file map")
             prior_managed = json.loads(json.dumps(managed))
+            if legacy_skill_pending:
+                for name in SKILL_NAMES:
+                    relative = f".agents/skills/{name}"
+                    digest = entry_digest(inside(root, relative))
+                    if digest is None:
+                        raise LifecycleError(
+                            f"activation requires an exact Baton skill discovery link: {relative}"
+                        )
+                    managed[relative] = {
+                        "ownership": "integration-link",
+                        "baselineSha256": digest,
+                    }
             codex_target = (
                 ".codex/config.toml"
                 if ".codex/config.toml" in managed
@@ -1776,7 +1945,14 @@ def activate_adoption(
             updated["projectOwnedFiles"] = sorted(owned)
             updated["pendingIntegration"] = [
                 item for item in updated.get("pendingIntegration", [])
-                if "activate" not in item.casefold() and "starter state" not in item.casefold()
+                if item != LEGACY_SKILL_DISCOVERY_ACTION
+                and "activate" not in item.casefold()
+                and "starter state" not in item.casefold()
+            ]
+            updated["legacyCleanupCandidates"] = [
+                item
+                for item in updated.get("legacyCleanupCandidates", [])
+                if item not in resolved_legacy_skill_candidates
             ]
             write_json(prepared / METADATA_PATH, updated)
 

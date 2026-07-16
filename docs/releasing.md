@@ -1,6 +1,6 @@
 # Releasing
 
-Baton publishes only stable, immutable, reproducible, human-approved releases. This checkout is an unpublished candidate. Checks, commits, and built assets do not authorize publication.
+Baton publishes only stable, immutable, reproducible, human-approved releases. A source checkout is never an installation artifact. Checks, commits, and built assets do not authorize publication.
 
 ## Release contract
 
@@ -31,7 +31,6 @@ Invoke `$doctor` first. Then run the source checks:
 
 ```sh
 python3 scripts/harness_eval.py --strict
-python3 tests/run_smokes.py
 bash tests/install_smoke.sh
 bash -n tests/install_remote_smoke.sh
 git diff --check
@@ -81,6 +80,7 @@ python3 scripts/release_bundle.py build \
   --output /tmp/baton-release \
   --tag v<VERSION> \
   --repository FabienGreard/baton \
+  --supported-upgrade-origin v0.5.0=4191fe4be3a8da1ce3cea075bfb8f81a8d0d737c,744041e438990c37f3303666560c49cfbb919dec84e937e15307bae1fad3c88a \
   --state-schema-version 2 \
   --memory-schema-version 1
 
@@ -91,13 +91,14 @@ Exercise the assets without GitHub. Use `$terminal` and `$doctor` for manual ins
 
 ```sh
 target=$(mktemp -d)
+target=$(CDPATH= cd -- "$target" && pwd -P)
 BATON_RELEASE_DIR=/tmp/baton-release \
   bash /tmp/baton-release/install.sh --target "$target" --yes --json
 "$target/.baton/bin/baton" terminal status --json
 "$target/.baton/bin/baton" doctor check --json
 ```
 
-Repeat with a non-empty target and supported update origins. Prove Project-owned roots remain unchanged and mature-repository starter State remains quarantined until reviewed activation.
+Repeat with a non-empty target and every supported update origin. Prove Project-owned roots remain unchanged, mature-repository starter State remains quarantined until reviewed activation, and authentic legacy discovery either completes or reaches its documented human-approved integration boundary without partial links.
 
 ## 5. Request Release approval
 

@@ -40,6 +40,79 @@ from baton_testkit import (  # noqa: E402
 )
 
 
+V05_COMMIT = "4191fe4be3a8da1ce3cea075bfb8f81a8d0d737c"
+V05_MANIFEST_SHA256 = "744041e438990c37f3303666560c49cfbb919dec84e937e15307bae1fad3c88a"
+V05_SKILL_PATHS = (
+    ".agents/skills/README.md",
+    ".agents/skills/brainstorm/SKILL.md",
+    ".agents/skills/brainstorm/agents/openai.yaml",
+    ".agents/skills/code-review/SKILL.md",
+    ".agents/skills/code-review/agents/openai.yaml",
+    ".agents/skills/code-review/references/review-axes.md",
+    ".agents/skills/fire-consultant/SKILL.md",
+    ".agents/skills/fire-consultant/agents/openai.yaml",
+    ".agents/skills/hire-consultant/SKILL.md",
+    ".agents/skills/hire-consultant/agents/openai.yaml",
+    ".agents/skills/improve-codebase-architecture/SKILL.md",
+    ".agents/skills/improve-codebase-architecture/agents/openai.yaml",
+    ".agents/skills/improve-codebase-architecture/references/report-format.md",
+    ".agents/skills/skills.json",
+)
+
+
+def make_v05_skill_install(target: Path) -> dict[str, bytes]:
+    """Reproduce the public v0.5 discovery shape with exact provenance semantics."""
+    target.mkdir()
+    project_file = target / "README.md"
+    project_file.write_text("# Project-owned identity\n", encoding="utf-8")
+    legacy_files: dict[str, bytes] = {}
+    managed: dict[str, dict[str, str]] = {
+        "README.md": {
+            "ownership": "project-owned",
+            "baselineSha256": hashlib.sha256(project_file.read_bytes()).hexdigest(),
+        }
+    }
+    for relative in V05_SKILL_PATHS:
+        content = f"public v0.5 skill-shape fixture: {relative}\n".encode()
+        path = target / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        legacy_files[relative] = content
+        managed[relative] = {
+            "ownership": "harness-managed",
+            "baselineSha256": hashlib.sha256(content).hexdigest(),
+        }
+    codex_skills = target / ".codex/skills"
+    codex_skills.parent.mkdir(parents=True)
+    codex_skills.symlink_to("../.agents/skills")
+    managed[".codex/skills"] = {
+        "ownership": "harness-managed",
+        "baselineSha256": hashlib.sha256(b"../.agents/skills").hexdigest(),
+    }
+    metadata = {
+        "schemaVersion": 2,
+        "harnessVersion": "0.5.0",
+        "stateSchemaVersion": 1,
+        "provider": "codex",
+        "installationStatus": "Installed",
+        "projectName": "v0.5 migration fixture",
+        "projectType": "software-product",
+        "source": {
+            "repository": "FabienGreard/agentic-project-harness",
+            "channel": "stable",
+            "tag": "v0.5.0",
+            "commit": V05_COMMIT,
+            "manifestSha256": V05_MANIFEST_SHA256,
+        },
+        "managedFiles": managed,
+    }
+    (target / ".agent-harness.json").write_text(
+        json.dumps(metadata, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return legacy_files
+
+
 def markdown_link_failures(root: Path) -> tuple[int, list[str]]:
     checked = 0
     missing: list[str] = []
@@ -68,6 +141,12 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
         cls.source = make_candidate(cls.base, "0.6.0")
         cls.bundle = cls.base / "bundle-060"
         build_bundle(cls.source, cls.bundle)
+        cls.bundle_with_v05_origin = cls.base / "bundle-060-v05-origin"
+        build_bundle(
+            cls.source,
+            cls.bundle_with_v05_origin,
+            origins=[("v0.5.0", V05_COMMIT, V05_MANIFEST_SHA256)],
+        )
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -323,6 +402,121 @@ class BatonInstallAndAdoptionTests(unittest.TestCase):
             self.bundle,
             target,
             self.base / "state-skill-discovery-collision",
+            expected=1,
+        )
+        self.assertIn("skill-discovery collision", failed.stdout + failed.stderr)
+        self.assertEqual(tree_snapshot(target), before)
+
+    def test_authentic_v05_skill_discovery_is_preserved_as_one_manual_boundary(self) -> None:
+        target = self.base / "authentic-v05-skill-discovery"
+        legacy_files = make_v05_skill_install(target)
+        project_before = (target / "README.md").read_bytes()
+        result = json_output(
+            install_bundle(
+                self.bundle_with_v05_origin,
+                target,
+                self.base / "state-authentic-v05-skill-discovery",
+            )
+        )
+
+        self.assertEqual(result["mode"], "adoption")
+        self.assertEqual(result["installationStatus"], "Needs Integration")
+        self.assertEqual((target / "README.md").read_bytes(), project_before)
+        for relative, content in legacy_files.items():
+            self.assertEqual((target / relative).read_bytes(), content, relative)
+        for name in SKILLS:
+            self.assertFalse((target / f".agents/skills/{name}").is_symlink(), name)
+        self.assertTrue((target / ".agents/skills/brainstorm").is_dir())
+        self.assertTrue((target / ".codex/skills").is_symlink())
+        self.assertEqual(os.readlink(target / ".codex/skills"), "../.agents/skills")
+
+        metadata = json.loads((target / ".baton/metadata.json").read_text(encoding="utf-8"))
+        self.assertTrue(
+            {".agent-harness.json", ".codex/skills", *V05_SKILL_PATHS}
+            <= set(metadata["legacyCleanupCandidates"])
+        )
+        self.assertTrue(
+            any("verified v0.5 skill discovery" in item for item in metadata["pendingIntegration"])
+        )
+        plan = target / ".baton/migration/skill-discovery.md"
+        self.assertTrue(plan.is_file())
+        plan_text = plan.read_text(encoding="utf-8")
+        for name in SKILLS:
+            self.assertIn(f".agents/skills/{name}", plan_text)
+            self.assertIn(f"../../.baton/skills/{name}", plan_text)
+
+        state_home = self.base / "state-authentic-v05-skill-discovery"
+        status = json_output(baton(target, ["terminal", "status", "--json"], state_home))
+        self.assertTrue(status["ok"])
+        self.assertEqual(status["installationStatus"], "Needs Integration")
+        self.assertEqual(baton(target, ["doctor", "check", "--json"], state_home).returncode, 0)
+
+        proposal = make_activation_proposal(
+            target,
+            self.base / "authentic-v05-activation-proposal",
+        )
+        before_blocked_activation = tree_snapshot(target)
+        blocked = baton(
+            target,
+            ["boot", "activate", "--from", proposal, "--yes", "--json"],
+            state_home,
+            expected=1,
+        )
+        self.assertIn("skill discovery", blocked.stdout + blocked.stderr)
+        self.assertEqual(tree_snapshot(target), before_blocked_activation)
+
+        (target / ".codex/skills").unlink()
+        shutil.rmtree(target / ".agents/skills")
+        (target / ".agents/skills").mkdir()
+        for name in SKILLS:
+            (target / f".agents/skills/{name}").symlink_to(
+                f"../../.baton/skills/{name}"
+            )
+        activated = json_output(
+            baton(
+                target,
+                ["boot", "activate", "--from", proposal, "--yes", "--json"],
+                state_home,
+            )
+        )
+        self.assertEqual(activated["installationStatus"], "Installed")
+        metadata = json.loads((target / ".baton/metadata.json").read_text(encoding="utf-8"))
+        self.assertFalse(
+            any("verified v0.5 skill discovery" in item for item in metadata["pendingIntegration"])
+        )
+        self.assertFalse(
+            any(path.startswith(".agents/skills/") for path in metadata["legacyCleanupCandidates"])
+        )
+        self.assertNotIn(".codex/skills", metadata["legacyCleanupCandidates"])
+        for name in SKILLS:
+            record = metadata["managedFiles"][f".agents/skills/{name}"]
+            self.assertEqual(record["ownership"], "integration-link")
+        self.assertEqual(baton(target, ["doctor", "check", "--json"], state_home).returncode, 0)
+
+    def test_modified_v05_skill_discovery_still_fails_before_any_write(self) -> None:
+        target = self.base / "modified-v05-skill-discovery"
+        make_v05_skill_install(target)
+        modified = target / ".agents/skills/brainstorm/SKILL.md"
+        modified.write_text("# Locally modified legacy skill\n", encoding="utf-8")
+        before = tree_snapshot(target)
+        failed = install_bundle(
+            self.bundle_with_v05_origin,
+            target,
+            self.base / "state-modified-v05-skill-discovery",
+            expected=1,
+        )
+        self.assertIn("skill-discovery collision", failed.stdout + failed.stderr)
+        self.assertEqual(tree_snapshot(target), before)
+
+    def test_v05_skill_discovery_with_an_untracked_extra_still_fails_atomically(self) -> None:
+        target = self.base / "extra-v05-skill-discovery"
+        make_v05_skill_install(target)
+        (target / ".agents/skills/.DS_Store").write_bytes(b"untracked extra\n")
+        before = tree_snapshot(target)
+        failed = install_bundle(
+            self.bundle_with_v05_origin,
+            target,
+            self.base / "state-extra-v05-skill-discovery",
             expected=1,
         )
         self.assertIn("skill-discovery collision", failed.stdout + failed.stderr)

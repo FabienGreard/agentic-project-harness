@@ -1,6 +1,6 @@
 # Getting started
 
-Start here after installing a stable Baton release. This source checkout is an unpublished candidate.
+Start here after installing a stable Baton release. Installations come from stable release assets, never a source checkout.
 
 ## 1. Invoke `$boot`
 

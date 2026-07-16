@@ -1,5 +1,30 @@
 {
   "schemaVersion": 1,
   "recordType": "goals",
-  "goals": []
+  "goals": [
+    {
+      "id": "BATON-V060",
+      "title": "Release Baton v0.6.0",
+      "status": "Review",
+      "priority": "P0",
+      "owner": "Management",
+      "objective": "Publish the approved current Baton implementation as the stable v0.6.0 release and finish clean on main.",
+      "context": "The user approved this implementation as v0.6.0 and authorized replacement of the older pending v0.6 branch.",
+      "dependencies": [],
+      "assurance": {
+        "clearanceProtocol": "Release Clearance",
+        "overrideReason": ""
+      },
+      "blockers": [],
+      "briefPath": ".baton/records/BATON-V060/brief.md",
+      "decisionPaths": [],
+      "reportPath": ".baton/records/BATON-V060/report.md",
+      "evidencePaths": [
+        ".baton/records/BATON-V060/report.md",
+        ".baton/records/BATON-V060/review-release-management.md"
+      ],
+      "plannedStart": "2026-07-16",
+      "plannedEnd": "2026-07-16"
+    }
+  ]
 }

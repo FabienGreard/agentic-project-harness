@@ -22,21 +22,23 @@
       "Evidence before completion"
     ],
     "openQuestions": [],
-    "currentGoal": "",
+    "currentGoal": "BATON-V060",
     "agentProvider": "codex",
-    "phase": "Active",
+    "phase": "Release certification",
     "templateMode": false,
     "lastVerified": "2026-07-16",
     "decisionPaths": [],
-    "evidencePaths": [],
+    "evidencePaths": [
+      ".baton/records/BATON-V060/report.md"
+    ],
     "assuranceDefaults": {
       "readinessProtocol": "Standard Protocol",
       "clearanceProtocol": "Release Clearance"
     }
   },
   "baton": {
-    "owner": "Management",
-    "action": "Define the next Goal and Ticket",
-    "returnTrigger": "A bounded Ready Ticket is recorded"
+    "owner": "Operations",
+    "action": "Freeze and certify the exact v0.6.0 candidate, then publish and clean up the superseded branch",
+    "returnTrigger": "The exact candidate passes both reviews, Internal Audit, asset validation, and immutable remote smoke"
   }
 }

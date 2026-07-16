@@ -39,7 +39,7 @@ your-project/
 
 It preserves existing Project files and never stages or commits them.
 
-This source checkout currently contains an unpublished candidate. Install only from an approved stable release asset, never a branch or source archive.
+Install only from an approved stable release asset. A source checkout, including one at a stable tag, is not an installation artifact.
 
 ## Documentation
 

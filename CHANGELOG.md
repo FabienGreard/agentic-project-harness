@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Added a limited ubiquitous language for Goal, Ticket, Release, Publication, and their clearance boundaries.
 - Expanded the ubiquitous language with Project, Repository, State, Record, Brief, Decision, Report, Evidence, Review, and Memory.
 - Added aggregate state contract v2 so stable updates cannot silently mix legacy assurance fields with the new protocol model.
+- Added authenticated v0.5 skill-discovery quarantine so unchanged legacy installations can adopt v0.6 without overwriting legacy files or partially installing new links; activation remains blocked until human-approved cleanup completes the exact link set.
 
 ### Changed
 
@@ -39,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Added explicit reviewed mature-state activation, immutable per-file GitHub evidence, checksum-rich transaction reports, and automatic Codex agent-registry reconciliation when Consultants are hired or fired.
 - Made permanent-task messages the sole wake mechanism and prohibited persistent goals as role identity or lifecycle control, including legacy auto-resume handling.
 - Removed the repository-wide source-classification inventory; release payloads now derive only from tracked `template/.baton/` content with shared defaults, explicit starter/adoption-only projections, and exact generated manifests.
+- Made release proof single-pass, Python-3.9-selectable, physical-path-safe on macOS, and explicit about the immutable v0.5 upgrade origin.
 
 ## [0.5.0] - 2026-07-14
 

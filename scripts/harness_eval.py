@@ -604,7 +604,7 @@ import baton_lifecycle as module
 with tempfile.TemporaryDirectory() as raw:
     base=Path(raw); prepared=base/'prepared'; project=base/'project'
     prepared.mkdir(); project.mkdir()
-    managed,generated,manual=module.integration_plan(prepared,project,'Installed',['management','operations','contractor','internal_audit','consultant_product_designer'])
+    managed,generated,manual=module.integration_plan(prepared,project,'Installed',['management','operations','contractor','internal_audit','consultant_product_designer'],{{'supportedUpgradeOrigins': {{}}}})
     print(json.dumps({{'managed': managed, 'generated': generated, 'manual': manual}}))
 """
     completed = run(root, [sys.executable, "-c", script])

@@ -1,6 +1,6 @@
 # Installation
 
-Baton installs or updates only from verified stable release assets. The current source checkout is an unpublished candidate.
+Baton installs or updates only from verified stable release assets. A source checkout, including one at a stable tag, is not an installation artifact.
 
 ## Requirements
 
@@ -55,7 +55,7 @@ Outside `.baton/`, Baton may touch only:
 - the host config when absent, or a merge proposal when present; and
 - skill links when their paths are free.
 
-A skill-link collision stops installation. Other collisions are preserved. Baton never replaces a Project-owned file.
+A skill-link collision stops installation. The sole exception is a complete unchanged v0.5 discovery tree authenticated against its stable origin and per-file baselines: Baton preserves the old tree and `.codex/skills` alias, creates no v0.6 links, and records one manual integration plan. Activation stays blocked until a human approves cleanup and installs all ten exact links. Other collisions are preserved. Baton never replaces a Project-owned file.
 
 ## Manage Baton
 
